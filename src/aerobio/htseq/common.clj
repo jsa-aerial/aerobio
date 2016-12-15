@@ -1,4 +1,4 @@
-(ns aerobio.htseq.common
+(ns iobio.htseq.common
   [:require
    [clojure.core.reducers :as r]
    [clojure.data.csv :as csv]
@@ -15,8 +15,8 @@
    [aerial.bio.utils.files :as bufiles]
    [aerial.bio.utils.filters :as fil]
 
-   [aerobio.params :as pams]
-   [aerobio.pgmgraph :as pg]])
+   [iobio.params :as pams]
+   [iobio.pgmgraph :as pg]])
 
 
 
@@ -434,3 +434,16 @@
   ((get-exp-info eid :ncbi-sample-xref) (->> rnm (str/split #"-") first)))
 
 
+
+
+
+
+(comment
+  (set-exp
+   "160307_NS500751_0013_AHL7L3BGXX")
+  (get-exp "160307_NS500751_0013_AHL7L3BGXX")
+  ((get-exp "160307_NS500751_0013_AHL7L3BGXX") :base)
+  (info-ks)
+  (exp-ids)
+  (get-exp-info "160307_NS500751_0013_AHL7L3BGXX" :base :sample-sheet :bcmaps)
+  )

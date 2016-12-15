@@ -1,4 +1,4 @@
-(ns aerobio.htseq.tnseq
+(ns iobio.htseq.tnseq
   [:require
    [clojure.string :as cljstr]
 
@@ -7,9 +7,9 @@
    [aerial.utils.io :refer [letio] :as io]
    [aerial.utils.math.infoth :as it]
 
-   [aerobio.params :as pams]
-   [aerobio.htseq.common :as cmn]
-   [aerobio.pgmgraph :as pg]])
+   [iobio.params :as pams]
+   [iobio.htseq.common :as cmn]
+   [iobio.pgmgraph :as pg]])
 
 
 (defn trim-initsq-and-adapter
@@ -24,9 +24,13 @@
   (str/substring sq s e))
 
 (defn position-transpose-prefix
+  "Finds the 'best' match of tpn to the end of sq. Does not use
+  optimal alignment scoring (edit distance), but a simplified Hamming
+  distance with 'shrinking' window. Returns the index into sq of the
+  best start location."
   [sq tpn]
   (let [mxtpn (count tpn)
-        minsq (- (count sq) (count tpn))
+        minsq (- (count sq) mxtpn)
         idxs0 (take (- mxtpn 2)
                     (iterate (fn[[x y]] [(inc x) (dec y)])
                              [minsq mxtpn]))
@@ -37,8 +41,14 @@
             x (str/substring sq i (+ i j))
             y (str/substring tpn 0 j)]
         (cond (< (it/hamming x y) m) i
-              (= i 22) -1
+              (= i maxsqi) -1
               :else (recur (rest idxs)))))))
+
+(defn seq-less-transposon
+  [sq tpn]
+  (let [i (position-transpose-prefix sq tpn)]
+    (when (pos? i)
+      (str/substring sq 0 (+ 2 i)))))
 
 (defn check-barcode
   [sq bc]
@@ -47,8 +57,6 @@
           (take 3)
           (map #(it/hamming bc %))
           (apply min) (>= 1))))
-
-(defn )
 
 
 
@@ -87,6 +95,16 @@
    "TCTGAATCTCCTGCTACCTTTGACCATGAACTAACAGGTTGGATGATAAGT"
    ])
 
+(let [sq "CCTGCTACCGACCATGAACTAACAG"
+      tpn "TAACAG"
+      mxtpn (count tpn)
+      minsq (- (count sq) mxtpn)
+      idxs0 (take (- mxtpn 2)
+                  (iterate (fn[[x y]] [(inc x) (dec y)])
+                           [minsq mxtpn]))
+      maxsqi (->> idxs0 last first)]
+  [mxtpn minsq idxs0 maxsqi])
+
 (let [tnseqs ["CCTGCTACCGACCATGAACTAACAG"
               "CCTGCTACCGACCATGAACTAACxG"
               "CCTGCTACCGACCATGAACTAxCxG"
@@ -94,13 +112,22 @@
               "CCTGCTACCTTTGACCATGAACTAA"]]
   (map #(position-transpose-prefix % "TAACAG") tnseqs))
 
+
 (let [tnseqs ["CCTGCTACCGACCATGAACTAACAG"
               "CCTGCTACCGACCATGAACTAACxG"
               "CCTGCTACCGACCATGAACTAxCxG"
               "CCTGCTACCTTTGACCATGAACTxA"
               "CCTGCTACCTTTGACCATGAACTAA"]]
-  (time (dotimes [_ 10000000]
-          (map #(position-transpose-prefix % "TAACAG" tnseqs)))))
+  (time (dotimes [_ 200000]
+          (mapv #(position-transpose-prefix % "TAACAG") tnseqs))))
+
+
+(let [tnseqs ["CCTGCTACCGACCATGAACTAACAG"
+              "CCTGCTACCGACCATGAACTAACxG"
+              "CCTGCTACCGACCATGAACTAxCxG"
+              "CCTGCTACCTTTGACCATGAACTxA"
+              "CCTGCTACCTTTGACCATGAACTAA"]]
+  (->> tnseqs (map #(seq-less-transposon % "TAACAG"))))
 
 
 (time (dotimes [_ 10000000]
@@ -108,6 +135,18 @@
                12 "TACTTACCTACTXCCGCTGGTCATCCTGCGCCAATTTGATGTGTGTGGTTTTTAATTG")
               (take 3)
               (map #(it/hamming "ACTTACCTACTT" %)))))
+
+(time (dotimes [_ 1000000]
+        (->>  (str/sliding-take
+               6 "TACTTACCTACTXCCGCTGGTCATCCTGCGCCAATTTGATGTGTGTGGTTTTTAATTG")
+              (take 3)
+              (mapv #(it/hamming "ACTTAC" %)))))
+
+(->>  (str/sliding-take
+       6 "TACTTACCTACTXCCGCTGGTCATCCTGCGCCAATTTGATGTGTGTGGTTTTTAATTG")
+      (take 3)
+      (map #(it/hamming "ACTTAC" %))
+      (apply min) (>= 1))
 
 (->>  (str/sliding-take
        6 "TACTTACCTACTXCCGCTGGTCATCCTGCGCCAATTTGATGTGTGTGGTTTTTAATTG")
