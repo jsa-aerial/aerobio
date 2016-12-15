@@ -7,7 +7,7 @@
            (pg/done)
            (do
              (infof "Set exp db for %s" eid)
-             (htrs/set-exp eid)
+             (cmn/set-exp eid)
              eid)))
  ;; instructional data used in /help
  :description "Define and set the experimental database values for experiement with id EID.",

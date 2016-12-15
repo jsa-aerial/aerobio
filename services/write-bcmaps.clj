@@ -6,7 +6,7 @@
          (if (vector? eid-bcmap-vec)
            (let [[eid bcmaps] eid-bcmap-vec]
              (infof "Write barcode stats for %s" eid)
-             (htrs/write-bcmaps eid bcmaps)
+             (cmn/write-bcmaps eid bcmaps)
              eid)
            (pg/done)))
  ;; instructional data used in /help
