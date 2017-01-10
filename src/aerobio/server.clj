@@ -1,5 +1,5 @@
-(ns aerobio.server
-  "Moving toward clj aerobio with full tree graphs, function nodes, superior
+(ns iobio.server
+  "Moving toward clj iobio with full tree graphs, function nodes, superior
    error handling, logging, caching, etc.
   "
 
@@ -45,12 +45,12 @@
    [schema.core :as sch]
 
    ;; Our parameter db
-   [aerobio.params :as pams]
+   [iobio.params :as pams]
    ;; HTSeq
-   [aerobio.htseq.common :as cmn]
-   [aerobio.htseq.rnaseq :as htrs]
+   [iobio.htseq.common :as cmn]
+   [iobio.htseq.rnaseq :as htrs]
    ;; Program graph construction, execution, delivery
-   [aerobio.pgmgraph :as pg]
+   [iobio.pgmgraph :as pg]
    ))
 
 
@@ -288,7 +288,7 @@
 
 (defn read-tool-config [f]
   (infof "Tool update: %s" f)
-  (binding [*ns* (find-ns 'aerobio.server)]
+  (binding [*ns* (find-ns 'iobio.server)]
     (if (= "clj" (fs/ftype f))
       (let [cfg (-> f slurp clojure.core/read-string)
             func (cfg :func)]
@@ -358,7 +358,8 @@
 
 (def job-configs (atom nil))
 
-(defn read-job-config [f] (prn f)
+(defn read-job-config [f]
+  (infof "Job update: %s" f)
   (if (= "clj" (fs/ftype f))
     (let [cfg (-> f slurp edn/read-string)
           func (cfg :func)]
@@ -496,12 +497,12 @@
                        (str/replace #"(^\"|\"$)" "")) x))))
 
 (defn service? [x]
-  (re-find #"^(http|ws)%3A%2F%2F.+\.aerobio" x))
+  (re-find #"^(http|ws)%3A%2F%2F.+\.iobio" x))
 
 (defn get-tool-name [url & [tool]]
   (assert (or url tool) "Run Params requires url or tool field")
   (if tool tool
-      (->> url (re-find #"^(ws|http)://.+\.aerobio") first
+      (->> url (re-find #"^(ws|http)://.+\.iobio") first
            (#(str/split % #"(//|\.)")) second)))
 
 (defn adjust-args [args toolname path inputs]
@@ -694,7 +695,7 @@
   (tracef ">>> Stream = %s" stream)
   (let [cmdpath (-> (fs/pwd) (fs/join "bin"))
         _ (assert (fs/directory? cmdpath)
-                  (str "aerobio home directory '" (fs/pwd)
+                  (str "iobio home directory '" (fs/pwd)
                        "' requires a 'bin' directory"))
         pipeline-config (config-pipe-def stream params)
         _ (debugf "PIPELINE-CONFIG: %s" pipeline-config)
