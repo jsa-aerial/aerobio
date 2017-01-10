@@ -11,6 +11,7 @@
    [aerial.utils.io :refer [letio] :as io]
    [aerial.utils.math.probs-stats :as p]
    [aerial.utils.math.infoth :as it]
+   [aerial.utils.ds.bktrees :as bkt]
 
    [aerial.bio.utils.files :as bufiles]
    [aerial.bio.utils.filters :as fil]
@@ -19,6 +20,43 @@
    [iobio.pgmgraph :as pg]])
 
 
+
+
+(defn get-sample-info [ssheet]
+  (->> ssheet
+       slurp csv/read-csv
+       (coll/drop-until #(= (first %) "Sample_ID"))
+       rest))
+
+(defn get-exp-sample-info [csv]
+  (let [recs (->> csv slurp csv/read-csv)
+        x (coll/drop-until
+           (fn[v] (#{"tnseq", "rnaseq", "wgseq"} (first v)))
+           recs)
+        recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
+        exp-rec [(first recs)]]
+    (loop [S (rest recs)
+           I [exp-rec]]
+      (if (not (seq S))
+        (apply concat I)
+        (let [s (coll/drop-until (fn[v] (str/digits? (first v))) S)
+              i (coll/take-until (fn[v] (not (str/digits? (first v)))) s)]
+          (recur (coll/drop-until (fn[v] (not (str/digits? (first v)))) s)
+                 (conj I i)))))))
+
+(defn get-ncbi-xref
+  [exp-samp-info]
+  (->> exp-samp-info rest
+       (take-while #(= 3 (count %)))))
+
+(defn drop-ncbi-xref
+  [exp-samp-info]
+  (->> exp-samp-info rest
+       (drop-while #(= 3 (count %)))))
+
+(defn get-exp-type
+  [exp-samp-info]
+  (-> exp-samp-info ffirst keyword))
 
 
 (defn ensure-dirs [& dirs]
@@ -43,14 +81,16 @@
 
 (defn bcfreqs-fold
   "Fold over barcode and base frequency computations"
-  [smap fq]
+  [smap sz fq]
   (letio [kw (->> fq fs/basename
                   (str/split #".fastq") first (str/split #"_S")
-                  first smap)
+                  first smap) ; kw is associated illumina barcode
           inf (io/open-streaming-gzip fq :in)
-          rec-chunk-size 10000
-          ;; 100 group => ~100 groups => 2 groups/deque on 50cpu
+          rec-chunk-size 40000
+          ;; 400 group => ~100 groups => 2 groups/deque on 50cpu
           partition (long (/ rec-chunk-size 100))]
+    ;; ***NOTE: we are NOT collecting nt freqs any more!!
+    ;;          But we keep the same shape just in case we may again
     [kw (loop [[bcM ntM] [{} {}]]
           (let [chunk (bufiles/read-fqrecs inf rec-chunk-size)]
             (if (not (seq chunk))
@@ -61,21 +101,38 @@
                      (fn([] [{} {}])
                        ([[bcM ntM] [bcm ntm]]
                         [(merge-with + bcM bcm)
-                         (merge-with + ntM ntm)]))
+                         #_(merge-with + ntM ntm) ntM]))
                      (fn[[bcm ntm] fqrec]
                        (let [sq (second fqrec)
-                             bc (str/substring sq 0 7)]
+                             bc (str/substring sq 0 sz)]
                          [(assoc bcm bc (inc (get bcm bc 0)))
-                          (merge-with + ntm (p/freqn 1 sq))]))
+                          #_(merge-with + ntm (p/freqn 1 sq)) ntm]))
                      chunk)]
-                (recur [(merge-with + bcM bcm) (merge-with + ntM ntm)])))))]))
+                (recur [(merge-with + bcM bcm)
+                        #_(merge-with + ntM ntm) ntM])))))]))
 
+(defn bcfreqs
+  [smap bcsz fq]
+  (future
+    (letio [kw (->> fq fs/basename
+                    (str/split #".fastq") first (str/split #"_S")
+                    first smap) ; kw is associated illumina barcode
+            in (io/open-file fq :in)]
+      (loop [fqrec (bufiles/read-fqrec in)
+             m {}]
+        (if (nil? (fqrec 0))
+          [kw [m {}]]
+          (let [sq (-> (fqrec 1)
+                       (str/substring 9 -17)
+                       (str/substring 0 bcsz))]
+            (recur (bufiles/read-fqrec in)
+                   (assoc m sq (inc (get m sq 0))))))))))
 
-(defn get-sample-info [ssheet]
-  (->> ssheet
-       slurp csv/read-csv
-       (coll/drop-until #(= (first %) "Sample_ID"))
-       rest))
+(defn bcfreqs-tnseq
+  [smap bcsz fqs]
+  (let [futvec (mapv (partial bcfreqs smap bcsz) fqs)]
+    (mapv (fn[fut] (deref fut)) futvec)))
+
 
 (defn collect-barcode-stats [eid]
   (let [nextseq-base (pams/get-params :nextseq-base)
@@ -84,12 +141,18 @@
                         (fs/join expdir) get-sample-info
                         (map (fn[[nm _ bckey]] [nm bckey]))
                         (into {}))
+        expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
+                     get-exp-sample-info)
+        bcsz (->> expinfo drop-ncbi-xref first last count)
+        exptype (get-exp-type expinfo)
         base (pams/get-params :scratch-base)
-        fqbase (fs/join base eid "Fastq")]
-    (->> (fs/re-directory-files
-          fqbase "*.fastq.gz")
-         (mapv (partial bcfreqs-fold sample-map))
-         (into {}))))
+        fqbase (fs/join base eid "Fastq")
+        fqs (fs/re-directory-files fqbase "*.fastq.gz")]
+    (if (= exptype :tnseq)
+      (->> (bcfreqs-tnseq sample-map bcsz fqs) (into {}))
+      (->> fqs
+           (mapv (partial bcfreqs-fold sample-map bcsz))
+           (into {})))))
 
 ;;; base "/data1/NextSeq/TVOLab/AHL7L3BGXX/Stats/"
 ;;; (write-bcmaps "160307_NS500751_0013_AHL7L3BGXX/")
@@ -138,17 +201,6 @@
          (reduce (fn[M [bc v]] (assoc M bc (conj (get M bc []) v))) {}))))
 
 
-(defn get-exp-sample-info [csv]
-  (loop [S (->> csv slurp csv/read-csv)
-         I []]
-    (if (not (seq S))
-      (apply concat I)
-      (let [s (coll/drop-until (fn[v] (str/digits? (first v))) S)
-            i (coll/take-until (fn[v] (not (str/digits? (first v)))) s)]
-        (recur (coll/drop-until (fn[v] (not (str/digits? (first v)))) s)
-               (conj I i))))))
-
-
 (def exp-info (atom {}))
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
@@ -159,18 +211,20 @@
              (get-sample-info ssheet))
       ((fn[m]
          (assoc m :base base
-                :refs    (pams/get-params :refdir)
-                :index   (fs/join (pams/get-params :refdir) "Index")
-                :samples (fs/join base "Samples")
-                :out     (fs/join base "Out")
-                :bams    (fs/join base "Out/Bams")
-                :cuffs   (fs/join base "Out/Cuffs")
-                :diffs   (fs/join base "Out/Diffs")
-                :asms    (fs/join base "Out/Asms")
-                :charts  (fs/join base "Out/Charts")
-                :stats   (fs/join base "Stats")
-                :fastq   (fs/join base "Fastq")
-                :docs    (fs/join base "Docs"))))
+                :refs      (pams/get-params :refdir)
+                :index     (fs/join (pams/get-params :refdir) "Index")
+                :samples   (fs/join base "Samples")
+                :collapsed (fs/join base "Samples/Collapsed")
+                :out       (fs/join base "Out")
+                :bams      (fs/join base "Out/Bams")
+                :fcnts     (fs/join base "Out/Fcnts")
+                :cuffs     (fs/join base "Out/Cuffs")
+                :diffs     (fs/join base "Out/Diffs")
+                :asms      (fs/join base "Out/Asms")
+                :charts    (fs/join base "Out/Charts")
+                :stats     (fs/join base "Stats")
+                :fastq     (fs/join base "Fastq")
+                :docs      (fs/join base "Docs"))))
       ((fn[m]
          (assoc m :illumina-sample-xref
                 (into {} (mapv (fn[[_ nm ibc]] [ibc nm])
@@ -179,9 +233,10 @@
          (assoc m :exp-sample-info
                 (get-exp-sample-info exp-ssheet))))
       ((fn[m]
-         (assoc m :sample-names
+         (assoc m :exp (get-exp-type (m :exp-sample-info))
+                :sample-names
                 (->> (m :exp-sample-info)
-                     (drop-while #(= 3 (count %)))
+                     drop-ncbi-xref
                      (map second)
                      (map #(->> % (str/split #"-")
                                 (take 2) (cljstr/join "-")))
@@ -189,7 +244,7 @@
       ((fn[m]
          (assoc m :replicate-names
                 (->> (m :exp-sample-info)
-                     (drop-while #(= 3(count %)))
+                     drop-ncbi-xref
                      (map second)
                      (group-by (fn[rnm]
                                  (->> rnm (str/split #"-")
@@ -202,12 +257,14 @@
       ((fn[m]
          (assoc m :ncbi-sample-xref
                 (->> (m :exp-sample-info)
-                     (take-while #(= 3 (count %)))
+                     get-ncbi-xref
                      (mapcat (fn[x] [(-> x rest vec) (-> x rest reverse vec)]))
                      (into {})))))
       ((fn[m]
          (assoc m :exp-illumina-xref
-                (group-by (fn[[_ _ ibc]] ibc) (m :exp-sample-info)))))
+                (->> (m :exp-sample-info)
+                     drop-ncbi-xref
+                     (group-by (fn[[_ _ ibc]] ibc))))))
       ((fn[m]
          (assoc m :barcodes
                 (->> (m :exp-illumina-xref) vals (apply concat)
@@ -446,4 +503,6 @@
   (info-ks)
   (exp-ids)
   (get-exp-info "160307_NS500751_0013_AHL7L3BGXX" :base :sample-sheet :bcmaps)
+
+
   )
