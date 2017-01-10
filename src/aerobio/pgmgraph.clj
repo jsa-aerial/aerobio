@@ -522,12 +522,15 @@
   (func-node :n->1))
 
 (defn one2n? [func-node]
-  (func-node :n->1))
+  (func-node :1->n))
 
-(defn nxt []
+(defn need
+  "Inside function nodes, call this to indicate more values are needed
+  to generate next output."
+  []
   ::nextinput)
 
-(defn nxt? [res]
+(defn need? [res]
   (= res ::nextinput))
 
 
@@ -536,7 +539,7 @@
 
 (defn more
   "Inside 'generator/repeat' function nodes, call this to indicate
-  there are move values to return."
+  there are more values to return."
   [] ::more)
 
 (defn more?
@@ -723,20 +726,20 @@
                         repeat?
                         (loop [res (apply func (concat args [data]))]
                           (cond
-                            (done? res) :nop
-                            (more? res) (recur (apply func args))
+                            (done? res) :nop ; repeat same as non
+                            (need? res) :nop ; next data comes from channels
+                            (more? res) :requires-mult-sigs-how-does-this-work?
                             :else
-                            (do (doseq [ch outputs] (>! ch res))
-                                (recur (apply func args)))))
+                            (when res
+                              (doseq [ch outputs] (>! ch res)))))
                         :else
                         (let [res (apply func (concat args [data]))]
                           (cond
-                            (more? res) :nop
+                            (need? res) :nop ; outer loop gets next data set
                             (done? res) (vswap! short-circuit? truefn)
                             :else
                             (when res
-                              (doseq [ch outputs]
-                                (>! ch res))))))
+                              (doseq [ch outputs] (>! ch res))))))
                       (catch Exception e
                         (warnf "%s, Exception %s\n %s\n %s"
                                (funcm :id) e args data))))
