@@ -15,11 +15,11 @@
              inc-add    (fn[v]
                           (vswap! cnt #(inc %))
                           (vswap! chunk #(conj % v))
-                          (pg/more))]
+                          (pg/need))]
          (fn[n v]
            (cond
              (pg/eoi? v) (if (> @cnt 0) (reset-send) (pg/done))
-             (= @cnt n) (reset-send)
+             (= @cnt n) (let [ret (reset-send)] (inc-add v) ret)
              :else
              (inc-add v))))
 
