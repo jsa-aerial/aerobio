@@ -25,6 +25,32 @@
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
 
+(defn get-comparison-files
+  "Compute the set of comparison bams and the corresponding output csv
+  for the count table matrix. Comparison sets are based on the
+  ComparisonSheet.csv for the experiment of eid (the experiment
+  id). If rep? is true, returns the comparison sets for replicates of
+  comparison pairs, else returns comparison sets for combined bams."
+  ([eid rep?]
+   (get-comparison-files eid "ComparisonSheet.csv" rep?))
+  ([eid comp-filename rep?]
+   (let [bpath (if rep? [:rep :bams] [:bams])
+         fpath (if rep? [:rep :fcnts] [:fcnts])
+         bams (apply cmn/get-exp-info eid bpath)
+         fcnts (apply cmn/get-exp-info eid fpath)
+         compvec (->> comp-filename
+                      (fs/join (pams/get-params :nextseq-base) eid)
+                      slurp csv/read-csv rest)
+         bamsvec (mapv (fn[v]
+                         (mapcat #(-> (fs/join bams (str % "*.bam"))
+                                      fs/glob sort)
+                                 v))
+                       compvec)
+         otcsvs (mapv (fn[v]
+                        (fs/join fcnts (str (cljstr/join "-" v) ".csv")))
+                      compvec)]
+     (mapv #(vector %1 %2) bamsvec otcsvs))))
+
 
 (defn run-rnaseq-phase-0
   [eid get-toolinfo template]
