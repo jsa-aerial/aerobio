@@ -7,7 +7,7 @@
                 :args ["#1", "#2", "#3" ]} ; eid, comparison-file, rep?
          :fcnt {:type "func"
                 :name "featureCounts"
-                :args ["#3", "#4"]} ; feature-type, gtf
+                :args ["#4", "#5"]} ; feature-type, gtf
 
          :edges {:dir [:fcnt]}}
 
