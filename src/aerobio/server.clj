@@ -585,6 +585,11 @@
   (merge {:inputOption "" :options "" :args ""}
          (@tool-configs toolname)))
 
+(defn get-jobinfo [jobname]
+  (assert (@job-configs jobname)
+          (format "No such job %s" jobname))
+  (@job-configs jobname))
+
 
 (defn flow-program
   ""
