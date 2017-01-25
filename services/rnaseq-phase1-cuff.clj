@@ -17,10 +17,10 @@
                :path "samtools"
                :args ["index" "-" "#4"]}
          :cl1 {:type "func"
-               :name "write-bam"
-               :args ["#3"]}
+               :name "write-bam-then-cufflinks"
+               :args ["#3" "#5" "#6"]}
          :edges {:bt1 [:st1] :st1 [:st2] :st2 [:cl1 :st3]}}
 
  ;; instructional data used in /help
- :description "Process sequencer fastqs from bowtie alignment, to bam conversion, to bam sort, to bam indexing, to bam write - all via streaming connections.",
+ :description "Process sequencer fastqs from bowtie alignment, to bam conversion, to bam sort, to bam indexing, to cufflink assembly",
  }
