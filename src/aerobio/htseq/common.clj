@@ -318,7 +318,7 @@
 (defn info-ks [] (-> @exp-info first second keys))
 
 (defn get-exp-info [eid & ks]
-  (let [otks [:bams :cuffs :diffs :asms :charts]
+  (let [otks [:bams :fcnts :cuffs :diffs :asms :charts]
         rep? (coll/in :rep ks)
         ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
         info (get-exp eid)
@@ -496,8 +496,13 @@
 
 
 (comment
-  (set-exp
-   "160307_NS500751_0013_AHL7L3BGXX")
+  (def eid "160930_161002_AHK72HBGXY_AHK7YKBGXY")
+  (def neid "161108_161109_AH2WWGBGX2_AH2WLJBGX2")
+
+  (set-exp "160307_NS500751_0013_AHL7L3BGXX")
+  (set-exp "160930_161002_AHK72HBGXY_AHK7YKBGXY")
+  (set-exp "161108_161109_AH2WWGBGX2_AH2WLJBGX2")
+
   (get-exp "160307_NS500751_0013_AHL7L3BGXX")
   ((get-exp "160307_NS500751_0013_AHL7L3BGXX") :base)
   (info-ks)
