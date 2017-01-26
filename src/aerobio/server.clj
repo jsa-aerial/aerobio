@@ -597,9 +597,10 @@
   (assert (not (and run prn)) "FLOW-PROGRAM, run and prn mutually exclusive")
   (let [cfg (-> cfg (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                 pg/config-pgm-graph)]
-    (if run
-      (->> cfg pg/make-flow-graph pg/run-flow-program)
-      (->> cfg clojure.pprint/pprint))))
+    (cond
+      run (->> cfg pg/make-flow-graph pg/run-flow-program)
+      prn (->> cfg clojure.pprint/pprint)
+      :else cfg)))
 
 
 (defn config-stream-pipe-inputs [services]
