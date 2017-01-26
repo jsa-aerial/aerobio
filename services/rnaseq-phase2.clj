@@ -9,7 +9,8 @@
                 :args ["#1" "#2" "#3" "#4" "#5"]
                 }
          :mail {:type "func"
-                :name "mailit"}
+                :name "mailit"
+                :args ["#6"]}
          :edges {:fcnt [:mail]}}
 
  ;; instructional data used in /help
