@@ -11,11 +11,11 @@
                                     bams [{:verbose true :throw false}]))
                  exit-code @(ret :exit-code)
                  exit (if (= 0 exit-code) :success exit-code)
-                 err (get-in ret [:proc :err])]
+                 err (-> (ret :stderr) (str/split #"\n") last)]
              {:name "featureCounts"
               :value bams-csv-pair
               :exit exit
-              :err (mapv identity err)})))
+              :err })))
 
  :description "Function wrapping featureCounts taking bams-csv-pair file. gtf is a gene-transfer-format annotation and must be sorted to match the bam files and feature-type is the feature class of the gtf (gene, CDS, exon, ...)"
 }
