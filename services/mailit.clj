@@ -2,37 +2,13 @@
 {
  :name "mailit",
  :path "",
- :func (fn [recipient subject intro result-maps]
+ :func (fn [recipient subject intro result]
          (cond
-           (pg/eoi? result-maps) (pg/done)
-
-           (every? map? result-maps)
-           (let [base (->> result-maps first :value second fs/dirname)
-                 msgs (for [retmap result-maps]
-                        (let [name (retmap :name)
-                              [bams csv] (retmap :value)
-                              bams (map fs/basename bams)
-                              csv (fs/basename csv)
-                              exit (retmap :exit)
-                              err (retmap :err)]
-                          (if (= exit :success)
-                            [exit csv]
-                            [exit err [bams csv]])))
-                 overall (reduce (fn[R x]
-                                   (cond (= x R :success) R
-                                         (= x R :fail) R
-                                         :else :mixed))
-                                 (map first msgs))
-                 msg (->> msgs
-                          (cons (str "Base '" base "'"))
-                          (cons (str "Overall " overall))
-                          (cons intro)
-                          (map str) (str/join "\n"))]
-             (pg/send-msg [recipient] subject msg))
+           (pg/eoi? result) (pg/done)
 
            :else
-           (let [msg (->> result-maps (cons intro) (map str) (str/join "\n"))]
+           (let [msg (->> result list (cons intro) (map str) (str/join "\n"))]
              (pg/send-msg [recipient] subject msg))))
 
- :description "General mailer function node. recipient is user account that requested the associated job this node is final pt of DAG, subject is type of job, msg is job finish details."
+ :description "Simple mailer function node. recipient is user account that requested the associated job this node is final pt of DAG, subject is type of job, msg is job finish details."
 }

@@ -13,10 +13,17 @@
                   :name "set-exp"}
          :split-filter {:type "func"
                         :name "split-filter-fastqs"}
+         :mail {:type "func"
+                :name "mailit"
+                :args ["#2"         ; recipient
+                       "Aerobio job status: rnaseq phase-0b"
+                       "Finished"]} ; subject, body intro
+
          :edges {:strtscratch [:bcstats]
                  :bcstats  [:wrtstats]
                  :wrtstats [:setexp]
-                 :setexp [:split-filter]}}
+                 :setexp [:split-filter]
+                 :split-filter [:mail]}}
 
  :description "RNAseq w/o bcl2fastq - start-scratch-space through barcode stats and filter/splitter. Using (prebuilt) fastq files creates scratch space for fastq file processing, copies fastqs to canonical dir in scratch area, collects barcode and NT stats, then writes that to canonical area, sets the experiments db value and lastly splits and filters fastqs by replicates."
  }

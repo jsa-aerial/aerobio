@@ -12,7 +12,7 @@
          :aggr {:type "func"
                 :name "aggregate"}
          :mail {:type "func"
-                :name "mailit"
+                :name "mailp2"
                 :args ["#6" "#7" "#8"]} ; recipient, subject, body intro
          :edges {:dir [:fcnt] :fcnt [:aggr] :aggr [:mail]}}
 
