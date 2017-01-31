@@ -12,7 +12,7 @@
                :args ["view" "-b"]}
          :st2 {:type :tool
                :path "samtools"
-               :args ["sort" "--threads" "16"]}
+               :args ["sort" "--threads" "8"]}
          :st3 {:type :tool
                :path "samtools"
                :args ["index" "-" "#4"]}
