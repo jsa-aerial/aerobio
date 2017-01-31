@@ -7,17 +7,27 @@
            (pg/eoi? result-maps) (pg/done)
 
            (every? map? result-maps)
-           (let [msgs (for [retmap result-maps]
+           (let [base (->> result-maps first :value second fs/dirname)
+                 msgs (for [retmap result-maps]
                         (let [name (retmap :name)
                               [bams csv] (retmap :value)
                               bams (map fs/basename bams)
                               csv (fs/basename csv)
                               exit (retmap :exit)
                               err (retmap :err)]
-                          (if (= exit :succss)
+                          (if (= exit :success)
                             [exit csv]
                             [exit err [bams csv]])))
-                 msg (->> msgs (cons intro) (map str) (str/join "\n"))]
+                 overall (reduce (fn[R x]
+                                   (cond (= x R :success) R
+                                         (= x R :fail) R
+                                         :else :mixed))
+                                 (map first msgs))
+                 msg (->> msgs
+                          (cons (str "Base '" base "'"))
+                          (cons (str "Overall " overall))
+                          (cons intro)
+                          (map str) (str/join "\n"))]
              (pg/send-msg [recipient] subject msg))
 
            :else
