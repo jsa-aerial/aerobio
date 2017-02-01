@@ -13,7 +13,9 @@
                 :name "aggregate"}
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#6" "#7" "#8"]} ; recipient, subject, body intro
+                :args ["#6"        ; recipient
+                       "Aerobio job status: rnaseq phase-2"
+                       "Finished"]}      ; subject, body intro
          :edges {:dir [:fcnt] :fcnt [:aggr] :aggr [:mail]}}
 
  ;; instructional data used in /help
