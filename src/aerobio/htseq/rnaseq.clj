@@ -235,7 +235,7 @@
         repjob (future (svr/flow-program repcfg :run true))
         cfg (assoc-in template
                       [:nodes :rsqp2 :args]
-                      [eid comparison-file false ftype refgtf])
+                      [eid comparison-file false ftype refgtf recipient])
         cfgjob (future (svr/flow-program cfg :run true))]
     #_(clojure.pprint/pprint repflow)
     [repjob cfgjob]))
