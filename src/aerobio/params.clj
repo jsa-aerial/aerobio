@@ -8,7 +8,8 @@
 (defn param-set [] @params)
 
 (defn get-params [& ks]
-  (if (= 1 (count ks))
-    (@params (first ks))
-    (mapv @params ks)))
+  (cond
+    (and (= 1 (count ks)) (vector? (first ks))) (get-in @params (first ks))
+    (= 1 (count ks)) (@params (first ks))
+    :else (mapv @params ks)))
 
