@@ -170,12 +170,14 @@ end
 
 def remote_cmd (cmd, args, *misc)
   server = if (@server) then @server else @default_server end
-  base_url = server + "/htseq/cmd"
-
+  base_url = server + "/htseq/cmd?"
+  ##args = args.insert(args.count-1, "eid")
+  ##args = args.each_slice(2).to_a
   args = args.insert(0,cmd)
-  args = args.insert(0, "?cmd")
-  args = args.insert(args.count-1, "eid")
-  args = args.each_slice(2).to_a
+  args = args.insert(0,ENV["USER"])
+  keys = ["user", "cmd", "arg1", "arg2", "eid"]
+  keys = (args.count == keys.count) ? keys : keys.insert(keys.count-1,"arg3")
+  args = keys.zip(args)
   args = args.map do |x| x.join("=") end
   argstg = args.join("&")
   puts "argstg = #{argstg}"
