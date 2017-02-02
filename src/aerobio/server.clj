@@ -105,6 +105,7 @@
   )
 
 
+(def dbg (atom nil))
 (defn htseq-file-get [args reqmap]
   (infof "Args %s" args)
   #_(infof "ReqMap %s" reqmap)
@@ -112,11 +113,28 @@
         user-agent (get-in reqmap [:headers "user-agent"])
         reqtype (get-in reqmap [:headers "reqtype"])]
     (if (= reqtype "cmdline")
-      (json/json-str
-       {:args args
-        :params params
-        :user-agent user-agent
-        :reqtype reqtype})
+      (binding [*ns* (find-ns 'iobio.server)]
+        (let [{:keys [user cmd arg1 arg2 arg3 eid]} params
+              user (pams/get-params [:email (keyword user)])
+              tempnm (str arg1 "-" arg2 "-job-template")
+              template (get-jobinfo tempnm)
+              flowfut (htrs/launch-action
+                       eid user
+                       get-toolinfo template
+                       :action (if (= arg1 "rnaseq") arg2 :NA)
+                       :rep (if (and (= arg1 "rnaseq") (= arg2 "phase-1") arg3)
+                              :rep nil)
+                       :compfile (if (= arg2 "compare") arg3 :NA))]
+          (swap! dbg (fn[_] flowfut))
+          (infof "launch : %s" flowfut)
+          (json/json-str
+           {:args args
+            :params params
+            :template tempnm
+            :recipient user
+            :flowres flowfut
+            :user-agent user-agent
+            :reqtype reqtype})))
       (hiccup/html
        [:h1 "HI from HTSeq command route"]
        [:hr]

@@ -16,7 +16,8 @@
 
    [iobio.params :as pams]
    [iobio.htseq.common :as cmn]
-   [iobio.pgmgraph :as pg]]
+   [iobio.pgmgraph :as pg]
+   [iobio.server :as svr]]
   )
 
 
@@ -53,9 +54,9 @@
 
 
 (defn run-rnaseq-phase-0
-  [eid get-toolinfo template]
+  [eid recipient get-toolinfo template]
   (let [rnas0 template
-        cfg (-> (assoc-in rnas0 [:nodes :rsqp0 :args] [eid])
+        cfg (-> (assoc-in rnas0 [:nodes :rsqp0 :args] [eid recipient])
                 (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                 pg/config-pgm-graph)
         ;;_ (clojure.pprint/pprint cfg)
@@ -63,7 +64,23 @@
     (mapv (fn[fut] (deref fut)) futs-vec)))
 
 
-(defn get-phase-1-args [eid repname & {:keys [repk]}]
+(defn get-phase-1-args-cuff
+  "Compute phase 1 job flow arguments when using cufflinks. This is
+  like std phase 1 arguments with the addition of reference gtf file
+  and cuff output directory as the two final trailing arguments."
+  [eid repname & {:keys [repk]}]
+  (let [refnm (cmn/replicate-name->strain-name eid repname)
+        [btindex fqs otbam otbai] (get-phase-1-args eid repname :repk repk)
+        refgtf (fs/join (cmn/get-exp-info eid :refs)
+                        (str refnm ".gtf"))
+        cuffot (fs/join (cmn/get-exp-info eid repk :cuffs) repname)]
+    (apply cmn/ensure-dirs (map fs/dirname [otbam otbai cuffot]))
+    [btindex fqs otbam otbai refgtf cuffot]))
+
+(defn get-phase-1-args
+  "Get primary phase 1 arguments. These are the bowtie index, the
+  fastq set, output bam and bai file names"
+  [eid repname & {:keys [repk]}]
   (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
         refnm (cmn/replicate-name->strain-name eid repname)
         btindex (fs/join (cmn/get-exp-info eid :index) refnm)
@@ -73,7 +90,7 @@
                         (str refnm ".gtf"))
         cuffot (fs/join (cmn/get-exp-info eid repk :cuffs) repname)]
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai cuffot]))
-    [btindex fqs otbam otbai refgtf cuffot]))
+    [btindex fqs otbam otbai]))
 
 (defn all-phase-1-args [eid]
   (->> :sample-names
@@ -82,7 +99,7 @@
        (into {})))
 
 (defn run-rnaseq-phase-1
-  [eid get-toolinfo template & {:keys [repk]}]
+  [eid recipient get-toolinfo template & {:keys [repk]}]
   (let [rnaseq-phase1-job-template template
         sample-names (cmn/get-exp-info eid :sample-names)
         sample-names (if repk
@@ -103,10 +120,14 @@
                  (->> cfg pg/make-flow-graph pg/run-flow-program)))
              tuple)]
         (mapv (fn[futs] (mapv (fn[fut] (deref fut)) futs))
-              futs-vecs)))))
+              futs-vecs)))
+    (pg/send-msg
+     [recipient]
+     (str "Aerobio job status: rnaseq phase-1 " eid)
+     (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
 
-(defn get-phase-2-dirs [eid nm repk]
+(defn get-phase-2-dirs-cuff [eid nm repk]
   (let [cuffbase  (fs/join (cmn/get-exp-info eid repk :cuffs))
         charts    (fs/join (cmn/get-exp-info eid repk :charts))
         charts    (fs/join charts nm)
@@ -117,7 +138,7 @@
     (cmn/ensure-dirs charts asms diffs)
     [cuffbase charts asms diffs bams merge-dir]))
 
-(defn get-phase-2-args [eid nm & {:keys [repk]}]
+(defn get-phase-2-args-cuff [eid nm & {:keys [repk]}]
   (let [[cuffbase
          charts
          asms
@@ -161,13 +182,13 @@
   (let [[merge-dir asm-txt refgtf
          cuffdiff reffna repstr
          merge-gtf bamfiles
-         chart-dir comps] (get-phase-2-args eid "316")]
+         chart-dir comps] (get-phase-2-args-cuff eid nm)]
     [cuffdiff reffna repstr
      refgtf bamfiles
      chart-dir comps]))
 
-(defn run-rnaseq-phase-2
-  [eid get-toolinfo template & {:keys [repk]}]
+(defn run-rnaseq-phase-2-cuff
+  [eid comparison-file get-toolinfo template & {:keys [repk]}]
   (let [rnaseq-phase2-job-template template
         sampnms (cmn/get-exp-info eid :sample-names)
         strains (cmn/get-exp-info eid :strains)
@@ -189,3 +210,64 @@
               futs-vecs)))))
 
 
+(defn get-phase-2-dirs [eid repk]
+  (let [fcnts  (fs/join (cmn/get-exp-info eid repk :fcnts))
+        charts (fs/join (cmn/get-exp-info eid repk :charts))
+        ;;charts    (fs/join charts nm)
+        ]
+    (cmn/ensure-dirs charts fcnts)
+    [fcnts charts]))
+
+(defn run-rnaseq-comparison
+  "Run a condition/replicate set of comparisons based on an experiment
+  designated by eid (experiement id) and the input comparison sheet
+  CSV comparison-sheet"
+  [eid recipient comparison-file get-toolinfo template]
+  (let [_ (get-phase-2-dirs eid nil)
+        _ (get-phase-2-dirs eid :rep)
+        ftype "CDS" ; <-- BAD 'magic number'
+        strain (first (cmn/get-exp-info eid :strains))
+        refnm ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
+        refgtf (fs/join (cmn/get-exp-info cmn/eid :refs) (str refnm ".gtf"))
+        repcfg (assoc-in template
+                         [:nodes :rsqp2 :args]
+                         [eid comparison-file true ftype refgtf recipient])
+        repjob (future (svr/flow-program repcfg :run true))
+        cfg (assoc-in template
+                      [:nodes :rsqp2 :args]
+                      [eid comparison-file false ftype refgtf])
+        cfgjob (future (svr/flow-program cfg :run true))]
+    #_(clojure.pprint/pprint repflow)
+    [repjob cfgjob]))
+
+(defn run-rnaseq-phase-2
+  [eid recipient get-toolinfo template]
+  (run-rnaseq-comparison
+   eid recipient "ComparisonSheet.csv" get-toolinfo template))
+
+
+
+(defn launch-action
+  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
+  (prn "LAUNCH: "
+       [eid recipient template action rep compfile])
+  (cond
+    (= action "compare")
+    (let [compfile (if compfile compfile "ComparisonSheet.csv")]
+      (run-rnaseq-comparison eid recipient compfile get-toolinfo template))
+
+    (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
+    (let [phase action]
+      (cond
+        (#{"phase-0" "phase-0b" "phase-0c"} phase)
+        (future
+          (run-rnaseq-phase-0 eid recipient get-toolinfo template))
+
+        (#{"phase-1"} phase)
+        (future
+          (run-rnaseq-phase-1 eid recipient get-toolinfo template :repk rep))
+
+        (#{"phase-2"} phase)
+        (run-rnaseq-phase-2 eid recipient get-toolinfo template)))
+
+    :else (str "RNASEQ: unknown action request " action)))
