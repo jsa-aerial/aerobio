@@ -132,7 +132,6 @@
             :params params
             :template tempnm
             :recipient user
-            :flowres flowfut
             :user-agent user-agent
             :reqtype reqtype})))
       (hiccup/html
