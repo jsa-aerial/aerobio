@@ -1,5 +1,5 @@
 (ns iobio.server
-  "Moving toward clj iobio with full tree graphs, function nodes, superior
+  "Streaming job server with full tree graphs, function nodes, superior
    error handling, logging, caching, etc.
   "
 
@@ -49,6 +49,7 @@
    ;; HTSeq
    [iobio.htseq.common :as cmn]
    [iobio.htseq.rnaseq :as htrs]
+   [iobio.htseq.tnseq :as htts]
    ;; Program graph construction, execution, delivery
    [iobio.pgmgraph :as pg]
    ))
@@ -105,7 +106,7 @@
   )
 
 
-(def dbg (atom nil))
+(def dbg (atom {}))
 (defn htseq-file-get [args reqmap]
   (infof "Args %s" args)
   #_(infof "ReqMap %s" reqmap)
@@ -121,11 +122,11 @@
               flowfut (htrs/launch-action
                        eid user
                        get-toolinfo template
-                       :action (if (= arg1 "rnaseq") arg2 :NA)
-                       :rep (if (and (= arg1 "rnaseq") (= arg2 "phase-1") arg3)
+                       :action (if (#{"rnaseq"} arg1) arg2 :NA)
+                       :rep (if (and (#{"rnaseq"} arg1) (= arg2 "phase-1") arg3)
                               :rep nil)
                        :compfile (if (= arg2 "compare") arg3 :NA))]
-          (swap! dbg (fn[_] flowfut))
+          (swap! dbg (fn[M] (assoc M eid flowfut)))
           (infof "launch : %s" flowfut)
           (json/json-str
            {:args args

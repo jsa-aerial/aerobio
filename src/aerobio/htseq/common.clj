@@ -14,6 +14,7 @@
    [aerial.utils.ds.bktrees :as bkt]
 
    [aerial.bio.utils.files :as bufiles]
+   [aerial.bio.utils.aligners :as aln]
    [aerial.bio.utils.filters :as fil]
 
    [iobio.params :as pams]
@@ -31,7 +32,7 @@
 (defn get-exp-sample-info [csv]
   (let [recs (->> csv slurp csv/read-csv)
         x (coll/drop-until
-           (fn[v] (#{"tnseq", "rnaseq", "wgseq"} (first v)))
+           (fn[v] (#{"tnseq", "rnaseq", "trmseq" "wgseq"} (first v)))
            recs)
         recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
         exp-rec [(first recs)]]
@@ -175,6 +176,7 @@
   (clojure.edn/read-string (slurp f)))
 
 (defn bcM [bcmaps k] (->> k bcmaps first))
+
 
 (defn bc-counts [barcodes bcmaps]
   (into {} (map (fn[[k [bcM ntM]]]
@@ -393,7 +395,8 @@
                    (future (bufiles/write-fqrecs-to-file fd recs)))
                  file-groups)))))
 
-(defn split-barcodes [in-fq ot-fq-map barcodes-map other-barcodes qc-ctpt sqc%]
+(defn split-barcodes
+  [in-fq sqxform-fn ot-fq-map barcodes-map other-barcodes qc-ctpt sqc%]
   (letio [bclen (->> ot-fq-map keys first count long)
           inf (io/open-streaming-gzip in-fq :in)
           lines (io/read-lines inf)
@@ -415,8 +418,9 @@
                          (reduce (fn [V rec]
                                    (conj V rec))
                                  V v)))
-                      (fn[V [id sq aux qc :as rec]]
-                        (let [bc (get-sq-bc sq barcodes-map other-barcodes)]
+                      (fn[V fqrec]
+                        (let [[id sq aux qc] (sqxform-fn fqrec)
+                              bc (get-sq-bc sq barcodes-map other-barcodes)]
                           (if bc
                             (if (pass-qcscore qc qc-ctpt sqc%)
                               (let [len (count sq)
@@ -433,8 +437,10 @@
           (. fd close))))))
 
 
-(defn split-filter-fastqs [eid & {:keys [baseqc% sqc%]
-                               :or {baseqc% 0.96 sqc% 0.97}}]
+(defn split-filter-fastqs
+  [eid sqxform-fn & {:keys [baseqc% sqc%]
+                     :or {baseqc% 0.96 sqc% 0.97}}]
+
   (let [base (get-exp-info eid :base)
         exp-illumina-xref (get-exp-info eid :exp-illumina-xref)
         illumina-sample-xref (get-exp-info eid :illumina-sample-xref)
@@ -456,6 +462,7 @@
       (let [ibc (sample-illumina-xref samp)
             sid ibc]
         (split-barcodes (sample-ifq-xref samp)
+                        sqxform-fn
                         (bc-file-specs ibc)
                         barcodes-map
                         (red1codes sid)
@@ -509,5 +516,14 @@
   (exp-ids)
   (get-exp-info "160307_NS500751_0013_AHL7L3BGXX" :base :sample-sheet :bcmaps)
 
+  (->> (aerial.utils.math.combinatorics/combins
+        2 (get-exp-info teid :barcodes))
+       (map #(apply it/hamming %))
+       sort)
 
+  (def eds1 (->> (get-exp-info teid :ed1codes) first second vals))
+  (def bcs1 (->> (get-exp-info teid :ed1codes) first second keys))
+  (for [bc bcs1]
+    [bc (for [v eds1]
+          (mapv #(it/levenshtein bc %) v))])
   )

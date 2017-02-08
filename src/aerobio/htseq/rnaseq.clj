@@ -53,6 +53,10 @@
      (mapv #(vector %1 %2) bamsvec otcsvs))))
 
 
+(defn split-filter-fastqs
+  [eid]
+  (cmn/split-filter-fastqs eid identity))
+
 (defn run-rnaseq-phase-0
   [eid recipient get-toolinfo template]
   (let [rnas0 template

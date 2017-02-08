@@ -46,9 +46,10 @@
 
 (defn seq-less-transposon
   [sq tpn]
-  (let [i (position-transpose-prefix sq tpn)]
-    (when (pos? i)
-      (str/substring sq 0 (+ 2 i)))))
+  (let [i (position-transpose-prefix sq tpn)
+        l (if (pos? i) (+ 2 i) i)]
+    (when (pos? l)
+      [(str/substring sq 0 l) l])))
 
 (defn check-barcode
   [sq bc]
@@ -64,10 +65,58 @@
     (str/substring sq bcsz)))
 
 
-(defn pass-0-pipe [sq]
-  (-> sq (trim-initsq-and-adapter 9 -17)
-      (seq-less-transposon "TAACAG")
-      (trim-barcode 6)))
+(defn pre-pass [fqrec]
+  (let [[id sq aux qc] fqrec
+        sq (trim-initsq-and-adapter sq 9 -17)
+        qc (trim-initsq-and-adapter qc 9 -17)
+        i  (position-transpose-prefix sq "TAACAG")
+        i  (if (pos? i) (+ 2 i) i)
+        [sq qc] (when (pos? i)[(str/substring sq 0 i) (str/substring qc 0 i)])]
+    (when (pos? i)
+      [id sq aux qc])))
+
+(defn split-filter-fastqs
+  [eid]
+  (cmn/split-filter-fastqs eid pre-pass))
+
+(defn run-tnseq-phase-0
+  [eid recipient get-toolinfo template]
+  (let [rnas0 template
+        cfg (-> (assoc-in rnas0 [:nodes :tsqp0 :args] [eid recipient])
+                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                pg/config-pgm-graph)
+        ;;_ (clojure.pprint/pprint cfg)
+        futs-vec (->> cfg pg/make-flow-graph pg/run-flow-program)]
+    (mapv (fn[fut] (deref fut)) futs-vec)))
+
+
+(defn run-tnseq-phase-1 [] :NYI)
+
+(defn run-tnseq-phase-2 [] (future :NYI))
+
+
+
+(defn launch-action
+  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
+  (prn "LAUNCH: "
+       [eid recipient template action rep compfile])
+  (cond
+    (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
+    (let [phase action]
+      (cond
+        (#{"phase-0" "phase-0b" "phase-0c"} phase)
+        (future
+          (run-tnseq-phase-0 eid recipient get-toolinfo template))
+
+        (#{"phase-1"} phase)
+        (future
+          (run-tnseq-phase-1 eid recipient get-toolinfo template :repk rep))
+
+        (#{"phase-2"} phase)
+        (run-tnseq-phase-2 eid recipient get-toolinfo template)))
+
+    :else (str "TNSEQ: unknown action request " action)))
+
 
 ;;; (/ 1819874900 4)
 
