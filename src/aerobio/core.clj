@@ -1,7 +1,14 @@
 (ns aerobio.core
-  "A robust, flexible clj aerobio with full tree graphs, function nodes,
-   superior error handling, logging, caching, etc.
+  "A robust, flexible streaming job server for open ended
+  bioinformatic analyses. Capabilities for full DAG job flow graphs,
+  function nodes, superior error handling, logging, caching, etc.
+
+  Supports dynamic open ended services written in Clojure, R, Python,
+  Perl, and any Linux/Unix command line tool. Supports nodes with
+  multiple inputs and outputs - utilizing pipes in cases of tools not
+  able to include multiple streaming input.
   "
+
   {:author "Jon Anthony"}
 
   (:gen-class)
