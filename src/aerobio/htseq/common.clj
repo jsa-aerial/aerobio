@@ -273,8 +273,13 @@
                      (reduce (fn[BC v] (conj BC (last v))) #{})
                      sort vec))))
       ((fn[m]
-         (assoc m :barcodes-map
-                (reduce (fn[M bc] (assoc M bc bc)) {} (m :barcodes)))))
+         (assoc m :barcode-maps
+                (->> (m :exp-illumina-xref)
+                     (map #(vector (first %)
+                                   (->> % second (map last)
+                                        (map (fn[bc] (vector bc bc)))
+                                        (into {}))))
+                     (into {})))))
       ((fn[m]
          (assoc m :bcmaps
                 (apply merge
@@ -282,10 +287,11 @@
                             (fs/directory-files (m :stats) ".clj"))))))
       ((fn[m]
          (assoc m :ed1codes
-                (let [bcmaps (m :bcmaps)]
+                (let [bcmaps (m :bcmaps)
+                      barcode-maps (m :barcode-maps)]
                   (into {} (map #(vector % (barcodes-edist-1-seqs
                                             (bcM bcmaps %)
-                                            (m :barcodes)))
+                                            (keys (barcode-maps %))))
                                 (keys bcmaps)))))))
       ((fn[m]
          (assoc m :red1codes
@@ -378,17 +384,28 @@
                ibcs))))
 
 
-(defn get-sq-bc [sq barcodes-map other-barcodes]
-  (let [bc (str/substring sq 0 7)]
-    (or (barcodes-map bc) (other-barcodes bc))))
+(defn get-sq-bc [sq bclen barcodes-map other-barcodes]
+  (when sq
+    (let [bc (str/substring sq 0 bclen)]
+      (or (barcodes-map bc) (other-barcodes bc)))))
 
 (defn pass-qcscore [qc qc-ctpt sqc%]
   (> (fil/percent-pass-qscore qc qc-ctpt) (double sqc%)))
 
 
+(def SDBG (atom #{}))
+;;;#{"GGATGG" "CTTAAC" "TAATTA" "ATGGAT" "AATTGC" "TGCTTA"}
 (defn write-chunk-to-files [ot-fd-map recs]
-  (let [file-groups (->> recs (group-by (fn[[bc fqrec]] (ot-fd-map bc)))
-                         (mapv (fn[[fd rec]] [fd (mapv second rec)])))]
+  (let [file-groups (->> recs (group-by
+                               (fn[[bc fqrec]]
+                                 (let [fd (ot-fd-map bc)]
+                                   (if fd fd
+                                       (when (not (@SDBG bc))
+                                         (swap! SDBG #(conj % bc))
+                                         (prn :BAD-BC?! bc))))))
+                         (mapv (fn[[fd rec]] [fd (mapv second rec)])))
+
+        file-groups (filter (fn[[fd recs]] fd) file-groups)]
     (dorun
      (mapv (fn[fut] (deref fut))
            (mapv (fn[[fd recs]]
@@ -397,6 +414,7 @@
 
 (defn split-barcodes
   [in-fq sqxform-fn ot-fq-map barcodes-map other-barcodes qc-ctpt sqc%]
+
   (letio [bclen (->> ot-fq-map keys first count long)
           inf (io/open-streaming-gzip in-fq :in)
           lines (io/read-lines inf)
@@ -420,7 +438,9 @@
                                  V v)))
                       (fn[V fqrec]
                         (let [[id sq aux qc] (sqxform-fn fqrec)
-                              bc (get-sq-bc sq barcodes-map other-barcodes)]
+                              bc (get-sq-bc sq bclen
+                                            barcodes-map
+                                            other-barcodes)]
                           (if bc
                             (if (pass-qcscore qc qc-ctpt sqc%)
                               (let [len (count sq)
@@ -444,7 +464,7 @@
   (let [base (get-exp-info eid :base)
         exp-illumina-xref (get-exp-info eid :exp-illumina-xref)
         illumina-sample-xref (get-exp-info eid :illumina-sample-xref)
-        barcodes-map (get-exp-info eid :barcodes-map)
+        barcode-maps (get-exp-info eid :barcode-maps)
         red1codes (get-exp-info eid :red1codes)
         [qc-ctpt _] (fil/qcscore-min-entropy baseqc% 0.9 10)
         bc-file-specs (get-bc-file-specs
@@ -464,7 +484,7 @@
         (split-barcodes (sample-ifq-xref samp)
                         sqxform-fn
                         (bc-file-specs ibc)
-                        barcodes-map
+                        (barcode-maps ibc)
                         (red1codes sid)
                         qc-ctpt sqc%)))
     :success))
@@ -505,10 +525,12 @@
 (comment
   (def eid "160930_161002_AHK72HBGXY_AHK7YKBGXY")
   (def neid "161108_161109_AH2WWGBGX2_AH2WLJBGX2")
+  (def teid "160804_NS500751_0017_AHF2KLBGXY")
 
   (set-exp "160307_NS500751_0013_AHL7L3BGXX")
   (set-exp "160930_161002_AHK72HBGXY_AHK7YKBGXY")
   (set-exp "161108_161109_AH2WWGBGX2_AH2WLJBGX2")
+  (set-exp teid)
 
   (get-exp "160307_NS500751_0013_AHL7L3BGXX")
   ((get-exp "160307_NS500751_0013_AHL7L3BGXX") :base)
