@@ -1,7 +1,7 @@
 
 {:nodes
  {:ph0
-  {:name "rnaseq-phase0-c",
+  {:name "tnseq-phase0",
    :type "tool",
    :args []}
   :prn1 {:type "func",
