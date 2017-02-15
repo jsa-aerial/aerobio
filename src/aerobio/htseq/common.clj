@@ -220,6 +220,7 @@
                 :out       (fs/join base "Out")
                 :bams      (fs/join base "Out/Bams")
                 :fcnts     (fs/join base "Out/Fcnts")
+                :maps      (fs/join base "Out/Maps")
                 :cuffs     (fs/join base "Out/Cuffs")
                 :diffs     (fs/join base "Out/Diffs")
                 :asms      (fs/join base "Out/Asms")
@@ -326,7 +327,7 @@
 (defn info-ks [] (-> @exp-info first second keys))
 
 (defn get-exp-info [eid & ks]
-  (let [otks [:bams :fcnts :cuffs :diffs :asms :charts]
+  (let [otks [:bams :fcnts :maps :cuffs :diffs :asms :charts]
         rep? (coll/in :rep ks)
         ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
         info (get-exp eid)
@@ -366,20 +367,24 @@
         (when-not (fs/directory? dir)
           (fs/mkdir dir))))))
 
-(defn get-exp-file-specs [exp-illumina-xref exp-dir ibc]
+(defn get-exp-file-specs
+  [exp-illumina-xref exp-dir ibc ftype]
   (->>  ibc exp-illumina-xref
-        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc ".fastq.gz")]))
+        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc ftype)]))
         (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
         (into {})))
 
-(defn get-bc-file-specs [base exp-illumina-xref illumina-sample-xref]
+(defn get-bc-file-specs
+  [base exp-illumina-xref illumina-sample-xref
+   & {:keys [ftype]
+      :or {ftype ".fastq.gz"}}]
   (let [base (get-sample-base-dir base)
         ibcs (keys illumina-sample-xref)
         exp-sample-dirs (->> ibcs (map illumina-sample-xref)
                              (map #(fs/join base %)))]
     (into {}
           (map (fn[exp-dir ibc]
-                 [ibc (get-exp-file-specs exp-illumina-xref exp-dir ibc)])
+                 [ibc (get-exp-file-specs exp-illumina-xref exp-dir ibc ftype)])
                exp-sample-dirs
                ibcs))))
 
@@ -417,7 +422,6 @@
 
   (letio [bclen (->> ot-fq-map keys first count long)
           inf (io/open-streaming-gzip in-fq :in)
-          lines (io/read-lines inf)
           ot-fd-map (reduce (fn[M [ebc fq]]
                               (assoc M ebc (io/open-streaming-gzip fq :out)))
                             {}
@@ -491,7 +495,6 @@
 
 
 
-
 (defn fqz-name->sample-name
   [fqz]
   (->> fqz fs/basename (str/split #"-") (take 2) (cljstr/join "-")))
@@ -519,6 +522,43 @@
 
 
 
+
+;;;(ns-unmap 'iobio.htseq.common 'get-phase-1-args)
+(defmulti
+  ^{:doc "Each experiment type has its own argument constructor, and this
+          multimethod will dispatch accordingly to get the specific versions."
+    :arglists '([exptype & args])}
+  get-phase-1-args
+  (fn[exptype & args] exptype))
+
+(defn run-phase-1
+  [eid recipient get-toolinfo template & {:keys [repk]}]
+  (let [exp (get-exp-info eid :exp)
+        phase1-job-template template
+        sample-names (get-exp-info eid :sample-names)
+        sample-names (if repk
+                       (mapcat #((get-exp-info eid :replicate-names) %)
+                               (get-exp-info eid :sample-names))
+                       sample-names)]
+    (doseq [tuple (partition-all 2 sample-names)]
+      (let [futs-vecs
+            (mapv
+             (fn[snm]
+               (let [job (assoc-in phase1-job-template
+                                   [:nodes :ph1 :args]
+                                   (get-phase-1-args exp eid snm :repk repk))
+                     cfg (-> job
+                             (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                             pg/config-pgm-graph)]
+                 #_(clojure.pprint/pprint cfg)
+                 (->> cfg pg/make-flow-graph pg/run-flow-program)))
+             tuple)]
+        (mapv (fn[futs] (mapv (fn[fut] (deref fut)) futs))
+              futs-vecs)))
+    (pg/send-msg
+     [recipient]
+     (str "Aerobio job status: " exp " phase-1" eid)
+     (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
 
 

@@ -4,8 +4,10 @@
 
    [aerial.fs :as fs]
    [aerial.utils.string :as str]
+   #_[aerial.utils.coll :as coll]
    [aerial.utils.io :refer [letio] :as io]
    [aerial.utils.math.infoth :as it]
+   [aerial.bio.utils.files :as bufiles]
 
    [iobio.params :as pams]
    [iobio.htseq.common :as cmn]
@@ -65,6 +67,55 @@
     (str/substring sq bcsz)))
 
 
+(defn get-collapse-groups
+  [eid]
+  (let [base (cmn/get-exp-info eid :base)
+        exp-illumina-xref (cmn/get-exp-info eid :exp-illumina-xref)
+        illumina-sample-xref (cmn/get-exp-info eid :illumina-sample-xref)
+        ifqs (cmn/get-bc-file-specs base exp-illumina-xref
+                                    illumina-sample-xref)
+        collapse-specs (cmn/get-bc-file-specs base exp-illumina-xref
+                                              illumina-sample-xref
+                                              :ftype ".collapse.fna.gz")
+        groups (map (fn[ibc]
+                      [ibc (reduce (fn[V [ebc fq]]
+                                     (conj V [fq (get-in collapse-specs
+                                                         [ibc ebc])]))
+                                   [] (ifqs ibc))])
+                    (keys ifqs))]
+    (mapv (fn [[ibc pairs]] pairs) groups)))
+
+(defn write-farec
+  [^java.io.BufferedWriter ot rec]
+  (let [[id sq] rec]
+    (.write ot (str id "\n"))
+    (.write ot (str sq "\n"))))
+
+(defn collapse-one [[fastq fasta]]
+  (letio [inf (io/open-streaming-gzip fastq :in)
+          otf (io/open-streaming-gzip fasta :out)
+          cnt (loop [fqrec (bufiles/read-fqrec inf)
+                     M {}]
+                (if (nil? (fqrec 0))
+                  (reduce (fn[C [sq cnt]]
+                            (let [id (str ">" C "-" cnt)]
+                              (write-farec otf [id sq])
+                              (inc C)))
+                          1 M)
+                  (let [sq (fqrec 1)]
+                    (recur (bufiles/read-fqrec inf)
+                           (assoc M sq (inc (get M sq 0)))))))]
+      {:name "collapser"
+       :value [fasta cnt]
+       :exit :success
+       :err ""}))
+
+(defn run-collapse-group
+  [pairs]
+  (let [futs (mapv (fn[pair] (future (collapse-one pair))) pairs)]
+    (mapv (fn[fut] (deref fut)) futs)))
+
+
 (defn pre-pass [fqrec]
   (let [[id sq aux qc] fqrec
         sq (trim-initsq-and-adapter sq 9 -17)
@@ -88,6 +139,30 @@
         ;;_ (clojure.pprint/pprint cfg)
         futs-vec (->> cfg pg/make-flow-graph pg/run-flow-program)]
     (mapv (fn[fut] (deref fut)) futs-vec)))
+
+
+
+;;; Get primary phase 1 arguments. These are the bowtie index, the
+;;; fastq set, the collapsed fastas, output map file, output bam and
+;;; bai file names
+(defmethod cmn/get-phase-1-args :tnseq
+  [_ eid repname & {:keys [repk]}]
+  (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
+        fnas (cljstr/join
+              "," (mapv (fn[fq]
+                          (->> fq (str/split #"\.") first
+                               (#(str % ".collapse.fna.gz"))))
+                        (str/split #"," fqs)))
+        refnm (cmn/replicate-name->strain-name eid repname)
+        btindex (fs/join (cmn/get-exp-info eid :index) refnm)
+        otbam (fs/join (cmn/get-exp-info eid repk :bams) (str repname ".bam"))
+        otmap (fs/join (cmn/get-exp-info eid repk :maps) (str repname ".map"))
+        otbai (str otbam ".bai")
+        refgtf (fs/join (cmn/get-exp-info eid :refs)
+                        (str refnm ".gtf"))]
+    (apply cmn/ensure-dirs (map fs/dirname [otbam otbai otmap]))
+    [btindex fqs fnas otmap otbam otbai]))
+
 
 
 (defn run-tnseq-phase-1 [] :NYI)

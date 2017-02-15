@@ -81,10 +81,11 @@
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai cuffot]))
     [btindex fqs otbam otbai refgtf cuffot]))
 
-(defn get-phase-1-args
-  "Get primary phase 1 arguments. These are the bowtie index, the
-  fastq set, output bam and bai file names"
-  [eid repname & {:keys [repk]}]
+
+;;; Get primary phase 1 arguments. These are the bowtie index, the
+;;; fastq set, output bam and bai file names
+(defmethod cmn/get-phase-1-args :rnaseq
+  [_ eid repname & {:keys [repk]}]
   (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
         refnm (cmn/replicate-name->strain-name eid repname)
         btindex (fs/join (cmn/get-exp-info eid :index) refnm)
