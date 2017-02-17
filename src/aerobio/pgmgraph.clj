@@ -50,6 +50,8 @@
      {:host smtphost
       :user user
       :pass pass
+      ;;:tls true
+      ;;:port 587
       :ssl true}
      {:from sender
       :to recipients

@@ -109,6 +109,11 @@
 
 
 (def dbg (atom {}))
+
+(declare
+ get-jobinfo
+ get-toolinfo)
+
 (defn htseq-file-get [args reqmap]
   (infof "Args %s" args)
   #_(infof "ReqMap %s" reqmap)
@@ -121,11 +126,13 @@
               user (pams/get-params [:email (keyword user)])
               tempnm (str arg1 "-" arg2 "-job-template")
               template (get-jobinfo tempnm)
-              flowfut (htrs/launch-action
+              flowfut (cmn/launch-action
                        eid user
                        get-toolinfo template
-                       :action (if (#{"rnaseq"} arg1) arg2 :NA)
-                       :rep (if (and (#{"rnaseq"} arg1) (= arg2 "phase-1") arg3)
+                       :action (if (#{"rnaseq" "tnseq"} arg1) arg2 :NA)
+                       :rep (if (and (#{"rnaseq" "tnseq"} arg1)
+                                     (= arg2 "phase-1")
+                                     arg3)
                               :rep nil)
                        :compfile (if (= arg2 "compare") arg3 :NA))]
           (swap! dbg (fn[M] (assoc M eid flowfut)))
