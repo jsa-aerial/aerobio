@@ -4,7 +4,7 @@
 
    [aerial.fs :as fs]
    [aerial.utils.string :as str]
-   #_[aerial.utils.coll :as coll]
+   [aerial.utils.coll :as coll]
    [aerial.utils.io :refer [letio] :as io]
    [aerial.utils.math.infoth :as it]
    [aerial.bio.utils.files :as bufiles]
@@ -130,16 +130,6 @@
   [eid]
   (cmn/split-filter-fastqs eid pre-pass))
 
-(defn run-tnseq-phase-0
-  [eid recipient get-toolinfo template]
-  (let [rnas0 template
-        cfg (-> (assoc-in rnas0 [:nodes :tsqp0 :args] [eid recipient])
-                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
-                pg/config-pgm-graph)
-        ;;_ (clojure.pprint/pprint cfg)
-        futs-vec (->> cfg pg/make-flow-graph pg/run-flow-program)]
-    (mapv (fn[fut] (deref fut)) futs-vec)))
-
 
 
 ;;; Get primary phase 1 arguments. These are the bowtie index, the
@@ -150,9 +140,11 @@
   (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
         fnas (cljstr/join
               "," (mapv (fn[fq]
-                          (->> fq (str/split #"\.") first
+                          (->> fq (str/split #"\.")
+                               (coll/takev-until #(= % "fastq"))
+                               (cljstr/join ".")
                                (#(str % ".collapse.fna.gz"))))
-                        (str/split #"," fqs)))
+                        (str/split #"," fqs))) _ (prn :FQS fqs :FNAS fnas)
         refnm (cmn/replicate-name->strain-name eid repname)
         btindex (fs/join (cmn/get-exp-info eid :index) refnm)
         otbam (fs/join (cmn/get-exp-info eid repk :bams) (str repname ".bam"))
@@ -164,33 +156,10 @@
     [btindex fqs fnas otmap otbam otbai]))
 
 
+(defmethod cmn/run-phase-2 :tnseq
+  [_ eid recipient get-toolinfo template]
+  (assert false "TNSEQ PHASE 2 NYI"))
 
-(defn run-tnseq-phase-1 [] :NYI)
-
-(defn run-tnseq-phase-2 [] (future :NYI))
-
-
-
-(defn launch-action
-  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
-  (prn "LAUNCH: "
-       [eid recipient template action rep compfile])
-  (cond
-    (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
-    (let [phase action]
-      (cond
-        (#{"phase-0" "phase-0b" "phase-0c"} phase)
-        (future
-          (run-tnseq-phase-0 eid recipient get-toolinfo template))
-
-        (#{"phase-1"} phase)
-        (future
-          (run-tnseq-phase-1 eid recipient get-toolinfo template :repk rep))
-
-        (#{"phase-2"} phase)
-        (run-tnseq-phase-2 eid recipient get-toolinfo template)))
-
-    :else (str "TNSEQ: unknown action request " action)))
 
 
 ;;; (/ 1819874900 4)
@@ -212,9 +181,6 @@
                 [bc sq]
                 (recur (rest bcs))))
             -1))))))
-
-
-
 
 (comment
 

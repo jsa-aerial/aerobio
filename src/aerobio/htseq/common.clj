@@ -502,7 +502,7 @@
 (defn get-all-replicate-fqzs [eid]
   (let [base (get-exp-info eid :base)
         sample-dirs (fs/directory-files (get-exp-info eid :samples) "")
-        fqzs (mapcat #(fs/directory-files % "gz") sample-dirs)
+        fqzs (mapcat #(fs/directory-files % "fastq.gz") sample-dirs)
         by-samples (group-by fqz-name->sample-name fqzs)]
     (into {} (map #(vector % (by-samples %))
                   (get-exp-info eid :sample-names)))))
@@ -522,11 +522,33 @@
 
 
 
+(defn flow-program
+  ""
+  [cfg get-toolinfo & {:keys [run prn]}]
+  (assert (not (and run prn)) "FLOW-PROGRAM, run and prn mutually exclusive")
+  (let [cfg (-> cfg (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                pg/config-pgm-graph)]
+    (cond
+      run (->> cfg pg/make-flow-graph pg/run-flow-program)
+      prn (->> cfg clojure.pprint/pprint)
+      :else cfg)))
+
+
+(defn run-phase-0
+  [eid recipient get-toolinfo template]
+  (let [ph0 template
+        cfg (-> (assoc-in ph0 [:nodes :ph0 :args] [eid recipient])
+                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                pg/config-pgm-graph)
+        ;;_ (clojure.pprint/pprint cfg)
+        futs-vec (->> cfg pg/make-flow-graph pg/run-flow-program)]
+    (mapv (fn[fut] (deref fut)) futs-vec)))
+
 
 ;;;(ns-unmap 'iobio.htseq.common 'get-phase-1-args)
 (defmulti
   ^{:doc "Each experiment type has its own argument constructor, and this
-          multimethod will dispatch accordingly to get the specific versions."
+ multimethod will dispatch accordingly to get the specific versions."
     :arglists '([exptype & args])}
   get-phase-1-args
   (fn[exptype & args] exptype))
@@ -559,6 +581,40 @@
      [recipient]
      (str "Aerobio job status: " exp " phase-1" eid)
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
+
+
+;;;(ns-unmap 'iobio.htseq.common 'run-phase-2)
+(defmulti
+  ^{:doc "Each experiment type has its own phase 2 driver, and this
+ multimethod will dispatch accordingly to the specific versions."
+    :arglists '([exptype & args])}
+  run-phase-2
+  (fn[exptype & args] exptype))
+
+
+(defn launch-action
+  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
+  (prn "LAUNCH: "
+       [eid recipient template action rep compfile])
+  (let [exp (get-exp-info eid :exp)]
+    (cond
+      (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
+      (let [phase action]
+        (cond
+          (#{"phase-0" "phase-0b" "phase-0c"} phase)
+          (future
+            (run-phase-0 eid recipient get-toolinfo template))
+
+          (#{"phase-1"} phase)
+          (future
+            (run-phase-1 eid recipient get-toolinfo template :repk rep))
+
+          (#{"phase-2"} phase)
+          (run-phase-2 exp eid recipient get-toolinfo template)))
+
+      (#{"compare"} action) :HOW??
+
+      :else (str "LAUNCHER: unknown action request " action))))
 
 
 
