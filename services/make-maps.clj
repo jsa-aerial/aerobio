@@ -12,9 +12,9 @@
            (if (pg/eoi? rec)
              (if (pg/done? rec)
                (do
-                 (infof "Closing stream %s" ot)
+                 (infof "Closing stream %s" (deref ot))
                  (pg/close-stream (deref ot))
-                 (str "Finished writing " map-file))
+                 (infof "Finished writing %s" map-file))
                ;;Else
                (infof "End input stream: %s, REC: %s" (type rec) rec))
              (let [instg (str (deref leftover) (String. rec))
