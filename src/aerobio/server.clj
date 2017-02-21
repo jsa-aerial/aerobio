@@ -54,6 +54,8 @@
    [iobio.htseq.tnseq :as htts]
    ;; Program graph construction, execution, delivery
    [iobio.pgmgraph :as pg]
+   ;; REST actions
+   [iobio.actions :as actions]
    ))
 
 
@@ -115,44 +117,36 @@
  get-toolinfo)
 
 (defn htseq-file-get [args reqmap]
-  (infof "Args %s" args)
+  (infof "Args %s\nParams %s" args (reqmap :params))
   #_(infof "ReqMap %s" reqmap)
-  (let [params (reqmap :params)
-        user-agent (get-in reqmap [:headers "user-agent"])
-        reqtype (get-in reqmap [:headers "reqtype"])]
-    (if (= reqtype "cmdline")
-      (binding [*ns* (find-ns 'iobio.server)]
-        (let [{:keys [user cmd arg1 arg2 arg3 eid]} params
-              user (pams/get-params [:email (keyword user)])
-              tempnm (str arg1 "-" arg2 "-job-template")
+  (binding [*ns* (find-ns 'iobio.server)]
+    (let [params (reqmap :params)
+          user-agent (get-in reqmap [:headers "user-agent"])
+          reqtype (get-in reqmap [:headers "reqtype"])]
+      (if (= reqtype "cmdline")
+        (let [{:keys [user cmd action rep compfile eid]} params
+              exp (cmn/get-exp-info eid :exp)
+              tempnm (str (name exp) "-" action "-job-template")
               template (get-jobinfo tempnm)
-              flowfut (cmn/launch-action
-                       eid user
-                       get-toolinfo template
-                       :action (if (#{"rnaseq" "tnseq"} arg1) arg2 :NA)
-                       :rep (if (and (#{"rnaseq" "tnseq"} arg1)
-                                     (= arg2 "phase-1")
-                                     arg3)
-                              :rep nil)
-                       :compfile (if (= arg2 "compare") arg3 :NA))]
-          (swap! dbg (fn[M] (assoc M eid flowfut)))
-          (infof "launch : %s" flowfut)
+              result (actions/action cmd eid params get-toolinfo template)]
+          (swap! dbg (fn[M] (assoc M eid result)))
+          (infof "%s : %s" cmd result)
           (json/json-str
            {:args args
             :params params
             :template tempnm
             :recipient user
             :user-agent user-agent
-            :reqtype reqtype})))
-      (hiccup/html
-       [:h1 "HI from HTSeq command route"]
-       [:hr]
-       [:p (str "command and args: " args)]
-       [:hr]
-       [:p (str "Params" params)]
-       [:hr]
-       [:p (str "User Agent: " user-agent)]
-       ))))
+            :reqtype reqtype}))
+        (hiccup/html
+         [:h1 "HI from HTSeq command route"]
+         [:hr]
+         [:p (str "command and args: " args)]
+         [:hr]
+         [:p (str "Params" params)]
+         [:hr]
+         [:p (str "User Agent: " user-agent)]
+         )))))
 
 (defn htseq-file-cmd [args reqmap]
   {:body (json/json-str
