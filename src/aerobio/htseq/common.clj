@@ -35,13 +35,15 @@
            (fn[v] (#{"tnseq", "rnaseq", "trmseq" "wgseq"} (first v)))
            recs)
         recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
-        exp-rec [(first recs)]]
+        exp-rec [(coll/takev 3 (first recs))]] ; ensure 3 fields
     (loop [S (rest recs)
            I [exp-rec]]
       (if (not (seq S))
         (apply concat I)
         (let [s (coll/drop-until (fn[v] (str/digits? (first v))) S)
-              i (coll/take-until (fn[v] (not (str/digits? (first v)))) s)]
+              i (coll/take-until (fn[v] (not (str/digits? (first v)))) s)
+              ;; ensure 3 fields for NCBI xref
+              i (if (= 1 (count I)) (map #(coll/takev 3 %) i) i)]
           (recur (coll/drop-until (fn[v] (not (str/digits? (first v)))) s)
                  (conj I i)))))))
 
