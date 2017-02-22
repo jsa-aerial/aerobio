@@ -55,6 +55,7 @@
 (defmethod action :run
   [_ eid params get-toolinfo template]
   (let [{:keys [user cmd action rep compfile eid]} params
+        rep (if rep :rep nil)
         exp (cmn/get-exp-info eid :exp)
         user (pams/get-params [:email (keyword user)])]
     (cmn/launch-action
