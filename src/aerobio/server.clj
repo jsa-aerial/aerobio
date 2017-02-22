@@ -153,6 +153,7 @@
           reqtype (get-in reqmap [:headers "reqtype"])]
       (if (= reqtype "cmdline")
         (let [{:keys [user cmd action rep compfile eid]} params
+              _ (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
               exp (cmn/get-exp-info eid :exp)
               tempnm (str (name exp) "-" action "-job-template")
               template (get-jobinfo tempnm)
