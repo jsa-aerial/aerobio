@@ -29,11 +29,14 @@
 (ns iobio.htseq.tnseq
   [:require
    [clojure.string :as cljstr]
+   [clojure.data.csv :as csv]
+   [clojure.set :as set]
 
    [aerial.fs :as fs]
    [aerial.utils.string :as str]
    [aerial.utils.coll :as coll]
    [aerial.utils.io :refer [letio] :as io]
+   [aerial.utils.math :as m]
    [aerial.utils.math.infoth :as it]
    [aerial.bio.utils.files :as bufiles]
 
@@ -189,28 +192,140 @@
   (assert false "TNSEQ PHASE 2 NYI"))
 
 
+(defn feature-map [gtf & {:keys [ftype] :or {ftype :any}}]
+  (letio [lines (io/read-lines gtf)]
+    ;; chm src ftype start end _ strand _ attrs(; separated, first gene_Id)
+    (reduce (fn[M l]
+              (let [lrec (->> l (str/split #"\t") vec)
+                    rec [(-> 3 lrec Integer.) (-> 4 lrec Integer.) (lrec 6)
+                         (->> 8 lrec (str/split #";") first
+                              (str/split #"\s") second
+                              (#(str/substring % 1 -1)))]]
+                (if (or (= ftype :any) (= ftype (lrec 2)))
+                  (assoc M (rec 0) rec)
+                  M)))
+            (sorted-map) lines)))
 
-;;; (/ 1819874900 4)
+(defn read-mapfile
+  [mapfile & {:keys [usestrand downstream] :or {usestrand :both}}]
+  (letio [lines (io/read-lines mapfile)]
+    (mapv
+     persistent!
+     (reduce (fn[[+cnts -cnts :as M] l]
+               (let [[cnt strand start len] (str/split #"\t" l)
+                     [cnt start len] (mapv #(Integer/parseInt %)[cnt start len])
+                     cnt (long cnt), start (long start), len (long len)
+                     pos (if (or (= strand "-") (not downstream))
+                           start
+                           ;; else + strand downstream
+                           (+ start (- len 2)))]
+                 (cond
+                   (and (not= usestrand :both) (not= strand usestrand)) M
+                   (= strand "+")
+                   [(assoc! +cnts pos (+ cnt (long (+cnts pos 0)))) -cnts]
+                   :else
+                   [+cnts (assoc! -cnts pos (+ cnt (long (-cnts pos 0))))])))
+             [(transient {}) (transient {})] lines))))
 
-;;(->> "TCTGAATCTCCTGCTACCGACCATGAACTAACAGGTTGGATGATAAGTCTT" pass-0-pipe count)
+(def HDR ["position", "strand", "count_1", "count_2", "ratio",
+          "mt_freq_t1", "mt_freq_t2", "pop_freq_t1", "pop_freq_t2",
+          "gene", "D", "W", "nW"])
 
-#_(let [bcs (cmn/get-exp-info eid :barcodes)
-      sq "TCTGAATCTCCTGCTACCGACCATGAACTAACAGGTTGGATGATAAGTCTT"]
-  (dotimes [_ 1000000]
-    (let [sq (str/substring sq 9 -17)
-          i (position-transpose-prefix sq "TAACAG")]
-      (if (neg? i)
-        -1
-        (loop [bcs bcs]
-          (if (seq bcs)
-            (let [bc (first bcs)
-                  tf (check-barcode sq bc)]
-              (if tf
-                [bc sq]
-                (recur (rest bcs))))
-            -1))))))
+(defn fitness-recs
+  [gtf map1 map2 args]
+  (let [fmap (feature-map gtf)
+        [+cnts1 -cnts1] (read-mapfile map1)
+        [+cnts2 -cnts2] (read-mapfile map2)
+        tot1 (long (m/sum (mapv #(m/sum (vals %)) [+cnts1 -cnts1])))
+        tot2 (long (m/sum (mapv #(m/sum (vals %)) [+cnts2 -cnts2])))
+        avgtot (-> tot1 (+ tot2) (/ 2.0))
+        cfactor1 (/ (double tot1) avgtot)
+        cfactor2 (/ (double tot2) avgtot)
+        st1fn #(cond (and (+cnts1 %) (-cnts1 %)) "b"
+                     (+cnts1 %) "+"  (-cnts1 %) "-" :else "")
+        st2fn #(cond (and (+cnts2 %) (-cnts2 %)) "b"
+                     (+cnts2 %) "+"  (-cnts2 %) "-" :else "")
+        subdelta 7000
+        expfact (double (args :expansion))
+        cutoff (double (args :cutoff))]
+
+    (loop [positions (sort (set/union (set (keys +cnts1)) (set (keys -cnts1))))
+           recs [HDR]]
+      (if (empty? positions)
+        recs
+        (let [i (long (first positions))
+              strand (str (st1fn i) "/" (st2fn i))
+              c1 (/ (+ (long (+cnts1 i 0)) (long (-cnts1 i 0))) cfactor1)
+              c2 (/ (+ (long (+cnts2 i 0)) (long (-cnts2 i 0))) cfactor2)
+              ratio (/ c2 c1)] ; may be 0 if c2 0, c1 can't be 0 by def.
+          (if (< (/ (+ c1 c2) 2.0) cutoff)
+            (recur (rest positions) recs)
+            (let [mutfreq-t1 (/ c1 avgtot)
+                  mutfreq-t2 (/ c2 avgtot)
+                  popfreq-t1 (- 1.0 mutfreq-t1)
+                  popfreq-t2 (- 1.0 mutfreq-t2)
+                  fit (if (= mutfreq-t2 0.0)
+                        0.0
+                        (/ (m/ln (* mutfreq-t2 (/ expfact mutfreq-t1)))
+                           (m/ln (* popfreq-t2 (/ expfact popfreq-t1)))))
+                  gene (reduce
+                        (fn[g [s [_ e _ tag]]] (if (<= s i e) (reduced tag) g))
+                        "" (subseq fmap >= (- i subdelta) <= (+ i subdelta)))
+                  rec [i strand c1 c2 ratio
+                       mutfreq-t1 mutfreq-t2 popfreq-t1 popfreq-t2
+                       gene expfact fit fit]]
+              (recur (rest positions)
+                     (conj recs rec)))))))))
+
+(defn normalize-recs
+  [recs args]
+  (let [cutoff2 (args :cutoff2)
+        max-weight (args :max-weight)
+        x (reduce)]))
+
+(defn tnseq-fitness
+  [])
+
+
+
+
 
 (comment
+
+(let [eid "170206_NS500751_0027_AHFCWCBGX2"
+      base (cmn/get-exp-info eid :out)
+      x (time (fitness-recs
+               "/Refs/NC_012469.gtf"
+               (fs/join base "Rep/Maps/19F-d1504T1-1.map")
+               (fs/join base "Rep/Maps/19F-d1504NoAbT2-1.map")
+               {:expansion 300, :cutoff 0, :cutoff2 10,
+                :max-weight 75, :usestrand :both}))]
+  [(count x) (coll/takev 2 (rest x))])
+
+
+(let [eid "170206_NS500751_0027_AHFCWCBGX2"
+      base (cmn/get-exp-info eid :out)
+      map1 (fs/join base "Rep/Maps/19F-d1504T1-1.map")
+      map2 (fs/join base "Rep/Maps/19F-d1504NoAbT2-1.map")
+      gtf "/Refs/NC_012469.gtf"
+      fmap (feature-map gtf)
+      [+cnts1 -cnts1] (read-mapfile map1)
+      [+cnts2 -cnts2] (read-mapfile map2)
+      tot1 (time (m/sum (mapv #(m/sum (vals %)) [+cnts1 -cnts1])))
+      tot2 (time (m/sum (mapv #(m/sum (vals %)) [+cnts2 -cnts2])))
+      avgtot (-> tot1 (+ tot2) (/ 2.0))
+      cfactor1 (/ tot1 avgtot)
+      cfactor2 (/ tot2 avgtot)
+      hdr HDR
+      st1fn #(cond (and (+cnts1 %) (-cnts1 %)) "b" (+cnts1 %) "+" :else "-")
+      st2fn #(cond (and (+cnts2 %) (-cnts2 %)) "b" (+cnts2 %) "+" :else "-")
+      subdelta 7000
+      ]
+  [(count +cnts1) (count -cnts1) (count +cnts2) (count -cnts2)])
+[(+cnts1 147) (-cnts1 147) (+cnts2 147) (-cnts2 147)]
+
+;;grep -P "\t147\t" ../Out/Rep/Maps/19F-d1504T1-1.map | more
+
 
   (->> "TCTGAATCTCCTGCTACCGACCATGAACTAACAGGTTGGATGATAAGTCTT"
        pass-0-pipe count)
