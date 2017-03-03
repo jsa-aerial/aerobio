@@ -11,8 +11,12 @@
                  msgs (for [retmap result-maps]
                         (let [name (retmap :name)
                               [bams csv] (retmap :value)
-                              bams (map fs/basename bams)
-                              csv (fs/basename csv)
+                              bams (if (coll? bams)
+                                     (map fs/basename bams)
+                                     (fs/basename bams))
+                              csv (if (coll? bams)
+                                    (map fs/basename csv)
+                                    (fs/basename csv))
                               exit (retmap :exit)
                               err (retmap :err)]
                           (if (= exit :success)
