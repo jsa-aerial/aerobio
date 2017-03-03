@@ -3,17 +3,20 @@
  :path ""
  :repeat true
  :generator true
- :func (let [bam-ot-pairs (volatile! :nyi)]
-         (fn[eid comp-filename rep?]
-           (when (= @bam-ot-pairs :nyi)
-             (vswap! bam-ot-pairs
-                     (fn[_] (htrs/get-comparison-files eid comp-filename rep?))))
-           (let [pairs @bam-ot-pairs]
-             (if (seq pairs)
-               (let [p (first pairs)]
-                 (vswap! bam-ot-pairs (fn[_] (rest pairs)))
+ :func (let [cmpgrps (volatile! :nyi)]
+         (fn[eid comp-filename opt?]
+           (when (= @cmpgrps :nyi)
+             (vswap! cmpgrps
+                     (fn[_]
+                       (cmn/get-comparison-files
+                        (cmn/get-exp-info eid :exp)
+                        eid comp-filename opt?))))
+           (let [grp @cmpgrps]
+             (if (seq grp)
+               (let [p (first grp)]
+                 (vswap! cmpgrps (fn[_] (rest grp)))
                  p)
                (pg/done)))))
 
- :description "Streaming comparison input data pairs. Each element is a vector [bams csv] where bams are the input bams to count and csv is the output file for the count matrix."
+ :description "Streaming comparison input data grp. For RNA-Seq, each element is a vector [bams csv] where bams are the input bams to count and csv is the output file for the count matrix. For Tn-Seq, each element is a quad [t1 t2 csv ef], where t1 and t2 are the condition map files, csv the out matrix file, and ef the expansion factor."
  }
