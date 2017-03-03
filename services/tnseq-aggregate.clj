@@ -35,5 +35,5 @@
                    (conj pairs (coll/concatv [allcsv] allins)))))
               grps))))
 
- :description "Function wrapping calc_fitness.py taking cmp-quads [t1 t2 csv ef] and gtf. gtf is a gene-transfer-format reference annotation file for the strain."
+ :description "Function wrapping calc_fitness.py taking cmp-quads [t1 t2 csv ef]."
 }
