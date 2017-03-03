@@ -251,6 +251,8 @@
                 :bams      (fs/join base "Out/Bams")
                 :fcnts     (fs/join base "Out/Fcnts")
                 :maps      (fs/join base "Out/Maps")
+                :fit       (fs/join base "Out/Fitness")
+                :aggrs     (fs/join base "Out/Aggrs")
                 :cuffs     (fs/join base "Out/Cuffs")
                 :diffs     (fs/join base "Out/Diffs")
                 :asms      (fs/join base "Out/Asms")
@@ -357,13 +359,13 @@
 (defn info-ks [] (-> @exp-info first second keys))
 
 (defn get-exp-info [eid & ks]
-  (let [otks [:bams :fcnts :maps :cuffs :diffs :asms :charts]
+  (let [otks #{:bams :fcnts :maps :fit :aggrs :cuffs :diffs :asms :charts}
         rep? (coll/in :rep ks)
         ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
         info (get-exp eid)
         xfn  (fn [k]
                (let [item (info k)]
-                 (if (and rep? (coll/in k otks))
+                 (if (and rep? (otks k))
                    (let [dirs  (fs/split item)
                          ldir (last dirs)
                          dirs (-> dirs butlast vec)]
@@ -612,6 +614,26 @@
      (str "Aerobio job status: " exp " phase-1" eid)
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
+
+;;;(ns-unmap 'iobio.htseq.common 'get-comparison-files)
+(defmulti
+  ^{:doc
+    "Each experiment type has its own type and structure of output
+files to compare (DGE rnaseq, map/fitness for tnseq, et. al.) and this
+multimethod will dispatch accordingly to specific versions to aquire
+and structure the groups.
+
+Compute the set of comparison pairs for tnseq fitness
+calculation. These pairs end up being pairs of corresponding map files
+of strain-condition-rep derived from the comparison pairs in the
+compfile. In the case of replicates, each pair must have the same
+rep-id. EID is the experiment id, and comp-filename is the name of the
+csv comparison file holding comparison records (pairs), default is
+ComparisonSheet.csv
+"
+    :arglists '([exptype & args])}
+  get-comparison-files
+  (fn[exptype & args] exptype))
 
 ;;;(ns-unmap 'iobio.htseq.common 'run-phase-2)
 (defmulti

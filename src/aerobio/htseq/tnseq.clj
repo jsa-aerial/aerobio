@@ -187,9 +187,86 @@
     [btindex fqs fnas otmap otbam otbai]))
 
 
+(defn get-comparison-files-
+  "Compute the set of comparison pairs for tnseq fitness
+  calculation. These pairs end up being pairs of corresponding map
+  files of strain-condition-rep derived from the comparison pairs in
+  the compfile. In the case of replicates, each pair must have the
+  same rep-id. EID is the experiment id, and comp-filename is the name
+  of the csv comparison file holding comparison records (pairs),
+  default is ComparisonSheet.csv"
+  ([eid aggr?]
+   (get-comparison-files eid "ComparisonSheet.csv" aggr?))
+  ([eid comp-filename aggr?]
+   (let [maps (cmn/get-exp-info eid :rep :maps)
+         fit  (cmn/get-exp-info eid :rep :fit)
+         aggr (cmn/get-exp-info eid :rep :aggrs)
+         compvec (->> comp-filename
+                      (fs/join (pams/get-params :nextseq-base) eid)
+                      slurp csv/read-csv rest)
+         mapsvec (mapv (fn[v]
+                         (mapcat #(-> (fs/join maps (str % "*.map"))
+                                      fs/glob sort)
+                                 v))
+                       compvec)
+         mapsvec (mapv (fn[coll]
+                         (->>
+                          (group-by #(->> (fs/replace-type % "")
+                                          fs/basename (str/split #"-")
+                                          last)
+                                    coll)
+                          (filter (fn[[k v]] (= (count v) 2)))
+                          (into {})))
+                       mapsvec)
+         cmpgrps (mapv #(let [crec %2
+                              expfact (last crec)]
+                          (mapv (fn[[k v]]
+                                  (let [crec (conj (coll/takev 2 crec) k)
+                                        csv (str (cljstr/join "-" crec) ".csv")]
+                                    (conj v csv expfact)))
+                                %1))
+                       mapsvec
+                       compvec)]
+     (if aggr?
+       (mapv (fn[grp]
+               (let [l (->> grp last first fs/basename (str/split #"-")
+                            last (str/split #"\.") first)
+                     g (mapv (fn[[_ _ csv _]]
+                               [(fs/join aggr csv) (fs/join fit csv)])
+                             grp)
+                     allcsv (->> g first first
+                                 (#(fs/replace-type % (str "-" l ".csv"))))]
+                 (conj g allcsv)))
+             cmpgrps)
+       ;; else fitness groups
+       (mapcat (fn[grp]
+                 (mapv (fn[[t1 t2 csv ef]] [t1 t2 (fs/join fit csv) ef]) grp))
+               cmpgrps)
+       ))))
+
+(defmethod cmn/get-comparison-files :tnseq
+  [_ & args]
+  (apply get-comparison-files- args))
+
+
+
+(defn get-phase-2-dirs [eid]
+  (let [fit (cmn/get-exp-info eid :rep :fit)
+        aggr (cmn/get-exp-info eid :rep :aggrs)]
+    (cmn/ensure-dirs fit aggr)))
+
+(defn run-fitness-aggregate
+  [eid recipient comparison-file get-toolinfo template]
+  (let [_ (get-phase-2-dirs eid)
+        cfg    (assoc-in template
+                         [:nodes :ph2 :args]
+                         [eid comparison-file recipient])]
+    (future (cmn/flow-program cfg get-toolinfo :run true))))
+
 (defmethod cmn/run-phase-2 :tnseq
   [_ eid recipient get-toolinfo template]
-  (assert false "TNSEQ PHASE 2 NYI"))
+  (run-fitness-aggregate
+   eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
 
 (defn feature-map [gtf & {:keys [ftype] :or {ftype :any}}]
@@ -209,8 +286,7 @@
 (defn read-mapfile
   [mapfile & {:keys [usestrand downstream] :or {usestrand :both}}]
   (letio [lines (io/read-lines mapfile)]
-    (mapv
-     persistent!
+    (mapv persistent!
      (reduce (fn[[+cnts -cnts :as M] l]
                (let [[cnt strand start len] (str/split #"\t" l)
                      [cnt start len] (mapv #(Integer/parseInt %)[cnt start len])
@@ -291,6 +367,18 @@
 
 
 (comment
+
+(let [cmpgrps (get-comparison-files eid true)
+      args {:expansion 300, :cutoff 0, :cutoff2 10,
+            :max-weight 75, :usestrand :both}
+      x (time (mapv ;coll/vfold
+               (fn[[t1 t2 csv expfact]]
+                 (fitness-recs
+                  "/Refs/NC_012469.gtf"
+                  t1 t2 (assoc args :expansion (Double. expfact))))
+               cmpgrps))]
+  (mapv count x))
+
 
 (let [eid "170206_NS500751_0027_AHFCWCBGX2"
       base (cmn/get-exp-info eid :out)

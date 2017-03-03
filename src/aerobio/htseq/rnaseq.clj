@@ -53,7 +53,7 @@
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
 
-(defn get-comparison-files
+(defn get-comparison-files-
   "Compute the set of comparison bams and the corresponding output csv
   for the count table matrix. Comparison sets are based on the
   ComparisonSheet.csv for the experiment of eid (the experiment
@@ -78,6 +78,10 @@
                         (fs/join fcnts (str (cljstr/join "-" v) ".csv")))
                       compvec)]
      (mapv #(vector %1 %2) bamsvec otcsvs))))
+
+(defmethod cmn/get-comparison-files :rnaseq
+  [_ & args]
+  (apply get-comparison-files- args))
 
 
 (defn split-filter-fastqs
