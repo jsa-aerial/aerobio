@@ -13,7 +13,7 @@
                         "Finished"]}      ; subject, body intro
          :tnag  {:type "func"
                  :name "tnseq-aggregate"
-                 :args ["#1" "#2"]} ; eid, compfile, gtf/gbk, norm
+                 :args ["#1" "#2"]} ; eid, compfile
          :mail2 {:type "func"
                  :name "mailp2"
                  :args ["#3"        ; recipient
