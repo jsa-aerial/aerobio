@@ -3,7 +3,7 @@
  :path ""
  :func (let [result (volatile! [])]
          (fn[data]
-           (if (pg/eoi? data)
+           (if (and (pg/eoi? data) (pg/done? data))
              @result
              (do
                (vswap! result (fn[resval] (conj resval data)))
