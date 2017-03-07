@@ -11,9 +11,13 @@
                :path "bowtie2"
                :args ["-f" "-N" "1" "--reorder"
                       "--no-unal" "--no-head"
+                      "--rdg" "11,3" "--rfg" "11,3" "--gbar" "10"
                       "-p" "8"
                       "-x" "#1" "-U" "#3"]
                }
+         :sort {:type "tool"
+                :path "sort"
+                :args ["-k4,4g"]}
          :mmap {:type "func"
                 :name "make-maps"
                 :args ["#4"]}
@@ -29,7 +33,8 @@
          :cl1 {:type "func"
                :name "write-bam"
                :args ["#5"]}
-         :edges {:bt2 [:mmap]
+         :edges {:bt2 [:sort]
+                 :sort [:mmap]
                  :bt1 [:st1] :st1 [:st2] :st2 [:cl1 :st3]}}
 
  ;; instructional data used in /help

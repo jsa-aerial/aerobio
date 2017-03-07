@@ -4,6 +4,8 @@
  :path "",
  :func (let [ot (volatile! nil)
              leftover (volatile! "")
+             rv (volatile! {})
+             mean aerial.utils.math.probs-stats/mean
              m {0 "+", 16 "-"}]
          (fn [map-file rec]
            (when (nil? (deref ot))
@@ -25,16 +27,34 @@
                                 [lines ""])
                    ot (deref ot)]
                (vswap! leftover (fn[_] lo))
-               (doseq [line lines]
-                 (let [rec (str/split line #"\t")
-                       l (str/join
-                          "\t"
-                          [(-> (rec 0) (str/split #"-") second)
-                           (-> (rec 1) Integer/parseInt m)
-                           (-> (rec 3) Integer/parseInt dec)
-                           (count (rec 9))])]
-                   (.write ot l)
-                   (.newLine ot)))))))
+               (doseq [l lines]
+                 (let [r @rv
+                       rec (str/split l #"\t")
+                       [cnt std pos len]
+                       [(-> (rec 0) (str/split #"-") second Integer/parseInt)
+                        (-> (rec 1) Integer/parseInt m)
+                        (-> (rec 3) Integer/parseInt dec)
+                        (count (rec 9))]
+                       rl (r :len)]
+                   (cond
+                     (empty? r)
+                     (vswap!
+                      rv (fn[r] (assoc r :cnt cnt :std std :pos pos :len len)))
+
+                     (and (not= r {})(< (Math/abs (- pos (r :pos))) 3)
+                          (= (r :std) std))
+                     (vswap!
+                      rv (fn[r]
+                           (assoc r :pos (long (mean [pos (r :pos)]))
+                                  :cnt (+ (r :cnt) cnt)
+                                  :len (if (> len rl) len rl))))
+                     :else
+                     (let [l (str/join #"\t" [(r :cnt) (r :std)
+                                              (r :pos) (r :len)])]
+                       (vswap!
+                        rv (fn[r] (assoc r :cnt cnt :std std :pos pos :len len)))
+                       (.write ot l)
+                       (.newLine ot)))))))))
 
  :description "Take streaming SAM records (generated from bowtie from a _collapsed_ input file), pull out collapse count, strand info, position, and sq length, assemble with tabs and write resulting line to file map-file. This map-file will be used as input for calc_fitness operation."
 }
