@@ -4,7 +4,7 @@
  :path "",
  :func (fn [recipient subject intro result-maps]
          (cond
-           (pg/eoi? result-maps) (pg/done)
+           (pg/eoi? result-maps) nil ; (pg/done) is sent on ch close!
 
            (every? map? result-maps)
            (let [base (->> result-maps first :value second fs/dirname)
