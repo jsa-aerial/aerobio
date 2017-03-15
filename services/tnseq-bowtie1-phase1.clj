@@ -1,6 +1,6 @@
 
 {
- :name "tnseq-phase1",
+ :name "tnseq-bowtie1-phase1",
  :path  "",
 
  :graph {:bt1 {:type "tool"
@@ -8,18 +8,13 @@
                :args ["-p" "16" "--very-sensitive" "-x" "#1" "-U" "#2"]
                }
          :bt2 {:type "tool"
-               :path "bowtie2"
-               :args ["-f" "-N" "1" "--reorder"
-                      "--no-unal" "--no-head"
-                      "--rdg" "11,3" "--rfg" "11,3" "--gbar" "10"
+               :path "bowtie"
+               :args ["-f" "-m" "1" "-n" "1" "--best" "-y"
                       "-p" "8"
-                      "-x" "#3" "-U" "#4"]
+                      "#3" "#4"] ; index, input collapsed fna
                }
-         :sort {:type "tool"
-                :path "sort"
-                :args ["-k4,4g"]}
          :mmap {:type "func"
-                :name "make-maps"
+                :name "bowtie1-make-maps"
                 :args ["#5"]}
          :st1 {:type :tool
                :path "samtools"
@@ -33,8 +28,7 @@
          :cl1 {:type "func"
                :name "write-bam"
                :args ["#6"]}
-         :edges {:bt2 [:sort]
-                 :sort [:mmap]
+         :edges {:bt2 [:mmap]
                  :bt1 [:st1] :st1 [:st2] :st2 [:cl1 :st3]}}
 
  ;; instructional data used in /help
