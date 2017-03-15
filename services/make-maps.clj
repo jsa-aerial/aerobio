@@ -36,10 +36,14 @@
                         (-> (rec 3) Integer/parseInt dec)
                         (count (rec 9))]
                        rl (r :len)]
+                   ;; Some magic numbers in following BUG!
                    (cond
                      (empty? r)
                      (vswap!
                       rv (fn[r] (assoc r :cnt cnt :std std :pos pos :len len)))
+
+                     (< (Integer/parseInt (rec 4)) 8)
+                     :nop ; MAPQ doesn't pass muster, throw this one away
 
                      (and (not= r {})(< (Math/abs (- pos (r :pos))) 3)
                           (= (r :std) std))
@@ -49,8 +53,8 @@
                                   :cnt (+ (r :cnt) cnt)
                                   :len (if (> len rl) len rl))))
                      :else
-                     (let [l (str/join #"\t" [(r :cnt) (r :std)
-                                              (r :pos) (r :len)])]
+                     (let [l (str/join "\t" [(r :cnt) (r :std)
+                                             (r :pos) (r :len)])]
                        (vswap!
                         rv (fn[r] (assoc r :cnt cnt :std std :pos pos :len len)))
                        (.write ot l)
