@@ -68,7 +68,7 @@
   (programs bcl2fastq samtools
             bowtie bowtie2 featureCounts tophat
             cufflinks cuffmerge cuffcompare cuffdiff
-            Rscript python ruby
+            Rscript python ruby perl
             bp_load_genbank
             ))
 
