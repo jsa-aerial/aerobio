@@ -175,15 +175,20 @@ def remote_cmd (cmd, args, *misc)
   ##args = args.each_slice(2).to_a
   args = args.insert(0,cmd)
   args = args.insert(0,ENV["USER"])
-  keys = ["user", "cmd", "arg1", "arg2", "eid"]
-  keys = (args.count == keys.count) ? keys : keys.insert(keys.count-1,"arg3")
+  if (cmd == "compare")
+    keys = ["user", "cmd", "compfile", "eid"]
+  else
+    keys = ["user", "cmd", "action", "eid"]
+  end
+  if (args.count != keys.count)
+    keys = keys.insert(keys.count-1,"rep")
+  end
   args = keys.zip(args)
   args = args.map do |x| x.join("=") end
   argstg = args.join("&")
   puts "argstg = #{argstg}"
   return RestClient.get(base_url+argstg, {:reqtype => "cmdline"})
 end
-
 
 
 
