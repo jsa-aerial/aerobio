@@ -107,7 +107,7 @@
                                     illumina-sample-xref)
         collapse-specs (cmn/get-bc-file-specs base exp-illumina-xref
                                               illumina-sample-xref
-                                              :ftype ".collapse.fna.gz")
+                                              :ftype ".collapse.fna")
         groups (map (fn[ibc]
                       [ibc (reduce (fn[V [ebc fq]]
                                      (conj V [fq (get-in collapse-specs
@@ -123,8 +123,8 @@
     (.write ot (str sq "\n"))))
 
 (defn collapse-one [[fastq fasta]]
-  (letio [inf (io/open-streaming-gzip fastq :in)
-          otf (io/open-streaming-gzip fasta :out)
+  (letio [inf (io/open-file fastq :in)
+          otf (io/open-file fasta :out)
           cnt (loop [fqrec (bufiles/read-fqrec inf)
                      M {}]
                 (if (nil? (fqrec 0))
@@ -167,25 +167,38 @@
 ;;; fastq set, the collapsed fastas, output map file, output bam and
 ;;; bai file names
 (defmethod cmn/get-phase-1-args :tnseq
-  [_ eid repname & {:keys [repk]}]
+  [_ eid repname & {:keys [repk bowtie] :or {bowtie :bt1}}]
   (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
         fnas (cljstr/join
               "," (mapv (fn[fq]
                           (->> fq (str/split #"\.")
                                (coll/takev-until #(= % "fastq"))
                                (cljstr/join ".")
-                               (#(str % ".collapse.fna.gz"))))
-                        (str/split #"," fqs))) _ (prn :FQS fqs :FNAS fnas)
+                               (#(str % ".collapse.fna"))))
+                        (str/split #"," fqs))) ;;_ (prn :FQS fqs :FNAS fnas)
         refnm (cmn/replicate-name->strain-name eid repname)
-        btindex (fs/join (cmn/get-exp-info eid :index) refnm)
+        bt1index (fs/join (cmn/get-exp-info eid :bt1index) refnm)
+        bt2index (fs/join (cmn/get-exp-info eid :index) refnm)
         otbam (fs/join (cmn/get-exp-info eid repk :bams) (str repname ".bam"))
         otmap (fs/join (cmn/get-exp-info eid repk :maps) (str repname ".map"))
         otbai (str otbam ".bai")
         refgtf (fs/join (cmn/get-exp-info eid :refs)
                         (str refnm ".gtf"))]
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai otmap]))
-    [btindex fqs fnas otmap otbam otbai]))
+    [bt2index fqs
+     (if (= bowtie :bt1) bt1index bt2index) fnas
+     otmap otbam otbai]))
 
+
+(def offsets
+  (let [llets "abcdefghijklmnopqrstuvwxyz"
+        offset (-> "a" str/codepoints first dec)
+        chints (mapv #(- % offset) (str/codepoints llets))
+        offmap (into {} (map
+                         (fn[[k v]] [(str k) v])
+                         (partition 2 (interleave (seq llets) chints))))
+        offmap (into offmap (map #(vector (str %) %) (range 1 27)))]
+    offmap))
 
 (defn get-comparison-files-
   "Compute the set of comparison pairs for tnseq fitness
@@ -196,7 +209,7 @@
   of the csv comparison file holding comparison records (pairs),
   default is ComparisonSheet.csv"
   ([eid aggr?]
-   (get-comparison-files eid "ComparisonSheet.csv" aggr?))
+   (get-comparison-files- eid "ComparisonSheet.csv" aggr?))
   ([eid comp-filename aggr?]
    (let [maps (cmn/get-exp-info eid :rep :maps)
          fit  (cmn/get-exp-info eid :rep :fit)
@@ -207,7 +220,7 @@
          mapsvec (mapv (fn[v]
                          (mapcat #(-> (fs/join maps (str % "*.map"))
                                       fs/glob sort)
-                                 v))
+                                 (take 2 v))) ; strain-c1, strain-c2
                        compvec)
          mapsvec (mapv (fn[coll]
                          (->>
@@ -219,11 +232,12 @@
                           (into {})))
                        mapsvec)
          cmpgrps (mapv #(let [crec %2
-                              expfact (last crec)]
+                              expfacts (coll/dropv 2 crec)]
                           (mapv (fn[[k v]]
                                   (let [crec (conj (coll/takev 2 crec) k)
-                                        csv (str (cljstr/join "-" crec) ".csv")]
-                                    (conj v csv expfact)))
+                                        csv (str (cljstr/join "-" crec) ".csv")
+                                        ef (expfacts (dec (offsets k)))]
+                                    (conj v csv ef)))
                                 %1))
                        mapsvec
                        compvec)]

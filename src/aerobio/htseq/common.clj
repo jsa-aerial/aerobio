@@ -245,6 +245,7 @@
          (assoc m :base base
                 :refs      (pams/get-params :refdir)
                 :index     (fs/join (pams/get-params :refdir) "Index")
+                :bt1index  (fs/join (pams/get-params :refdir) "BT1Index")
                 :samples   (fs/join base "Samples")
                 :collapsed (fs/join base "Samples/Collapsed")
                 :out       (fs/join base "Out")
@@ -589,6 +590,9 @@
   [eid recipient get-toolinfo template & {:keys [repk]}]
   (let [exp (get-exp-info eid :exp)
         phase1-job-template template
+        bt (if (-> template (get-in [:nodes :ph1 :name])
+                   (cljstr/includes? "bowtie1"))
+             :bt1 :bt2)
         sample-names (get-exp-info eid :sample-names)
         sample-names (if repk
                        (mapcat #((get-exp-info eid :replicate-names) %)
@@ -598,9 +602,9 @@
       (let [futs-vecs
             (mapv
              (fn[snm]
-               (let [job (assoc-in phase1-job-template
-                                   [:nodes :ph1 :args]
-                                   (get-phase-1-args exp eid snm :repk repk))
+               (let [job (assoc-in phase1-job-template [:nodes :ph1 :args]
+                                   (get-phase-1-args
+                                    exp eid snm :repk repk :bowtie bt))
                      cfg (-> job
                              (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                              pg/config-pgm-graph)]
@@ -611,7 +615,7 @@
               futs-vecs)))
     (pg/send-msg
      [recipient]
-     (str "Aerobio job status: " exp " phase-1" eid)
+     (str "Aerobio job status: " exp " phase-1  " eid)
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
 
@@ -650,14 +654,16 @@ ComparisonSheet.csv
        [eid recipient template action rep compfile])
   (let [exp (get-exp-info eid :exp)]
     (cond
-      (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
+      (#{"phase-0" "phase-0b" "phase-0c"
+         "phase-1" "bt2-phase-1" "bt1-phase-1"
+         "phase-2"} action)
       (let [phase action]
         (cond
           (#{"phase-0" "phase-0b" "phase-0c"} phase)
           (future
             (run-phase-0 eid recipient get-toolinfo template))
 
-          (#{"phase-1"} phase)
+          (#{"phase-1" "bt2-phase-1" "bt1-phase-1"} phase)
           (future
             (run-phase-1 eid recipient get-toolinfo template :repk rep))
 
