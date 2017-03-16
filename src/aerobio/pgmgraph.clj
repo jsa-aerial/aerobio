@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.pgmgraph
+(ns aerobio.pgmgraph
 
   (:require
    [clojure.java.io :as io :refer [file output-stream input-stream]]
@@ -49,7 +49,7 @@
    [aerial.utils.coll :as coll :refer [in takev-until dropv-until ensure-vec]]
    [aerial.fs :as fs]
 
-   [iobio.params :as pams])
+   [aerobio.params :as pams])
 
   (:import
    [java.io InputStream OutputStream]
@@ -522,20 +522,20 @@
          (recur chs# more#))
        more#)))
 
-(defn iobioerr? [x]
-  (and (map? x) (x ::iobioerr) (= (x ::iobioerr) :iobioerr)))
+(defn aerobioerr? [x]
+  (and (map? x) (x ::aerobioerr) (= (x ::aerobioerr) :aerobioerr)))
 
-(defn iobiosuccess? [x]
+(defn aerobiosuccess? [x]
   (and (map? x) (x ::status) (= (x ::status) :success)))
 
-(defn iobioerr-ret [info]
-  {::iobioerr :iobioerr ::status :iobioerr :info info})
+(defn aerobioerr-ret [info]
+  {::aerobioerr :aerobioerr ::status :aerobioerr :info info})
 
 (defn exit-info [proc]
   (let [exitcode (shl/exit-code proc)]
     (if (= exitcode 0)
       {:id (proc :id) ::status :success}
-      (iobioerr-ret
+      (aerobioerr-ret
        {:type "alert",
         :info {:id (proc :id)
                :exit exitcode
@@ -587,7 +587,7 @@
 
 
 
-;;;(ns-unmap 'iobio.pgmgraph 'job-node)
+;;;(ns-unmap 'aerobio.pgmgraph 'job-node)
 (defmulti
   ^{:doc "Dispatch program node graph creation based on node core type"
      :arglists '([node-core inputs outputs])}
@@ -658,7 +658,7 @@
         (do #_(mapv async/close! outputs)
             (.close errout))
         (let [msg (String. (Arrays/copyOfRange buf 0 n))
-              err (iobioerr-ret {:type "warn" :info {:id pid :msg msg}})]
+              err (aerobioerr-ret {:type "warn" :info {:id pid :msg msg}})]
           (infof "%s: %s" pid msg)
           (doseq [ch outputs] (>! ch err))
           (recur (.read errout buf)))))))
@@ -707,7 +707,7 @@
                       (try
                         (cond
                          (byte-array? data) (.write (input-map ch) data)
-                         (iobioerr? data) (doseq [ch outputs] (>! ch data))
+                         (aerobioerr? data) (doseq [ch outputs] (>! ch data))
                          :else :noop)
                         (catch Exception e
                           (warnf "%s, Exception on write: %s"
@@ -819,8 +819,8 @@
                    (if ch
                      (when-let [data (<! ch)]
                        (cond
-                        (iobioerr? data) (write :error data)
-                        (iobiosuccess? data) nil ; NOP
+                        (aerobioerr? data) (write :error data)
+                        (aerobiosuccess? data) nil ; NOP
                         :else
                         (let [payload (if utf8 (String. data) data)]
                           (write :data payload)))

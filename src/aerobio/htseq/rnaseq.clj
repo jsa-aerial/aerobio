@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.htseq.rnaseq
+(ns aerobio.htseq.rnaseq
   [:require
    [clojure.core.reducers :as r]
    [clojure.data.csv :as csv]
@@ -42,9 +42,9 @@
 
    [aerial.bio.utils.filters :as fil]
 
-   [iobio.params :as pams]
-   [iobio.htseq.common :as cmn]
-   [iobio.pgmgraph :as pg]]
+   [aerobio.params :as pams]
+   [aerobio.htseq.common :as cmn]
+   [aerobio.pgmgraph :as pg]]
   )
 
 
@@ -60,7 +60,7 @@
   id). If rep? is true, returns the comparison sets for replicates of
   comparison pairs, else returns comparison sets for combined bams."
   ([eid rep?]
-   (get-comparison-files eid "ComparisonSheet.csv" rep?))
+   (get-comparison-files- eid "ComparisonSheet.csv" rep?))
   ([eid comp-filename rep?]
    (let [bpath (if rep? [:rep :bams] [:bams])
          fpath (if rep? [:rep :fcnts] [:fcnts])

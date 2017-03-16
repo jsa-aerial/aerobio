@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.server
+(ns aerobio.server
   "Streaming job server with full tree graphs, function nodes, superior
    error handling, logging, caching, etc.
   "
@@ -75,15 +75,15 @@
    [schema.core :as sch]
 
    ;; Our parameter db
-   [iobio.params :as pams]
+   [aerobio.params :as pams]
    ;; HTSeq
-   [iobio.htseq.common :as cmn]
-   [iobio.htseq.rnaseq :as htrs]
-   [iobio.htseq.tnseq :as htts]
+   [aerobio.htseq.common :as cmn]
+   [aerobio.htseq.rnaseq :as htrs]
+   [aerobio.htseq.tnseq :as htts]
    ;; Program graph construction, execution, delivery
-   [iobio.pgmgraph :as pg]
+   [aerobio.pgmgraph :as pg]
    ;; REST actions
-   [iobio.actions :as actions]
+   [aerobio.actions :as actions]
    ))
 
 
@@ -147,7 +147,7 @@
 (defn htseq-file-get [args reqmap]
   (infof "Args %s\nParams %s" args (reqmap :params))
   #_(infof "ReqMap %s" reqmap)
-  (binding [*ns* (find-ns 'iobio.server)]
+  (binding [*ns* (find-ns 'aerobio.server)]
     (let [params (reqmap :params)
           user-agent (get-in reqmap [:headers "user-agent"])
           reqtype (get-in reqmap [:headers "reqtype"])]
@@ -338,7 +338,7 @@
 
 (defn read-tool-config [f]
   (infof "Tool update: %s" f)
-  (binding [*ns* (find-ns 'iobio.server)]
+  (binding [*ns* (find-ns 'aerobio.server)]
     (if (= "clj" (fs/ftype f))
       (let [cfg (-> f slurp clojure.core/read-string)
             func (cfg :func)]
@@ -751,7 +751,7 @@
   (tracef ">>> Stream = %s" stream)
   (let [cmdpath (-> (fs/pwd) (fs/join "bin"))
         _ (assert (fs/directory? cmdpath)
-                  (str "iobio home directory '" (fs/pwd)
+                  (str "aerobio home directory '" (fs/pwd)
                        "' requires a 'bin' directory"))
         pipeline-config (config-pipe-def stream params)
         _ (debugf "PIPELINE-CONFIG: %s" pipeline-config)

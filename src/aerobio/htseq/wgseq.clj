@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.htseq.wgseq
+(ns aerobio.htseq.wgseq
   [:require
    [clojure.string :as cljstr]
 
@@ -39,9 +39,9 @@
    [aerial.bio.utils.files :as bufiles]
    [aerial.bio.utils.filters :as fil]
 
-   [iobio.params :as pams]
-   [iobio.htseq.common :as cmn]
-   [iobio.pgmgraph :as pg]])
+   [aerobio.params :as pams]
+   [aerobio.htseq.common :as cmn]
+   [aerobio.pgmgraph :as pg]])
 
 
 (defn filter-fastq

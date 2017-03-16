@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.htseq.tnseq
+(ns aerobio.htseq.tnseq
   [:require
    [clojure.string :as cljstr]
    [clojure.data.csv :as csv]
@@ -40,9 +40,9 @@
    [aerial.utils.math.infoth :as it]
    [aerial.bio.utils.files :as bufiles]
 
-   [iobio.params :as pams]
-   [iobio.htseq.common :as cmn]
-   [iobio.pgmgraph :as pg]])
+   [aerobio.params :as pams]
+   [aerobio.htseq.common :as cmn]
+   [aerobio.pgmgraph :as pg]])
 
 
 (defn trim-initsq-and-adapter

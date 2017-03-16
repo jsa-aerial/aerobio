@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.htseq.common
+(ns aerobio.htseq.common
   [:require
    [clojure.core.reducers :as r]
    [clojure.data.csv :as csv]
@@ -45,8 +45,8 @@
    [aerial.bio.utils.aligners :as aln]
    [aerial.bio.utils.filters :as fil]
 
-   [iobio.params :as pams]
-   [iobio.pgmgraph :as pg]])
+   [aerobio.params :as pams]
+   [aerobio.pgmgraph :as pg]])
 
 
 
@@ -578,7 +578,7 @@
     (mapv (fn[fut] (deref fut)) futs-vec)))
 
 
-;;;(ns-unmap 'iobio.htseq.common 'get-phase-1-args)
+;;;(ns-unmap 'aerobio.htseq.common 'get-phase-1-args)
 (defmulti
   ^{:doc "Each experiment type has its own argument constructor, and this
  multimethod will dispatch accordingly to get the specific versions."
@@ -619,7 +619,7 @@
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
 
-;;;(ns-unmap 'iobio.htseq.common 'get-comparison-files)
+;;;(ns-unmap 'aerobio.htseq.common 'get-comparison-files)
 (defmulti
   ^{:doc
     "Each experiment type has its own type and structure of output
@@ -639,7 +639,7 @@ ComparisonSheet.csv
   get-comparison-files
   (fn[exptype & args] exptype))
 
-;;;(ns-unmap 'iobio.htseq.common 'run-phase-2)
+;;;(ns-unmap 'aerobio.htseq.common 'run-phase-2)
 (defmulti
   ^{:doc "Each experiment type has its own phase 2 driver, and this
  multimethod will dispatch accordingly to the specific versions."

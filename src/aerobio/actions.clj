@@ -26,7 +26,7 @@
 ;;--------------------------------------------------------------------------;;
 ;;
 
-(ns iobio.actions
+(ns aerobio.actions
   "Streaming job server with full tree graphs, function nodes, superior
    error handling, logging, caching, etc.
   "
@@ -36,11 +36,11 @@
   (:require
 
    ;; Our parameter db
-   [iobio.params :as pams]
+   [aerobio.params :as pams]
    ;; HTSeq
-   [iobio.htseq.common :as cmn]
-   [iobio.htseq.rnaseq :as htrs]
-   [iobio.htseq.tnseq :as htts]
+   [aerobio.htseq.common :as cmn]
+   [aerobio.htseq.rnaseq :as htrs]
+   [aerobio.htseq.tnseq :as htts]
    ))
 
 
