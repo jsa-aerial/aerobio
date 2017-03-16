@@ -91,7 +91,7 @@
             (vswap! totcnt #(inc (long %)))
             (when (and (> gcnt min-len) (>= qc% sqc%))
               (vswap! gdcnt #(inc (long %)))
-              (bufiles/write-fqrec-to-file
+              (bufiles/write-fqrec
                ot [(str id "\n")
                    (str gsq "\n")
                    (str "+ " gcnt " " qc% "\n")

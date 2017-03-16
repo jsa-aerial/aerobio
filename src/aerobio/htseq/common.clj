@@ -447,7 +447,7 @@
     (dorun
      (mapv (fn[fut] (deref fut))
            (mapv (fn[[fd recs]]
-                   (future (bufiles/write-fqrecs-to-file fd recs)))
+                   (future (bufiles/write-fqrecs fd recs)))
                  file-groups)))))
 
 (defn split-barcodes
