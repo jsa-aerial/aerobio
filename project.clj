@@ -1,6 +1,6 @@
-(defproject aerial/clj-iobio "0.9.1"
-  :description "Clojure iobio full DAG pgm graph multi tool server"
-  :url "https://github.com/aerial/clj-iobio"
+(defproject aerial/aerobio "1.0.0"
+  :description "A full DAG pgm graph multi tool server for dynamic bio pipeline"
+  :url "https://github.com/aerial/aerobio"
   :license {:name "The MIT License (MIT)"
             :url  "http://opensource.org/licenses/MIT"
             :distribution :repo}
@@ -25,7 +25,7 @@
 
    [aerial.fs                 "1.1.5"]
    [aerial.utils              "1.2.0"]
-   [aerial.bio.utils          "1.1.2"]
+   [aerial.bio.utils          "2.0.0"]
    [aerial.msgpacket          "0.0.1"]
 
    ;;[com.taoensso/sente        "1.4.1"] ; We use new msgpSente
@@ -55,7 +55,7 @@
             [refactor-nrepl    "2.2.0"]]
 
   :profiles {:uberjar {:aot :all}}
-  :main iobio.core
+  :main aerobio.core
   ;;:aot :all
 
   ;; Call `lein start-dev` to get a (headless) development repl that you can
