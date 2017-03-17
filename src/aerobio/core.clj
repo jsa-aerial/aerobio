@@ -73,23 +73,21 @@
 
 (def cli-options
   ;; An option with a required argument
-  [["-I" "--install DIR" "Directory to self install to"
-    :default nil
-    :parse-fn #(fs/fullpath %)
-    :validate [#(fs/directory? %) "Must be a writable directory"
-               #(fs/writeable? %) "Must be a writable directory"]]
+  [["-I" "--install" "Perform self installation"
+    :default nil]
 
    ["-p" "--port PORT" "Port number for http server"
-    :default 8080
+    :default nil
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
 
-   ["-rp" "--repl-port PORT" "Port for nrepl server"
-    :default 4005
+   ["-r" "--repl-port PORT" "Port for nrepl server"
+    :default nil
     :parse-fn #(Integer/parseInt %)
     :validate [#(< 4000 % 5000) "Must be a number between 0 and 65536"]]
    ;; A boolean option defaulting to nil
-   ["-h" "--help"]])
+   ["-h" "--help" "Print this help"
+    :default true]])
 
 ;; Incorporate correct cider middleware for tunneling nREPL support
 (apply nrs/default-handler (map resolve cider-middleware))
@@ -127,7 +125,7 @@
     (println "Installing resources...")
     (fs/mkdir (fs/join aerobiodir "pipes"))
     (fs/mkdir (fs/join aerobiodir "cache"))
-    (doseq [res ["services" "bin" #_"bam.aerobio.io" #_"vcf.aerobio.io"]]
+    (doseq [res ["bin" "Jobs" "Scripts" "services" "Support"]]
       (doseq [[path uris] (cp/resources (io/resource res))
               :let [uri (first uris)
                     relative-path (subs path 1)
@@ -152,6 +150,8 @@
             (io/copy in output-file))
           (when (= res "bin")
             (.setExecutable output-file true false)))))
+    (fs/copy (fs/join aerobiodir "Support/config.clj")
+             (fs/join aerobiodir "config.clj"))
     (println "\n\n*** Installation complete")))
 
 
@@ -188,7 +188,9 @@
 (defn- setup-timbre []
   "timbre-pre-v2 settings"
   (timbre/set-config! [:shared-appender-config :spit-filename]
-                      "/home/jsa/Clojure/Projects/aerobio/main-log.txt")
+                      (fs/fullpath
+                       (fs/join (pams/get-params [:logging :dir])
+                                (pams/get-params [:logging :file]))))
   (timbre/set-config! [:appenders :standard-out   :enabled?] false)
   (timbre/set-config! [:appenders :spit           :enabled?] true))
 
@@ -212,30 +214,38 @@
         options (opts :options)
         arguments (opts :arguments)
         summary (opts :summary)
-        errors (opts :erros)
+        errors (opts :errors)
         http-port (options :port)
         rpl-port (options :repl-port)
-        aerobio-dir (options :install)
+        install? (options :install)
         nrepl-handler (apply nrs/default-handler
                              (concat (map resolve cider-middleware)
                                      [#'wrap-refactor]))]
     (if errors
-      (println "Error(s): " errors)
+      (do (println "Error(s): " errors)
+          (System/exit 1))
       (cond
-        (and http-port rpl-port)
-        (if (find-set-home-dir)
-          (do
-            (run-server http-port)
-            nrs/start-server :port rpl-port :handler nrepl-handler)
-          (do (println "aerobio server must run in home directory")
-              (System/exit 1)))
-
-        aerobio-dir
+        install?
         (let [aerobiodir (get-install-dir)]
           (if (fs/exists? aerobiodir)
             (do (println "Selected install dir already exists!")
                 (System/exit 1))
-            (install-aerobio aerobiodir)))
+            (install-aerobio aerobiodir))
+          (System/exit 0))
+
+        (and http-port rpl-port)
+        (if (find-set-home-dir)
+          (do
+            (println :http-port http-port :rpl-port rpl-port)
+            (nrs/start-server :port rpl-port :handler nrepl-handler)
+            (run-server http-port))
+          (do (println "aerobio server must run in home directory")
+              (System/exit 1)))
+
+        (options :help)
+        (do
+          (println summary)
+          (System/exit 0))
 
         :else
         (do (println "Unknown options " options)
