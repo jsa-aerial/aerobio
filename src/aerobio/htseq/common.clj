@@ -648,6 +648,15 @@ ComparisonSheet.csv
   (fn[exptype & args] exptype))
 
 
+;;;(ns-unmap 'aerobio.htseq.common 'run-comparison)
+(defmulti
+  ^{:doc "Each experiment type has its own comparison driver, and this
+ multimethod will dispatch accordingly to the specific versions."
+    :arglists '([exptype & args])}
+  run-comparison
+  (fn[exptype & args] exptype))
+
+
 (defn launch-action
   [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
   (prn "LAUNCH: "

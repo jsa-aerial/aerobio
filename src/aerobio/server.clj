@@ -155,7 +155,8 @@
         (let [{:keys [user cmd action rep compfile eid]} params
               _ (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
               exp (cmn/get-exp-info eid :exp)
-              tempnm (str (name exp) "-" action "-job-template")
+              work-item (if action action "compare") ; HACK!
+              tempnm (str (name exp) "-" work-item "-job-template")
               template (get-jobinfo tempnm)
               result (actions/action cmd eid params get-toolinfo template)]
           (swap! dbg (fn[M] (assoc M eid result)))

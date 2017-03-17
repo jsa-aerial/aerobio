@@ -277,6 +277,10 @@
                          [eid comparison-file recipient])]
     (future (cmn/flow-program cfg get-toolinfo :run true))))
 
+(defmethod cmn/run-comparison :tnseq
+  [_ eid recipient compfile get-toolinfo template]
+  (run-fitness-aggregate eid recipient compfile get-toolinfo template))
+
 (defmethod cmn/run-phase-2 :tnseq
   [_ eid recipient get-toolinfo template]
   (run-fitness-aggregate

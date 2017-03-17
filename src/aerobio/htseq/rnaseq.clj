@@ -250,6 +250,11 @@
   (run-rnaseq-comparison
    eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
+
+(defmethod cmn/run-comparison :rnaseq
+  [_ eid recipient compfile get-toolinfo template]
+  (run-rnaseq-comparison eid recipient compfile get-toolinfo template))
+
 (defmethod cmn/run-phase-2 :rnaseq
   [_ eid recipient get-toolinfo template]
   (run-rnaseq-comparison

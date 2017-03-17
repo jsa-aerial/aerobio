@@ -67,4 +67,8 @@
 
 (defmethod action :compare
   [_ eid params get-toolinfo template]
-  template)
+  (let [exp (cmn/get-exp-info eid :exp)
+        {:keys [user cmd action rep compfile eid]} params
+        recipient (pams/get-params [:email (keyword user)])]
+    (cmn/run-comparison
+     exp eid recipient compfile get-toolinfo template)))
