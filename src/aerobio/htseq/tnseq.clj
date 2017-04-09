@@ -159,7 +159,7 @@
 
 (defn split-filter-fastqs
   [eid]
-  (cmn/split-filter-fastqs eid pre-pass))
+  (cmn/split-filter-fastqs eid pre-pass :baseqc% 0.90))
 
 
 

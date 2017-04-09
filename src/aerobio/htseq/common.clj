@@ -217,7 +217,7 @@
 
 (defn nonbc-counts [bcM barcodes
                     & {:keys [cnt-cutoff mxtake]
-                       :or {cnt-cutoff 1000 mxtake 70}}]
+                       :or {cnt-cutoff 1000}}]
   (let [x (->> bcM (filter (fn[[k v]] (> v cnt-cutoff))) (into {})
                (#(apply dissoc % barcodes))
                (sort-by second >))]
@@ -225,10 +225,11 @@
 
 (defn barcodes-edist-1-seqs
   [bcM barcodes]
-  (let [all (map (fn[[x _]]
+  (let [mx (if (< (count (first barcodes)) 8) nil 500)
+        all (map (fn[[x _]]
                    (vector x (keep #(when (= 1 (it/hamming x %)) %)
                                    barcodes)))
-                 (nonbc-counts bcM barcodes :cnt-cutoff 1000 :mxtake 100))]
+                 (nonbc-counts bcM barcodes :cnt-cutoff 1000 :mxtake mx))]
     (->> all (keep (fn[[x bcs]] (when (= 1 (count bcs)) [(first bcs) x])))
          (reduce (fn[M [bc v]] (assoc M bc (conj (get M bc []) v))) {}))))
 
