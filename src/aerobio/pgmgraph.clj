@@ -66,7 +66,8 @@
   user function nodes much simpler in many cases."
   []
   (programs bcl2fastq samtools
-            bowtie bowtie2 featureCounts tophat
+            bowtie bowtie2 bowtie-build bowtie2-build
+            featureCounts tophat
             cufflinks cuffmerge cuffcompare cuffdiff
             Rscript python ruby perl
             bp_load_genbank
