@@ -91,7 +91,7 @@
 (defn run-rnaseq-phase-0
   [eid recipient get-toolinfo template]
   (let [rnas0 template
-        cfg (-> (assoc-in rnas0 [:nodes :rsqp0 :args] [eid recipient])
+        cfg (-> (assoc-in rnas0 [:nodes :ph0 :args] [eid recipient])
                 (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                 pg/config-pgm-graph)
         ;;_ (clojure.pprint/pprint cfg)
@@ -202,7 +202,7 @@
              (fn[snm]
                (let [rnaseq-job (assoc-in
                                  rnaseq-phase2-job-template
-                                 [:nodes :rsqp2 :args]
+                                 [:nodes :ph2 :args]
                                  (get-phase-2-args-cuff eid snm :repk repk))
                      cfg (-> rnaseq-job
                              (pg/config-pgm-graph-nodes get-toolinfo nil nil)
@@ -234,11 +234,11 @@
         refnm ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
         refgtf (fs/join (cmn/get-exp-info eid :refs) (str refnm ".gtf"))
         repcfg (assoc-in template
-                         [:nodes :rsqp2 :args]
+                         [:nodes :ph2 :args]
                          [eid comparison-file true ftype refgtf recipient])
         repjob (future (cmn/flow-program repcfg get-toolinfo :run true))
         cfg (assoc-in template
-                      [:nodes :rsqp2 :args]
+                      [:nodes :ph2 :args]
                       [eid comparison-file false ftype refgtf recipient])
         cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
     #_(clojure.pprint/pprint repflow)
