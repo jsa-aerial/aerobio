@@ -8,7 +8,8 @@ library(gplots)
 
 ## args[1] == full path to Charts directory for this analysis
 ## args[2] == full path to featureCounts csv for this analysis
-## args[3] == comma separated string of conditions to compare and rep count: "c1,c2,reps"
+## args[3] == comma separated string of conditions to compare and rep count:
+##            "c1,c2,reps"
 ## args[4] == script directory
 ##
 args = commandArgs(trailingOnly=TRUE)
@@ -35,16 +36,19 @@ head(countdata)
 
 ## Assign condition
 c1c2reps <- strsplit(args[3], ",", fixed = TRUE)[[1]]
-c1 <- c1c2reps[0]
-c2 <- c1c2reps[1]
-reps <- c1c2reps[2]
+c1 <- c1c2reps[[1]]
+c2 <- c1c2reps[[2]]
+reps <- c1c2reps[[3]]
+prefix <- paste(c1,c2,sep="-")
+
 (condition <- factor(c(rep(c1, reps), rep(c2, reps))))
 
 
 ## Analysis phase --------------------------------------------------
 
 
-## Create a coldata frame and instantiate the DESeqDataSet. See ?DESeqDataSetFromMatrix
+## Create a coldata frame and instantiate the DESeqDataSet. See
+## ?DESeqDataSetFromMatrix
 ##
 (coldata <- data.frame(row.names=colnames(countdata), condition))
 dds <- DESeqDataSetFromMatrix(countData=countdata, colData=coldata, design=~condition)
@@ -55,14 +59,16 @@ dds <- DESeq(dds)
 
 
 # Plot dispersions
-png("qc-dispersions.png", 1000, 1000, pointsize=20)
+png(paste(prefix,"qc-dispersions.png",sep="-"), 1000, 1000, pointsize=20)
 plotDispEsts(dds, main="Dispersion plot")
 dev.off()
 
 ## Regularized log transformation for clustering/heatmaps, etc
 rld <- rlogTransformation(dds)
 head(assay(rld))
+png(paste(prefix,"histogram-assay.png",sep="-"), 1000, 1000, pointsize=20)
 hist(assay(rld))
+dev.off()
 
 
 ## Colors for plots below via RColorBrewer
@@ -70,7 +76,7 @@ hist(assay(rld))
 
 ## Create heatmap of sample distance
 sampleDists <- as.matrix(dist(t(assay(rld))))
-png("qc-heatmap-samples.png", w=1000, h=1000, pointsize=20)
+png(paste(prefix,"qc-heatmap-samples.png",sep="-"), w=1000,h=1000, pointsize=20)
 heatmap.2(as.matrix(sampleDists), key=F, trace="none",
           col=colorpanel(100, "black", "white"),
           ColSideColors=mycols[condition], RowSideColors=mycols[condition],
@@ -81,7 +87,7 @@ dev.off()
 ## Do some PCA
 ## Could do with built-in DESeq2 function:
 ## DESeq2::plotPCA(rld, intgroup="condition")
-png("qc-pca.png", 1000, 1000, pointsize=20)
+png(paste(prefix,"qc-pca.png",sep="-"), 1000, 1000, pointsize=20)
 rld_pca(rld, colors=mycols, intgroup="condition", xlim=c(-75, 35))
 dev.off()
 
@@ -96,18 +102,18 @@ resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE))
 names(resdata)[1] <- "Gene"
 head(resdata)
 ## Write results
-write.csv(resdata, file="diffexpr-results.csv")
+write.csv(resdata, file=paste(prefix,"DGE-results.csv",sep="-"))
 
 
 ## MA plot
 ## Could do with built-in DESeq2 function:
 ## DESeq2::plotMA(dds, ylim=c(-1,1), cex=1)
-png("diffexpr-maplot.png", 1500, 1000, pointsize=20)
+png(paste(prefix,"DGE-maplot.png",sep="-"), 1500, 1000, pointsize=20)
 maplot(resdata, main="MA Plot")
 dev.off()
 
 
 ## Volcano plot...
-png("diffexpr-volcanoplot.png", 1200, 1000, pointsize=20)
+png(paste(prefix,"DGE-volcanoplot.png",sep="-"), 1200, 1000, pointsize=20)
 volcanoplot(resdata, lfcthresh=1, sigthresh=0.05, textcx=.8, xlim=c(-2.3, 2))
 dev.off()
