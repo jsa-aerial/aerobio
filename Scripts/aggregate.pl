@@ -5,10 +5,10 @@ use Bio::SeqIO;
 use Set::Scalar;
 
 sub print_usage() {
-    
+
     print "\n";
     print "Usage: ./aggregate.pl -o outfile (options) file1 file2 file3...\n\n";
-    
+
     print "Option List:\n\n";
     print " -o\tOutput file for aggregated data. (Required)\n";
     print " -c\tCheck for missing genes in the data set - provide a reference genome in\n";
@@ -40,10 +40,10 @@ if (!$opt_o) { &print_usage; exit; }
 sub average {
     my $scoreref = shift @_;
     my @scores = @{$scoreref};
-    
+
     my $sum=0;
     my $num=0;
-    
+
     # Get the average.
     foreach my $w (@scores) {
         $sum += $w;
@@ -51,7 +51,7 @@ sub average {
     }
     my $average= $sum/$num;
     my $xminusxbars = 0;
-    
+
     # Get the variance.
     foreach my $w (@scores) {
         $xminusxbars += ($w-$average)**2;
@@ -59,7 +59,7 @@ sub average {
     my $variance = (1/($num-1)) * $xminusxbars;
     my $sd = sqrt($variance);
     my $se = $sd / sqrt($num);
-    
+
     return ($average, $variance, $sd, $se);
 
 }
@@ -68,28 +68,28 @@ sub average {
 # 1) hashref to list of scores
 # 2) hashref to list of weights, equal in length to the scores.
 sub weighted_average {
-   
+
     my $scoreref = shift @_;
     my $weightref = shift @_;
     my @scores = @{$scoreref};
     my @weights = @{$weightref};
-    
+
     my $sum=0;
     my ($weighted_average, $weighted_variance)=(0,0);
     my $v2;
-    
+
     # Go through once to get total, calculate V2.
     for (my $i=0; $i<@weights; $i++) {
        $sum += $weights[$i];
        $v2 += $weights[$i]**2;
     }
     if ($sum == 0) { return 0; } # No scores given?
-    
+
     my $scor = join (' ', @scores);
     my $wght = join (' ', @weights);
     #print "Scores: $scor\n";
     #print "Weights: $wght\n";
-    
+
     # Now calculated weighted average.
     my ($top, $bottom) = (0,0);
     for (my $i=0; $i<@weights; $i++) {
@@ -98,7 +98,7 @@ sub weighted_average {
     }
     $weighted_average = $top/$bottom;
     #print "WA: $weighted_average\n";
-    
+
     ($top, $bottom) = (0,0);
     # Now calculate weighted sample variance.
     for (my $i=0; $i<@weights; $i++) {
@@ -107,10 +107,10 @@ sub weighted_average {
     }
     $weighted_variance = $top/$bottom;
     #print "WV: $weighted_variance\n";
-    
+
     my $weighted_stdev = sqrt($weighted_variance);
     my $weighted_stder = $weighted_stdev / sqrt(@scores);  # / length scores.
-    
+
     #print "$weighted_average, $weighted_variance, $weighted_stdev\n";
     return ($weighted_average, $weighted_variance, $weighted_stdev, $weighted_stder);
 }
@@ -131,7 +131,7 @@ if ($marked) {
 # Contains Gene => [w1,w2,w3,w4,etc.]
 my %gene_summary;
 foreach my $filename (@ARGV) {
-   
+
    open IN, $filename;
    my $hdr = <IN>;
    my %hash;
@@ -148,7 +148,7 @@ foreach my $filename (@ARGV) {
       if ($avg < $cutoff) { next; } # Skip cutoff genes.
       #if ($locus eq 'SP_0006') { print "$c1 < $cutoff\n";}
       if ($avg >= $weight_ceiling) { $avg = $weight_ceiling; } # Maximum weight.
-      
+
       my @empty;
       if (!$gene_summary{$locus}) {
         $gene_summary{$locus}{w} = [@empty];
@@ -156,10 +156,10 @@ foreach my $filename (@ARGV) {
       }
       $gene_summary{$locus}{w} = [@{$gene_summary{$locus}{w}}, $w];  # List of Fitness scores.
       $gene_summary{$locus}{s} = [@{$gene_summary{$locus}{s}}, $avg]; # List of counts used to generate those fitness scores.
-      
+
    }
    close IN;
-   
+
 }
 
 ####################################
@@ -168,39 +168,50 @@ foreach my $filename (@ARGV) {
 open SUMMARY, ">$summary";
 
 if ($find_missing) {
+   # print "In find_missing - reading gbk ... \n";
    # this variable should be set to the name of a genbank file.
    # print "Loading Genbank file.\n";
    # Pull in reference genome and feature list.
    my $in = Bio::SeqIO->new(-file=>$find_missing); #FindMissing is the genbank file.
    my $refseq = $in->next_seq;
    my @features = $refseq->get_SeqFeatures;
-   
+
+   my $feat_name;
+   if ($find_missing =~ /TVO/) {
+       $feat_name = 'CDS';
+   } else {
+       $feat_name = 'gene';
+   }
+   #print "feat_name: $feat_name\n";
+
    print SUMMARY "locus,mean,var,sd,se,gene,Total,Blank,Not Blank,Blank Removed,M\n";
-   
+
    # Hashify features for easy lookup
    my @array_of_features;
    foreach my $feature (@features) {
+      # print $feature->primary_tag, ($feature->primary_tag eq $feat_name), "\n";
       # Check if it's a gene.
-      if ($feature->primary_tag eq 'gene') {
-           
-        
+      if ($feature->primary_tag eq $feat_name) {
+
+
         my @locus = $feature->get_tagset_values('locus_tag');
         my $locus = $locus[0] || '';
-        
-        my @gene = $feature->get_tagset_values('gene');
+
+        my @gene = $feature->get_tagset_values($feat_name);
         my $gene = $gene[0] || '';
-        
+
         my $sum=0;
         my $num=0;
         my $avgsum = 0;
         my $blank_ws = 0;
-                 
+
         # Count blanks.
         if ($gene_summary{$locus}) {
+           # print "$locus, @{$gene_summary{$locus}{w}} \n";
            my $i=0;
            # Count blank fitness scores.
            foreach my $w (@{$gene_summary{$locus}{w}}) {
-              if (!$w) {
+              if ($w == 0) {
                 $blank_ws++;
               }
               else {
@@ -209,8 +220,9 @@ if ($find_missing) {
               }
               $i++;
            }
+            print "$locus, blank_ws : $blank_ws, i : $i, num : $num\n";
            my $count = $num + $blank_ws;
-           
+
            # Remove blanks from scores if we need to.
            my $removed=0;
            my $to_remove = int($blank_pc * $count);
@@ -226,7 +238,7 @@ if ($find_missing) {
                 }
               }
            }
-           
+
            # DEBUG
          #  if ($locus eq 'SP_0680') {
            #     print "$locus\t";
@@ -238,10 +250,10 @@ if ($find_missing) {
             #    }
            #     print "\n";
            #}#ENDDEBUG
-            
+
            #if ($blank_ws > 0) { print "$gene\tInsertions:$count\tTo Remove:$to_remove\tTotal blank:$blank_ws\tRemoved:$removed\n"; }
-           
-           
+
+
             # Print out statistics.
             if ($num == 0 ) {
                print SUMMARY "$locus,0.10,0.10,X,X,$gene,$count,$blank_ws,$num,$removed";
@@ -254,22 +266,22 @@ if ($find_missing) {
                else {  ($average, $variance, $stdev, $stderr)= &weighted_average($gene_summary{$locus}{w},$gene_summary{$locus}{s}); }
                print SUMMARY "$locus,$average,$variance,$stdev,$stderr,$gene,$count,$blank_ws,$num,$removed";
             }
-           
+
         }
         else { # Not found.
            print SUMMARY "$locus,0.10,0.10,X,X,$gene,,,";
         }
-         
+
          # Mark if marked.
          if ($marked && $marked_set->contains($locus)) {
                print SUMMARY ",M";
          }
-            
+
          print SUMMARY "\n";
-         
-      } 
+
+      }
    }
-   
+
 }
 else {
    print SUMMARY "Locus,W,Count,SD,SE,M\n";
@@ -280,7 +292,7 @@ else {
        my $sum=0;
        my $num=0;
        my $avgsum = 0;
-       
+
        # Get the average.
        foreach my $w (@{$gene_summary{$key}{w}}) {
            $sum += $w;
@@ -288,7 +300,7 @@ else {
        }
        my $average= $sum/$num;
        my $xminusxbars = 0;
-       
+
        # Get the standard deviation.
        foreach my $w (@{$gene_summary{$key}{w}}) {
            $xminusxbars += ($w-$average)**2;
@@ -298,13 +310,13 @@ else {
            $sd = sqrt($xminusxbars/($num-1));
            $se = $sd / sqrt($num);
        }
-       
+
        print SUMMARY "$key,$average,$num,$sd,$se,";
-       
+
        if ($marked && $marked_set->contains($key)) {
          print SUMMARY "M";
        }
-       
+
        print SUMMARY "\n";
    }
 }

@@ -8,7 +8,7 @@
 # python ~/Bio/calc_fitness.py -ef .0 -el .10 -cutoff 0 -wig ./wiggle-file.wig -t1 /ExpOut/160804_NS500751_0017_AHF2KLBGXY/Out/Maps/19F-SDMMT2Vanc0.1.map -t2 /ExpOut/160804_NS500751_0017_AHF2KLBGXY/Out/Maps/19F-SDMMT2NoAb.map -ref /data1/NextSeq/Refs/NC_012469.gbk -out output.csv -expansion 300 -normalize foo
 
 
-
+import re
 
 
 ##### ARGUMENTS #####
@@ -111,9 +111,13 @@ handle.close()
 
 # Makes a dictionary out of each feature that's a gene - with its gene name, start location, end location, and strand as keys to their values. Then makes a list out of all those dictionaries for ease of accessing later on.
 
+feat_name = "gene"
+if re.search("TVO", arguments.ref_genome):
+        feat_name = "CDS"
+
 feature_list = []
 for feature in features:
-        if feature.type == "gene":
+        if feature.type == feat_name:
                 gene = feature.qualifiers["locus_tag"]
                 strand = feature.location.strand
                 start = float(feature.location.start)
