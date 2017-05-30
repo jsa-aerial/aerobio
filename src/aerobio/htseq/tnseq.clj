@@ -218,7 +218,7 @@
                       (fs/join (pams/get-params :nextseq-base) eid)
                       slurp csv/read-csv rest)
          mapsvec (mapv (fn[v]
-                         (mapcat #(-> (fs/join maps (str % "*.map"))
+                         (mapcat #(-> (fs/join maps (str % "-*.map"))
                                       fs/glob sort)
                                  (take 2 v))) ; strain-c1, strain-c2
                        compvec)
@@ -262,6 +262,21 @@
   [_ & args]
   (apply get-comparison-files- args))
 
+
+(defn get-aggregate-files
+  ([eid]
+   (get-aggregate-files eid "AggregateSheet.csv"))
+  ([eid aggr-filename]
+   (let [aggr-file (->> aggr-filename
+                        (fs/join (pams/get-params :nextseq-base) eid))]
+     (if (not (fs/exists? aggr-file))
+       (get-comparison-files- eid true)
+       (let [aggr (cmn/get-exp-info eid :rep :aggrs)
+             compvec (->> comp-filename
+                          (fs/join (pams/get-params :nextseq-base) eid)
+                          slurp csv/read-csv rest)]
+         compvec
+         )))))
 
 
 (defn get-phase-2-dirs [eid]
