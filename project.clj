@@ -40,7 +40,7 @@
 
    [net.apribase/clj-dns      "0.1.0"] ; reverse-dns-lookup
 
-   [compojure                 "1.3.4" :exclusions [org.clojure/tools.reader]]
+   [compojure                 "1.6.0" :exclusions [org.clojure/tools.reader]]
    [ring                      "1.3.2" :exclusions [org.clojure/tools.reader]]
    [ring/ring-defaults        "0.1.3" :exclusions [org.clojure/tools.reader]]
    ;; ring-defaults includes [ring-anti-forgery      "1.0.0"]
