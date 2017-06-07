@@ -29,6 +29,7 @@
 (ns aerobio.htseq.wgseq
   [:require
    [clojure.string :as cljstr]
+   [clojure.data.csv :as csv]
 
    [aerial.fs :as fs]
    [aerial.utils.string :as str]
@@ -92,14 +93,46 @@
             (when (and (> gcnt min-len) (>= qc% sqc%))
               (vswap! gdcnt #(inc (long %)))
               (bufiles/write-fqrec
-               ot [(str id "\n")
-                   (str gsq "\n")
-                   (str "+ " gcnt " " qc% "\n")
-                   (str gqc "\n")])))
+               ot [id gsq (str "+ " gcnt " " qc%) gqc])))
           (recur (bufiles/read-fqrecs inf rec-chunk-size)))))))
 
 
+(defn split-filter-fastqs
+  [eid]
+  (let [fqbase (cmn/get-exp-info eid :fastq)
+        fqs (fs/directory-files fqbase "fastq.gz")
+        sample-dir (cmn/get-exp-info eid :samples)]
+    (cmn/ensure-sample-dirs
+     (cmn/get-exp-info eid :base)
+     (cmn/get-exp-info eid :illumina-sample-xref))
+    (doseq [fq fqs]
+      (filter-fastq
+       fq :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
+       :outdir sample-dir))))
 
+
+(defn get-comparison-files-
+  ([eid]
+   (get-comparison-files- eid "ComparisonSheet.csv"))
+  ([eid comp-filename]
+   (let [samps (cmn/get-exp-info eid :samples)
+         outs  (cmn/get-exp-info eid :out)
+         refbase (cmn/get-exp-info eid :refs)
+         refxref (cmn/get-exp-info eid :ncbi-sample-xref)
+         compvec (->> comp-filename
+                      (fs/join (pams/get-params :nextseq-base) eid)
+                      slurp csv/read-csv rest)
+         quads (map (fn[[samp ref]]
+                      [(-> (fs/join samps (str samp "_*.fastq.gz"))
+                           fs/glob sort)
+                       (fs/join refbase (str (refxref ref) ".gbk"))
+                       (fs/join outs samp)])
+                    compvec)]
+     quads)))
+
+(defmethod cmn/get-comparison-files :wgseq
+  [_ & args]
+  (apply get-comparison-files- args))
 
 
 (comment
