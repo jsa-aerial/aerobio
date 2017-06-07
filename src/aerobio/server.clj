@@ -79,7 +79,8 @@
    ;; HTSeq
    [aerobio.htseq.common :as cmn]
    [aerobio.htseq.rnaseq :as htrs]
-   [aerobio.htseq.tnseq :as htts]
+   [aerobio.htseq.tnseq  :as htts]
+   [aerobio.htseq.wgseq  :as htws]
    ;; Program graph construction, execution, delivery
    [aerobio.pgmgraph :as pg]
    ;; REST actions
@@ -224,6 +225,13 @@
      #'my-routes
      (constantly
       (comp/routes
+       #_(ANY "/htseq/cmd" []
+            {:status 200
+             :headers {
+                       "Access-Control-Allow-Origin" "*"
+                       "Access-Control-Allow-Headers" "Content-Type"
+                       }
+             :body body})
        (GET  "/"      req (landing-pg-handler req))
        ;;
        (GET "/mlab/upld"   [:as reqmap & args] (upload-file args reqmap))
