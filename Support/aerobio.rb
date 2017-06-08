@@ -102,6 +102,7 @@ if (sub_cmds.include?(@cmd))
 elsif (not ['server',
             'list',
             'run',
+            'compare',
             'check-job'
            ].include?(@cmd))
   puts "Unknown subcmd #{@cmd}"
@@ -985,6 +986,14 @@ elsif (@cmd == "run")
   if (args.length == 0)
     puts "#{@cmd} requires at least an experiment id. Use aerobio run -h for"
     puts "details on how to use run"
+    exit(1)
+  end
+  run_job(@args[1..args.length])
+
+elsif (@cmd == "compare")
+  if (args.length <= 1)
+    puts "#{@cmd} requires at least an experiment id. Use aerobio run -h for"
+    puts "details on how to use compare"
     exit(1)
   end
   run_job(@args[1..args.length])
