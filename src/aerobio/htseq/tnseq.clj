@@ -272,7 +272,7 @@
      (if (not (fs/exists? aggr-file))
        (get-comparison-files- eid true)
        (let [aggr (cmn/get-exp-info eid :rep :aggrs)
-             compvec (->> comp-filename
+             compvec (->> aggr-filename
                           (fs/join (pams/get-params :nextseq-base) eid)
                           slurp csv/read-csv rest)]
          compvec
