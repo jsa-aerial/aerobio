@@ -114,7 +114,7 @@
 (defn get-comparison-files-
   ([eid]
    (get-comparison-files- eid "ComparisonSheet.csv"))
-  ([eid comp-filename]
+  ([eid comp-filename & _]
    (let [samps (cmn/get-exp-info eid :samples)
          outs  (cmn/get-exp-info eid :out)
          refbase (cmn/get-exp-info eid :refs)
@@ -128,12 +128,29 @@
                        (fs/join refbase (str (refxref ref) ".gbk"))
                        (fs/join outs samp)])
                     compvec)]
+     (apply cmn/ensure-dirs (cons outs (mapv last quads)))
      quads)))
 
 (defmethod cmn/get-comparison-files :wgseq
   [_ & args]
   (apply get-comparison-files- args))
 
+
+(defn run-wgseq-comparison
+  "Run set of population and/or clones against reference seqs defined
+  by experiement designated by eid (experiment id) and the input
+  comparison sheet CSV comparison-file"
+  [eid recipient comparison-file get-toolinfo template]
+  (let [cfg (assoc-in template
+                      [:nodes :ph2 :args]
+                      [eid comparison-file :NA recipient])
+        cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
+    cfgjob))
+
+(defmethod cmn/run-phase-2 :wgseq
+  [_ eid recipient get-toolinfo template]
+  (run-wgseq-comparison
+   eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
 (comment
 
