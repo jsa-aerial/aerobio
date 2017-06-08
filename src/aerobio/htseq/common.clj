@@ -177,7 +177,7 @@
         bcsz (->> expinfo drop-ncbi-xref first last count)
         exptype (get-exp-type expinfo)
         base (pams/get-params :scratch-base)
-        fqbase (fs/join base eid "Fastq")
+        fqbase (get-exp-info  eid :fastq)
         fqs (fs/re-directory-files fqbase "*.fastq.gz")]
     (if (= exptype :tnseq)
       (->> (bcfreqs-tnseq sample-map bcsz fqs) (into {}))
@@ -507,7 +507,7 @@
         [qc-ctpt _] (fil/qcscore-min-entropy baseqc% 0.9 10)
         bc-file-specs (get-bc-file-specs
                        base exp-illumina-xref illumina-sample-xref)
-        ifastqs (fs/directory-files (fs/join base "Fastq") "fastq.gz")
+        ifastqs (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
         sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
         sample-ifq-xref (reduce (fn[M fq]
                                   (let [samp (->> fq fs/basename
