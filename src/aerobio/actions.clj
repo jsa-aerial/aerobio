@@ -72,3 +72,11 @@
         recipient (pams/get-params [:email (keyword user)])]
     (cmn/run-comparison
      exp eid recipient compfile get-toolinfo template)))
+
+(defmethod action :aggregate
+  [_ eid params get-toolinfo template]
+  (let [exp (cmn/get-exp-info eid :exp)
+        {:keys [user cmd action rep compfile eid]} params
+        recipient (pams/get-params [:email (keyword user)])]
+    (htts/run-aggregation
+     eid recipient compfile get-toolinfo template)))
