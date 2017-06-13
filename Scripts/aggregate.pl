@@ -230,7 +230,7 @@ if ($find_missing) {
               for (my $i=0; $i < @{$gene_summary{$locus}{w}}; $i++) {
                 if ($removed == $to_remove) {last}
                 my $w = ${$gene_summary{$locus}{w}}[$i];
-                if (!$w) {
+                if ($w == 0) {
                     $removed++;
                     splice( @{$gene_summary{$locus}{w}}, $i, 1);
                     splice( @{$gene_summary{$locus}{s}}, $i, 1);
