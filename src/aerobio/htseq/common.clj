@@ -666,7 +666,7 @@ ComparisonSheet.csv
     (cond
       (#{"phase-0" "phase-0b" "phase-0c"
          "phase-1" "bt2-phase-1" "bt1-phase-1"
-         "phase-2"} action)
+         "phase-2" "phase-2b"} action)
       (let [phase action]
         (cond
           (#{"phase-0" "phase-0b" "phase-0c"} phase)
@@ -677,7 +677,7 @@ ComparisonSheet.csv
           (future
             (run-phase-1 eid recipient get-toolinfo template :repk rep))
 
-          (#{"phase-2"} phase)
+          (#{"phase-2" "phase-2b"} phase)
           (run-phase-2 exp eid recipient get-toolinfo template)))
 
       (#{"compare"} action) :HOW??
