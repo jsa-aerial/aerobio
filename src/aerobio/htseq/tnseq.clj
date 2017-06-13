@@ -243,14 +243,15 @@
                        compvec)]
      (if aggr?
        (mapv (fn[grp]
-               (let [l (->> grp last first fs/basename (str/split #"-")
-                            last (str/split #"\.") first)
-                     g (mapv (fn[[_ _ csv _]]
-                               [(fs/join aggr csv) (fs/join fit csv)])
-                             grp)
-                     allcsv (->> g first first
-                                 (#(fs/replace-type % (str "-" l ".csv"))))]
-                 (conj g allcsv)))
+               (when (seq grp)
+                 (let [l (->> grp last first fs/basename (str/split #"-")
+                              last (str/split #"\.") first)
+                       g (mapv (fn[[_ _ csv _]]
+                                 [(fs/join aggr csv) (fs/join fit csv)])
+                               grp)
+                       allcsv (->> g first first
+                                   (#(fs/replace-type % (str "-" l ".csv"))))]
+                   (conj g allcsv))))
              cmpgrps)
        ;; else fitness groups
        (mapcat (fn[grp]
@@ -261,22 +262,6 @@
 (defmethod cmn/get-comparison-files :tnseq
   [_ & args]
   (apply get-comparison-files- args))
-
-
-(defn get-aggregate-files
-  ([eid]
-   (get-aggregate-files eid "AggregateSheet.csv"))
-  ([eid aggr-filename]
-   (let [aggr-file (->> aggr-filename
-                        (fs/join (pams/get-params :nextseq-base) eid))]
-     (if (not (fs/exists? aggr-file))
-       (get-comparison-files- eid true)
-       (let [aggr (cmn/get-exp-info eid :rep :aggrs)
-             compvec (->> aggr-filename
-                          (fs/join (pams/get-params :nextseq-base) eid)
-                          slurp csv/read-csv rest)]
-         compvec
-         )))))
 
 
 (defn get-phase-2-dirs [eid]
@@ -301,6 +286,50 @@
   (run-fitness-aggregate
    eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
+
+(defn get-aggregate-files
+  ([eid]
+   (get-aggregate-files eid "AggregateSheet.csv"))
+  ([eid aggr-filename]
+   (let [aggr-file (fs/join (pams/get-params :nextseq-base)
+                            eid aggr-filename)
+         fit (cmn/get-exp-info eid :rep :fit)
+         aggr (cmn/get-exp-info eid :rep :aggrs)
+         recs (->> aggr-file slurp csv/read-csv rest
+                   (mapv (fn[x] (filter #(not= "" %) x))))
+         botnums (mapv last recs)
+         filegrps (->> recs
+                       (mapv (fn[v] (butlast v)))
+                       (mapv (fn[v] (mapv #(fs/join fit (str % ".csv")) v))))
+         namebits (mapv (fn[x]
+                          (->> x (mapv fs/basename)
+                               (map #(->> % (str/split #"-") butlast))))
+                        filegrps)
+         prenames (mapv #(->> % first (coll/takev 2) (cljstr/join "-"))
+                        namebits)
+         sufnames (->> namebits
+                       (mapv #(->> % (map last) (cljstr/join "-")))
+                       (mapv #(str % ".csv")))
+         outnames (->> (interleave prenames sufnames)
+                       (coll/partitionv-all 2)
+                       (mapv #(fs/join aggr (cljstr/join "-" %))))]
+     (mapv vector filegrps outnames botnums))))
+
+#_(->>  (get-aggregate-files eid "BottleNeck.csv") clojure.pprint/pprint)
+
+(defn run-aggregation
+  [eid recipient compfile get-toolinfo template]
+  #_(prn eid compfile)
+  (let [cfg (assoc-in template
+                      [:nodes :ph2 :args]
+                      [eid compfile recipient])]
+    #_(prn cfg)
+    (future (cmn/flow-program cfg get-toolinfo :run true))))
+
+
+
+
+;;; ---- rewrite of calc_fitness ---- ;;;
 
 (defn feature-map [gtf & {:keys [ftype] :or {ftype :any}}]
   (letio [lines (io/read-lines gtf)]
