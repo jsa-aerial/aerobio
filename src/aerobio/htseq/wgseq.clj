@@ -128,7 +128,7 @@
                        (fs/join refbase (str (refxref ref) ".gbk"))
                        (fs/join outs samp)])
                     compvec)]
-     (apply cmn/ensure-dirs (cons outs (mapv last quads)))
+     (cmn/ensure-dirs outs)
      quads)))
 
 (defmethod cmn/get-comparison-files :wgseq
