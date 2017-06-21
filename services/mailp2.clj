@@ -14,7 +14,7 @@
                               bams (if (coll? bams)
                                      (map fs/basename bams)
                                      (fs/basename bams))
-                              csv (if (coll? bams)
+                              csv (if (coll? csv)
                                     (map fs/basename csv)
                                     (fs/basename csv))
                               exit (retmap :exit)
