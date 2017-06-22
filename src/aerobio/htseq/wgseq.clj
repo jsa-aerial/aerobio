@@ -122,12 +122,15 @@
          compvec (->> comp-filename
                       (fs/join (pams/get-params :nextseq-base) eid)
                       slurp csv/read-csv rest)
-         quads (map (fn[[samp ref]]
-                      [(-> (fs/join samps (str samp "_*.fastq.gz"))
-                           fs/glob sort)
-                       (fs/join refbase (str (refxref ref) ".gbk"))
-                       (fs/join outs samp)])
-                    compvec)]
+         quads (->> compvec
+                    (map (fn[[samp ref]]
+                           [(-> (fs/join samps (str samp "_*.fastq.gz"))
+                                fs/glob sort)
+                            (fs/join refbase (str (refxref ref) ".gbk"))
+                            (fs/join outs samp)]))
+                    (mapv #(vector % (fs/size (ffirst %))))
+                    (sort-by second)
+                    (mapv first))]
      (cmn/ensure-dirs outs)
      quads)))
 
