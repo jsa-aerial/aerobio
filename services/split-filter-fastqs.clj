@@ -11,6 +11,7 @@
              (case exp
                :tnseq (htts/split-filter-fastqs eid)
                :rnaseq (htrs/split-filter-fastqs eid)
+               :termseq (httm/split-filter-fastqs eid)
                :wgseq (htws/split-filter-fastqs eid))
              eid)))
 
