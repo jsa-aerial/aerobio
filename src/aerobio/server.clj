@@ -77,10 +77,11 @@
    ;; Our parameter db
    [aerobio.params :as pams]
    ;; HTSeq
-   [aerobio.htseq.common :as cmn]
-   [aerobio.htseq.rnaseq :as htrs]
-   [aerobio.htseq.tnseq  :as htts]
-   [aerobio.htseq.wgseq  :as htws]
+   [aerobio.htseq.common  :as cmn]
+   [aerobio.htseq.rnaseq  :as htrs]
+   [aerobio.htseq.termseq :as httm]
+   [aerobio.htseq.tnseq   :as htts]
+   [aerobio.htseq.wgseq   :as htws]
    ;; Program graph construction, execution, delivery
    [aerobio.pgmgraph :as pg]
    ;; REST actions
