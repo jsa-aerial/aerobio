@@ -59,19 +59,28 @@
 
 (defn get-exp-sample-info [csv]
   (let [recs (->> csv slurp csv/read-csv)
-        x (coll/drop-until
-           (fn[v] (#{"tnseq", "rnaseq", "trmseq" "wgseq"} (first v)))
+        x (coll/dropv-until
+           (fn[v] (#{"tnseq", "rnaseq", "termseq" "wgseq"} (first v)))
            recs)
         recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
         exp-rec [(coll/takev 3 (first recs))]] ; ensure 3 fields
     (loop [S (rest recs)
            I [exp-rec]]
       (if (not (seq S))
-        (apply concat I)
-        (let [s (coll/drop-until (fn[v] (str/digits? (first v))) S)
-              i (coll/take-until (fn[v] (not (str/digits? (first v)))) s)
+        (let [sections I
+              exp (-> sections first ffirst keyword)
+              ks [:exp-rec :ncbi-xref :run-xref :bc-xref]
+              ks (if (= exp :termseq) ks (remove #(= % :run-xref) ks))
+              secmap (zipmap ks sections)
+              secmap (if (not= exp :termseq)
+                       secmap
+                       (assoc secmap :run-xref
+                              (mapv #(coll/takev 3 %) (secmap :run-xref))))]
+          secmap)
+        (let [s (coll/dropv-until (fn[v] (str/digits? (first v))) S)
+              i (coll/takev-until (fn[v] (not (str/digits? (first v)))) s)
               ;; ensure 3 fields for NCBI xref
-              i (if (= 1 (count I)) (map #(coll/takev 3 %) i) i)]
+              i (if (= 1 (count I)) (mapv #(coll/takev 3 %) i) i)]
           (recur (coll/drop-until (fn[v] (not (str/digits? (first v)))) s)
                  (conj I i)))))))
 
@@ -87,7 +96,7 @@
 
 (defn get-exp-type
   [exp-samp-info]
-  (-> exp-samp-info ffirst keyword))
+  (-> exp-samp-info :exp-rec ffirst keyword))
 
 
 (defn ensure-dirs [& dirs]
@@ -165,6 +174,7 @@
     (mapv (fn[fut] (deref fut)) futvec)))
 
 
+(declare get-exp-info)
 (defn collect-barcode-stats [eid]
   (let [nextseq-base (pams/get-params :nextseq-base)
         expdir (fs/join nextseq-base eid)
@@ -174,7 +184,7 @@
                         (into {}))
         expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
                      get-exp-sample-info)
-        bcsz (->> expinfo drop-ncbi-xref first last count)
+        bcsz (->> expinfo :bc-xref first last count)
         exptype (get-exp-type expinfo)
         base (pams/get-params :scratch-base)
         fqbase (get-exp-info  eid :fastq)
@@ -270,10 +280,17 @@
          (assoc m :exp-sample-info
                 (get-exp-sample-info exp-ssheet))))
       ((fn[m]
+         (assoc m :run-xref
+                (->> (m :exp-sample-info)
+                     :run-xref
+                     (mapv (fn[[_ rt bc]]
+                             [bc [(keyword (cljstr/lower-case rt)) rt]]))
+                     (into {})))))
+      ((fn[m]
          (assoc m :exp (get-exp-type (m :exp-sample-info))
                 :sample-names
                 (->> (m :exp-sample-info)
-                     drop-ncbi-xref
+                     :bc-xref
                      (map second)
                      (map #(->> % (str/split #"-")
                                 (take 2) (cljstr/join "-")))
@@ -281,7 +298,7 @@
       ((fn[m]
          (assoc m :replicate-names
                 (->> (m :exp-sample-info)
-                     drop-ncbi-xref
+                     :bc-xref
                      (map second)
                      (group-by (fn[rnm]
                                  (->> rnm (str/split #"-")
@@ -294,13 +311,13 @@
       ((fn[m]
          (assoc m :ncbi-sample-xref
                 (->> (m :exp-sample-info)
-                     get-ncbi-xref
+                     :ncbi-xref
                      (mapcat (fn[x] [(-> x rest vec) (-> x rest reverse vec)]))
                      (into {})))))
       ((fn[m]
          (assoc m :exp-illumina-xref
                 (->> (m :exp-sample-info)
-                     drop-ncbi-xref
+                     :bc-xref
                      (group-by (fn[[_ _ ibc]] ibc))))))
       ((fn[m]
          (assoc m :barcodes
@@ -402,14 +419,20 @@
           (fs/mkdir dir))))))
 
 (defn get-exp-file-specs
-  [exp-illumina-xref exp-dir ibc ftype]
-  (->>  ibc exp-illumina-xref
-        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc ftype)]))
-        (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
-        (into {})))
+  [eid exp-illumina-xref exp-dir ibc ftype]
+  (let [exp (get-exp-info eid :exp)
+        run-xref (get-exp-info eid :run-xref)
+        rtnm (second (get run-xref ibc [:na ""]))]
+    (->>  ibc exp-illumina-xref
+          (map (fn[[id nm ibc sbc]]
+                 (let [[strain cond lib] (str/split #"-" nm)
+                       nm (cljstr/join "-" [strain (str rtnm cond) lib])]
+                   [sbc (str nm "-" sbc ftype)])))
+          (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
+          (into {}))))
 
 (defn get-bc-file-specs
-  [base exp-illumina-xref illumina-sample-xref
+  [eid base exp-illumina-xref illumina-sample-xref
    & {:keys [ftype]
       :or {ftype ".fastq.gz"}}]
   (let [base (get-sample-base-dir base)
@@ -418,7 +441,8 @@
                              (map #(fs/join base %)))]
     (into {}
           (map (fn[exp-dir ibc]
-                 [ibc (get-exp-file-specs exp-illumina-xref exp-dir ibc ftype)])
+                 [ibc (get-exp-file-specs
+                       eid exp-illumina-xref exp-dir ibc ftype)])
                exp-sample-dirs
                ibcs))))
 
@@ -506,7 +530,7 @@
         red1codes (get-exp-info eid :red1codes)
         [qc-ctpt _] (fil/qcscore-min-entropy baseqc% 0.9 10)
         bc-file-specs (get-bc-file-specs
-                       base exp-illumina-xref illumina-sample-xref)
+                       eid base exp-illumina-xref illumina-sample-xref)
         ifastqs (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
         sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
         sample-ifq-xref (reduce (fn[M fq]
