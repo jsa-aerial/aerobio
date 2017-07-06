@@ -57,6 +57,20 @@
        (coll/drop-until #(= (first %) "Sample_ID"))
        rest))
 
+(defn term-seq-adjust
+  [secmap]
+  (let [run-xref (->> secmap :run-xref (mapv #(coll/takev 3 %))
+                      (mapv (fn[[_ rt bc]]
+                              [bc [(keyword (cljstr/lower-case rt)) rt]]))
+                      (into {}))
+        bc-xref (->> secmap :bc-xref
+                     (mapv (fn[[n nm ibc sbc]]
+                             (let [rtnm (second (get run-xref ibc [:na ""]))
+                                   [strain cond lib] (str/split #"-" nm)]
+                               [n (cljstr/join "-" [strain (str rtnm cond) lib])
+                                ibc sbc]))))]
+    (assoc secmap :run-xref run-xref :bc-xref bc-xref)))
+
 (defn get-exp-sample-info [csv]
   (let [recs (->> csv slurp csv/read-csv)
         x (coll/dropv-until
@@ -74,8 +88,7 @@
               secmap (zipmap ks sections)
               secmap (if (not= exp :termseq)
                        secmap
-                       (assoc secmap :run-xref
-                              (mapv #(coll/takev 3 %) (secmap :run-xref))))]
+                       (term-seq-adjust secmap))]
           secmap)
         (let [s (coll/dropv-until (fn[v] (str/digits? (first v))) S)
               i (coll/takev-until (fn[v] (not (str/digits? (first v)))) s)
@@ -281,11 +294,7 @@
                 (get-exp-sample-info exp-ssheet))))
       ((fn[m]
          (assoc m :run-xref
-                (->> (m :exp-sample-info)
-                     :run-xref
-                     (mapv (fn[[_ rt bc]]
-                             [bc [(keyword (cljstr/lower-case rt)) rt]]))
-                     (into {})))))
+                (->> (m :exp-sample-info) :run-xref))))
       ((fn[m]
          (assoc m :exp (get-exp-type (m :exp-sample-info))
                 :sample-names
@@ -419,20 +428,14 @@
           (fs/mkdir dir))))))
 
 (defn get-exp-file-specs
-  [eid exp-illumina-xref exp-dir ibc ftype]
-  (let [exp (get-exp-info eid :exp)
-        run-xref (get-exp-info eid :run-xref)
-        rtnm (second (get run-xref ibc [:na ""]))]
-    (->>  ibc exp-illumina-xref
-          (map (fn[[id nm ibc sbc]]
-                 (let [[strain cond lib] (str/split #"-" nm)
-                       nm (cljstr/join "-" [strain (str rtnm cond) lib])]
-                   [sbc (str nm "-" sbc ftype)])))
-          (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
-          (into {}))))
+  [exp-illumina-xref exp-dir ibc ftype]
+  (->>  ibc exp-illumina-xref
+        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc ftype)]))
+        (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
+        (into {})))
 
 (defn get-bc-file-specs
-  [eid base exp-illumina-xref illumina-sample-xref
+  [base exp-illumina-xref illumina-sample-xref
    & {:keys [ftype]
       :or {ftype ".fastq.gz"}}]
   (let [base (get-sample-base-dir base)
@@ -441,8 +444,7 @@
                              (map #(fs/join base %)))]
     (into {}
           (map (fn[exp-dir ibc]
-                 [ibc (get-exp-file-specs
-                       eid exp-illumina-xref exp-dir ibc ftype)])
+                 [ibc (get-exp-file-specs exp-illumina-xref exp-dir ibc ftype)])
                exp-sample-dirs
                ibcs))))
 
@@ -530,7 +532,7 @@
         red1codes (get-exp-info eid :red1codes)
         [qc-ctpt _] (fil/qcscore-min-entropy baseqc% 0.9 10)
         bc-file-specs (get-bc-file-specs
-                       eid base exp-illumina-xref illumina-sample-xref)
+                       base exp-illumina-xref illumina-sample-xref)
         ifastqs (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
         sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
         sample-ifq-xref (reduce (fn[M fq]
@@ -690,7 +692,9 @@ ComparisonSheet.csv
     (cond
       (#{"phase-0" "phase-0b" "phase-0c"
          "phase-1" "bt2-phase-1" "bt1-phase-1"
-         "phase-2" "phase-2b"} action)
+         "phase-2" "phase-2b"
+         "phase-2-rnaseq" "phase-2-termseq"
+         "phase-2-5NTap" "phase-2-5PTap"} action)
       (let [phase action]
         (cond
           (#{"phase-0" "phase-0b" "phase-0c"} phase)
@@ -702,7 +706,11 @@ ComparisonSheet.csv
             (run-phase-1 eid recipient get-toolinfo template :repk rep))
 
           (#{"phase-2" "phase-2b"} phase)
-          (run-phase-2 exp eid recipient get-toolinfo template)))
+          (run-phase-2 exp eid recipient get-toolinfo template)
+
+          (#{"phase-2-rnaseq" "phase-2-term-seq"
+             "phase-2-5NTap"  "phase-2-5PTap"} phase)
+          (run-phase-2 exp eid recipient get-toolinfo template phase)))
 
       (#{"compare"} action) :HOW??
 
