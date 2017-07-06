@@ -1,6 +1,6 @@
 ;;--------------------------------------------------------------------------;;
 ;;                                                                          ;;
-;;               A E R O B I O . H T S E Q . R N A S E Q                    ;;
+;;               A E R O B I O . H T S E Q . T E R M S E Q                  ;;
 ;;                                                                          ;;
 ;; Permission is hereby granted, free of charge, to any person obtaining    ;;
 ;; a copy of this software and associated documentation files (the          ;;
@@ -47,25 +47,85 @@
    [aerobio.htseq.rnaseq :as rsq]]
   )
 
+
+(defn get-comparison-files-
+  "Compute the set of comparison bams and the corresponding output csv
+  for the count table matrix. Comparison sets are based on the
+  ComparisonSheet.csv for the experiment of eid (the experiment
+  id). If rep? is true, returns the comparison sets for replicates of
+  comparison pairs, else returns comparison sets for combined bams."
+  ([eid opt]
+   (get-comparison-files- eid "ComparisonSheet.csv" opt))
+  ([eid comp-filename opt]
+   (let [{:keys [rep? runtype]} opt
+         bpath (if rep? [:rep :bams] [:bams])
+         fpath (if rep? [:rep :fcnts] [:fcnts])
+         bams (apply cmn/get-exp-info eid bpath)
+         fcnts (apply cmn/get-exp-info eid fpath)
+         runxref (cmn/get-exp-info eid :run-xref)
+         pre (some (fn[[_ [t pre]]] (when (= t runtype) pre)) runxref)
+         compvec (->> comp-filename
+                      (fs/join (pams/get-params :nextseq-base) eid)
+                      slurp csv/read-csv rest
+                      (mapv #(mapv (fn[c] (let [[s cond] (str/split #"-" c)]
+                                           (str s "-" pre cond))) %)))
+         bamsvec (mapv (fn[v]
+                         (mapcat #(-> (fs/join bams (str % "*.bam"))
+                                      fs/glob sort)
+                                 v))
+                       compvec)
+         otcsvs (mapv (fn[v]
+                        (fs/join fcnts (str (cljstr/join "-" v) ".csv")))
+                      compvec)]
+     (mapv #(vector %1 %2) bamsvec otcsvs))))
+
 (defmethod cmn/get-comparison-files :termseq
   [_ & args]
-  (apply rsq/get-comparison-files- args))
+  (apply get-comparison-files- args))
+
 
 (defn split-filter-fastqs
   [eid]
   (cmn/split-filter-fastqs eid identity))
+
 
 (defmethod cmn/get-phase-1-args :termseq
   [_ & args]
   (apply cmn/get-phase-1-args :rnaseq args))
 
 
+(defn run-termseq-comparison
+  [eid recipient comparison-file get-toolinfo template rtype]
+  (let [_ (rsq/get-phase-2-dirs eid nil)
+        _ (rsq/get-phase-2-dirs eid :rep)
+        ftype "CDS" ; <-- BAD 'magic number'
+        strain (first (cmn/get-exp-info eid :strains))
+        refnm ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
+        refgtf (fs/join (cmn/get-exp-info eid :refs) (str refnm ".gtf"))
+        repcfg (assoc-in template
+                         [:nodes :ph2 :args]
+                         [eid comparison-file
+                          {:rep? true :runtype rtype}
+                          ftype refgtf recipient])
+        repjob (future (cmn/flow-program repcfg get-toolinfo :run true))
+        cfg (assoc-in template
+                      [:nodes :ph2 :args]
+                      [eid comparison-file
+                       {:rep? false :runtype rtype}
+                       ftype refgtf recipient])
+        cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
+    #_(clojure.pprint/pprint repflow)
+    [repjob cfgjob]))
+
 (defmethod cmn/run-comparison :termseq
-  [_ eid recipient compfile get-toolinfo template]
-  (assert false "Term-Seq comparision NYI!"))
+  [_ eid recipient compfile get-toolinfo template phase]
+  (let [rtype (->> phase (str/split #"-") last keyword)]
+    (run-termseq-comparison
+     eid recipient compfile get-toolinfo template rtype)))
+
 
 (defmethod cmn/run-phase-2 :termseq
-  [_ eid recipient get-toolinfo template]
+  [_ eid recipient get-toolinfo template phase]
   (cmn/run-comparison :termseq
-   eid recipient "ComparisonSheet.csv" get-toolinfo template))
+   eid recipient "ComparisonSheet.csv" get-toolinfo template phase))
 
