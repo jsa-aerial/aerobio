@@ -380,6 +380,10 @@
              (assoc m eid
                     (init-exp-data base sample-sheet exp-sample-sheet))))))
 
+(defn del-exp [eid]
+  (swap! exp-info (fn[m] (dissoc m eid)))
+  (keys @exp-info))
+
 (defn get-exp [eid] (@exp-info eid))
 
 (defn exp-ids [] (keys @exp-info))
@@ -690,14 +694,14 @@ ComparisonSheet.csv
        [eid recipient template action rep compfile])
   (let [exp (get-exp-info eid :exp)]
     (cond
-      (#{"phase-0" "phase-0b" "phase-0c"
+      (#{"phase-0" "phase-0b" "phase-0c" "phase-0d"
          "phase-1" "bt2-phase-1" "bt1-phase-1"
          "phase-2" "phase-2b"
          "phase-2-rnaseq" "phase-2-termseq"
          "phase-2-5NTap" "phase-2-5PTap"} action)
       (let [phase action]
         (cond
-          (#{"phase-0" "phase-0b" "phase-0c"} phase)
+          (#{"phase-0" "phase-0b" "phase-0c" "phase-0d"} phase)
           (future
             (run-phase-0 eid recipient get-toolinfo template))
 
