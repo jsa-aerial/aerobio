@@ -3,7 +3,8 @@
  :path "",
 
  :graph {:setexp {:type "func"
-                  :name "set-exp"}
+                  :name "set-exp"
+                  :args ["#1"]}
          :split-filter {:type "func"
                         :name "split-filter-fastqs"}
          :mail {:type "func"
