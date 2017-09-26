@@ -549,12 +549,13 @@
     (doseq [samp (sort (keys sample-ifq-xref))]
       (let [ibc (sample-illumina-xref samp)
             sid ibc]
-        (split-barcodes (sample-ifq-xref samp)
-                        sqxform-fn
-                        (bc-file-specs ibc)
-                        (barcode-maps ibc)
-                        (red1codes sid)
-                        qc-ctpt sqc%)))
+        (when (barcode-maps ibc)
+          (split-barcodes (sample-ifq-xref samp)
+                          sqxform-fn
+                          (bc-file-specs ibc)
+                          (barcode-maps ibc)
+                          (red1codes sid)
+                          qc-ctpt sqc%))))
     :success))
 
 
