@@ -41,7 +41,8 @@ c2 <- c1c2reps[[2]]
 reps <- c1c2reps[[3]]
 prefix <- paste(c1,c2,sep="-")
 
-(condition <- factor(c(rep(c1, reps), rep(c2, reps))))
+##(condition <- factor(c(rep(c1, reps), rep(c2, reps))))
+(condition <- factor(c(rep(c2, reps), rep(c1, reps))))
 
 
 ## Analysis phase --------------------------------------------------
