@@ -115,105 +115,6 @@
     [btindex fqs otbam otbai]))
 
 
-(defn get-phase-1-args-cuff
-  "Compute phase 1 job flow arguments when using cufflinks. This is
-  like std phase 1 arguments with the addition of reference gtf file
-  and cuff output directory as the two final trailing arguments."
-  [eid repname & {:keys [repk]}]
-  (let [refnm (cmn/replicate-name->strain-name eid repname)
-        [btindex fqs otbam otbai] (cmn/get-phase-1-args
-                                   :rnaseq eid repname :repk repk)
-        refgtf (fs/join (cmn/get-exp-info eid :refs)
-                        (str refnm ".gtf"))
-        cuffot (fs/join (cmn/get-exp-info eid repk :cuffs) repname)]
-    (apply cmn/ensure-dirs (map fs/dirname [otbam otbai cuffot]))
-    [btindex fqs otbam otbai refgtf cuffot]))
-
-
-(defn get-phase-2-dirs-cuff [eid nm repk]
-  (let [cuffbase  (fs/join (cmn/get-exp-info eid repk :cuffs))
-        charts    (fs/join (cmn/get-exp-info eid repk :charts))
-        charts    (fs/join charts nm)
-        asms      (fs/join (cmn/get-exp-info eid repk :asms))
-        diffs     (fs/join (cmn/get-exp-info eid repk :diffs))
-        bams      (fs/join (cmn/get-exp-info eid repk :bams))
-        merge-dir (fs/join asms nm)]
-    (cmn/ensure-dirs charts asms diffs)
-    [cuffbase charts asms diffs bams merge-dir]))
-
-(defn get-phase-2-args-cuff [eid nm & {:keys [repk]}]
-  (let [[cuffbase
-         charts
-         asms
-         diffs
-         bams
-         merge-dir] (get-phase-2-dirs-cuff eid nm repk)
-        strain (->> nm (str/split #"-") first)
-        replicates (if repk
-                     ((cmn/get-exp-info eid :replicate-names) nm)
-                     (->> (cmn/get-exp-info eid :sample-names)
-                          (filter (fn[n]
-                                    (= nm (->> n (str/split #"-") first))))))
-        repstr   (cljstr/join "," replicates)
-        cuffdirs (->> replicates
-                      (map (fn[rnm] (fs/join cuffbase rnm)))
-                      sort vec)
-        bamfiles (->> replicates
-                      (map (fn[rnm] (fs/join bams (str rnm ".bam"))))
-                      sort vec)
-        cuffdiff (fs/join diffs nm)
-        refnm     ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
-        merge-gtf (fs/join merge-dir "merged.gtf")
-        asm-txt   (fs/join asms (str nm "-assembly.txt"))
-        refgtf    (fs/join (cmn/get-exp-info eid :refs) (str refnm ".gtf"))
-        reffna    (fs/join (cmn/get-exp-info eid :refs) (str refnm ".fna"))
-        comps (if repk
-                repstr
-                (->> "ComparisonSheet.csv"
-                     (fs/join (pams/get-params :nextseq-base) eid)
-                     slurp csv/read-csv rest
-                     (map (fn[[x y]] (str x ":" y))) (cljstr/join ",")))]
-    (io/with-out-writer asm-txt
-        (doseq [d cuffdirs]
-          (println (fs/join d "transcripts.gtf"))))
-    [merge-dir asm-txt refgtf
-     cuffdiff reffna repstr merge-gtf bamfiles
-     charts comps]))
-
-(defn get-phase-2-noassembly-args
-  [eid nm & {:keys [repk]}]
-  (let [[merge-dir asm-txt refgtf
-         cuffdiff reffna repstr
-         merge-gtf bamfiles
-         chart-dir comps] (get-phase-2-args-cuff eid nm)]
-    [cuffdiff reffna repstr
-     refgtf bamfiles
-     chart-dir comps]))
-
-(defn run-rnaseq-phase-2-cuff
-  [eid comparison-file get-toolinfo template & {:keys [repk]}]
-  (let [rnaseq-phase2-job-template template
-        sampnms (cmn/get-exp-info eid :sample-names)
-        strains (cmn/get-exp-info eid :strains)
-        names (if repk sampnms strains)]
-    (doseq [tuple (partition-all 4 names)]
-      (let [futs-vecs
-            (mapv
-             (fn[snm]
-               (let [rnaseq-job (assoc-in
-                                 rnaseq-phase2-job-template
-                                 [:nodes :ph2 :args]
-                                 (get-phase-2-args-cuff eid snm :repk repk))
-                     cfg (-> rnaseq-job
-                             (pg/config-pgm-graph-nodes get-toolinfo nil nil)
-                             pg/config-pgm-graph)]
-                 #_(clojure.pprint/pprint cfg)
-                 (->> cfg pg/make-flow-graph pg/run-flow-program)))
-             tuple)]
-        (mapv (fn[futs] (mapv (fn[fut] (deref fut)) futs))
-              futs-vecs)))))
-
-
 (defn get-phase-2-dirs [eid repk]
   (let [fcnts  (fs/join (cmn/get-exp-info eid repk :fcnts))
         charts (fs/join (cmn/get-exp-info eid repk :charts))
@@ -230,30 +131,22 @@
   (let [_ (get-phase-2-dirs eid nil)
         _ (get-phase-2-dirs eid :rep)
         ftype "CDS" ; <-- BAD 'magic number'
-        strain (first (cmn/get-exp-info eid :strains))
-        refnm ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
-        refgtf (fs/join (cmn/get-exp-info eid :refs) (str refnm ".gtf"))
         repcfg (assoc-in template
                          [:nodes :ph2 :args]
-                         [eid comparison-file true ftype refgtf recipient])
+                         [eid comparison-file true ftype :NA recipient])
         repjob (future (cmn/flow-program repcfg get-toolinfo :run true))
         cfg (assoc-in template
                       [:nodes :ph2 :args]
-                      [eid comparison-file false ftype refgtf recipient])
+                      [eid comparison-file false ftype :NA recipient])
         cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
     #_(clojure.pprint/pprint repflow)
     [repjob cfgjob]))
 
-(defn run-rnaseq-phase-2
-  "OBSOLETE - remove sooner than later!"
-  [eid recipient get-toolinfo template]
-  (run-rnaseq-comparison
-   eid recipient "ComparisonSheet.csv" get-toolinfo template))
-
 
 (defmethod cmn/run-comparison :rnaseq
   [_ eid recipient compfile get-toolinfo template]
-  (run-rnaseq-comparison eid recipient compfile get-toolinfo template))
+  (run-rnaseq-comparison
+   eid recipient compfile get-toolinfo template))
 
 (defmethod cmn/run-phase-2 :rnaseq
   [_ eid recipient get-toolinfo template]

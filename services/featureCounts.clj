@@ -2,10 +2,13 @@
 {
  :name "featureCounts",
  :path "",
- :func (fn [feature-type gtf bams-csv-pair]
+ :func (fn [eid feature-type _ bams-csv-pair]
          (if (pg/eoi? bams-csv-pair)
            (pg/done)
            (let [[bams csv] bams-csv-pair
+                 strain (-> bams first fs/basename (str/split #"-") first)
+                 refnm ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
+                 gtf (fs/join (cmn/get-exp-info eid :refs) (str refnm ".gtf"))
                  ret (apply pg/featureCounts
                             (concat ["-a" gtf "-o" csv "-t" feature-type]
                                     bams [{:verbose true :throw false}]))
