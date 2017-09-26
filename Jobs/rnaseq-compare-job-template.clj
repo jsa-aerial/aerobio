@@ -1,10 +1,10 @@
 
 {:nodes
- {:comp
-  {:name "gen-feature-counts",
+ {:ph2
+  {:name "rnaseq-phase2",
    :type "tool",
    :args []}
   :prn1 {:type "func",
          :name "prn"}},
  :edges
- {:comp [:prn1]}}
+ {:ph2 [:prn1]}}
