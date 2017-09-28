@@ -109,9 +109,8 @@
         otbam (fs/join (cmn/get-exp-info eid repk :bams) (str repname ".bam"))
         otbai (str otbam ".bai")
         refgtf (fs/join (cmn/get-exp-info eid :refs)
-                        (str refnm ".gtf"))
-        cuffot (fs/join (cmn/get-exp-info eid repk :cuffs) repname)]
-    (apply cmn/ensure-dirs (map fs/dirname [otbam otbai cuffot]))
+                        (str refnm ".gtf"))]
+    (apply cmn/ensure-dirs (map fs/dirname [otbam otbai]))
     [btindex fqs otbam otbai]))
 
 

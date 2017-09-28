@@ -68,7 +68,6 @@
   (programs bcl2fastq samtools
             bowtie bowtie2 bowtie-build bowtie2-build
             featureCounts breseq
-            tophat cufflinks cuffmerge cuffcompare cuffdiff
             Rscript python ruby perl
             bp_load_genbank
             ))
@@ -864,9 +863,4 @@
       :exit
       (do (println v)
           (recur (<!! urlch)))))
-
-  (cufflinks "-p" "32" "--overlap-radius" "1"
-             "-g" "/data1/NextSeq/TVOLab/AHL7L3BGXX/Refs/NC_012469.gff"
-             "-o" "/data1/NextSeq/TVOLab/AHL7L3BGXX/jsa-cuff-19f-dapto"
-             "/data1/NextSeq/TVOLab/AHL7L3BGXX/JSA/19f-Dapto.bam")
   )

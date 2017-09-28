@@ -278,9 +278,6 @@
                 :maps      (fs/join base "Out/Maps")
                 :fit       (fs/join base "Out/Fitness")
                 :aggrs     (fs/join base "Out/Aggrs")
-                :cuffs     (fs/join base "Out/Cuffs")
-                :diffs     (fs/join base "Out/Diffs")
-                :asms      (fs/join base "Out/Asms")
                 :charts    (fs/join base "Out/Charts")
                 :stats     (fs/join base "Stats")
                 :fastq     (fs/join base "Fastq")
@@ -391,7 +388,7 @@
 (defn info-ks [] (-> @exp-info first second keys))
 
 (defn get-exp-info [eid & ks]
-  (let [otks #{:bams :fcnts :maps :fit :aggrs :cuffs :diffs :asms :charts}
+  (let [otks #{:bams :fcnts :maps :fit :aggrs :charts}
         rep? (coll/in :rep ks)
         ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
         info (get-exp eid)
@@ -409,8 +406,7 @@
 
 (defn get-exp-files [exp-id d]
   (->> [:refs :index :samples
-        :out :bams :cuffs :diffs
-        :asms :charts :stats :fastq :docs]
+        :out :bams :charts :stats :fastq :docs]
        (mapv #(vector % ((@exp-info exp-id) %)))
        (map (fn[[n d]] [n (fs/directory-files d "")]))
        (into {})
