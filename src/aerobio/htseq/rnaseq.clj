@@ -48,7 +48,6 @@
   )
 
 
-(def exp-info (atom {}))
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
@@ -153,28 +152,3 @@
    eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
 
-
-(defn launch-action
-  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
-  (prn "LAUNCH: "
-       [eid recipient template action rep compfile])
-  (cond
-    (= action "compare")
-    (let [compfile (if compfile compfile "ComparisonSheet.csv")]
-      (run-rnaseq-comparison eid recipient compfile get-toolinfo template))
-
-    (#{"phase-0" "phase-0b" "phase-0c" "phase-1" "phase-2"} action)
-    (let [phase action]
-      (cond
-        (#{"phase-0" "phase-0b" "phase-0c"} phase)
-        (future
-          (cmn/run-phase-0 eid recipient get-toolinfo template))
-
-        (#{"phase-1"} phase)
-        (future
-          (cmn/run-phase-1 eid recipient get-toolinfo template :repk rep))
-
-        (#{"phase-2"} phase)
-        (run-rnaseq-phase-2 eid recipient get-toolinfo template)))
-
-    :else (str "RNASEQ: unknown action request " action)))
