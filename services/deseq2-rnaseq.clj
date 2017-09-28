@@ -14,17 +14,18 @@
                         (group-by #(as-> % x
                                      (fs/basename x)
                                      (str/split x #"-")
-                                     (last x) (str/split x #"\.") (first x))
+                                     (take 2 x) (str/join "-" x))
                                   bams)
-                        {:x bams})
-                 reps (->> grps
-                           (filter (fn[[ke v]] (= 2 (count v))))
-                           count)
+                        (group-by #(as-> % x
+                                     (fs/basename x)
+                                     (fs/replace-type x ""))
+                                  bams))
+                 reps (->> grps (map (fn[[c reps]] [c (count reps)])) (into {}))
                  [c1 c2] (as-> fcnt-csv x
                            (fs/basename x) (fs/replace-type x "")
                            (str/split x #"-") (partition-all 2 x)
                            (map #(str/join "-" %) x))
-                 c1c2reps (str/join "," [c1 c2 reps])
+                 c1c2reps (str/join "," [c1 c2 (reps c1) (reps c2)])
                  script-dir (fs/join (fs/pwd) "Scripts")
                  script (fs/join script-dir "deseq2-rnaseq.r")
                  ret (pg/Rscript

@@ -8,8 +8,8 @@ library(gplots)
 
 ## args[1] == full path to Charts directory for this analysis
 ## args[2] == full path to featureCounts csv for this analysis
-## args[3] == comma separated string of conditions to compare and rep count:
-##            "c1,c2,reps"
+## args[3] == comma separated string of conditions to compare and rep counts:
+##            "c1,c2,c1reps,c2reps"
 ## args[4] == script directory
 ##
 args = commandArgs(trailingOnly=TRUE)
@@ -38,11 +38,13 @@ head(countdata)
 c1c2reps <- strsplit(args[3], ",", fixed = TRUE)[[1]]
 c1 <- c1c2reps[[1]]
 c2 <- c1c2reps[[2]]
-reps <- c1c2reps[[3]]
+c1reps <- c1c2reps[[3]]
+c2reps <- c1c2reps[[4]]
 prefix <- paste(c1,c2,sep="-")
 
 ##(condition <- factor(c(rep(c1, reps), rep(c2, reps))))
-(condition <- factor(c(rep(c2, reps), rep(c1, reps))))
+##(condition <- factor(c(rep("Condition1",2),rep("Condition2",4))))
+(condition <- factor(c(rep(c2, c2reps), rep(c1, c1reps))))
 
 
 ## Analysis phase --------------------------------------------------
