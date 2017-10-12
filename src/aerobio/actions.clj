@@ -52,12 +52,20 @@
   (fn[cmd & args] (keyword cmd)))
 
 
+(defn get-mail-recipient
+  [user]
+  (let [recipient (pams/get-params [:email (keyword user)])]
+    (if recipient
+      recipient
+      (pams/get-params [:email :default]))))
+
+
 (defmethod action :run
   [_ eid params get-toolinfo template]
-  (let [{:keys [user cmd action rep compfile eid]} params
+  (let [{:keys [user cmd action rep compfile]} params
         rep (if rep :rep nil)
         exp (cmn/get-exp-info eid :exp)
-        user (pams/get-params [:email (keyword user)])]
+        user (get-mail-recipient user)]
     (cmn/launch-action
      eid user
      get-toolinfo template
@@ -65,18 +73,47 @@
      :rep rep
      :compfile compfile)))
 
+
+;;; phase-0b remove Fastqs, Out, Samples, Stats
+;;; phase-0c remove Out, Samples, Stats
+;;; phase-1  remove Out
+;;; phase-2  Keep Out*Bams, remove all other Out*/
+;;; phase-2b remove Aggrs <-- Only tnseq
+;;;
+#_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :out)))
+#_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :aggrs)))
+#_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :samples)))
+#_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :stats)))
+(defmethod action :rerun
+  [_ eid params get-toolinfo template]
+  (let [{:keys [user cmd action rep compfile]} params
+        rep (if rep :rep nil)
+        outdir (cmn/get-exp-info eid :out)
+
+        exp (cmn/get-exp-info eid :exp)
+        user (get-mail-recipient user)]
+
+    (cmn/launch-action
+     eid user
+     get-toolinfo template
+     :action action
+     :rep rep
+     :compfile compfile)))
+
+
 (defmethod action :compare
   [_ eid params get-toolinfo template]
   (let [exp (cmn/get-exp-info eid :exp)
-        {:keys [user cmd action rep compfile eid]} params
+        {:keys [user cmd action rep compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (cmn/run-comparison
      exp eid recipient compfile get-toolinfo template)))
 
+
 (defmethod action :aggregate
   [_ eid params get-toolinfo template]
   (let [exp (cmn/get-exp-info eid :exp)
-        {:keys [user cmd action rep compfile eid]} params
+        {:keys [user cmd action rep compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (htts/run-aggregation
      eid recipient compfile get-toolinfo template)))
