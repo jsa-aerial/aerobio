@@ -8,7 +8,7 @@
                 :args ["#1", "#2", "#3" ]} ; eid, comparison-file, rep?
          :fcnt {:type "func"
                 :name "featureCounts"
-                :args ["#4", "#5"]} ; feature-type, gtf
+                :args ["#1", "#4", "#5"]} ; eid, feature-type, :NA
          :dseq {:type "func"
                 :name "deseq2-rnaseq"
                 :args ["#1"]}
