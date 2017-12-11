@@ -16,7 +16,7 @@
                              (let [[[q1r1 q1r2] q1-refgbk q1-outdir] q1
                                    _ (infof "Fut (%s),  %s start..."
                                             i q1-outdir)
-                                   poly (if (re-find #"clone" q1-outdir)
+                                   poly (if (re-find #"[Cc]lone" q1-outdir)
                                           []
                                           ["-p"])
                                    ret (apply
