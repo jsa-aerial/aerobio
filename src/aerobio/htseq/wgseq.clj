@@ -150,6 +150,11 @@
         cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
     cfgjob))
 
+(defmethod cmn/run-comparison :wgseq
+  [_ eid recipient compfile get-toolinfo template]
+  (run-wgseq-comparison
+   eid recipient compfile get-toolinfo template))
+
 (defmethod cmn/run-phase-2 :wgseq
   [_ eid recipient get-toolinfo template]
   (run-wgseq-comparison
