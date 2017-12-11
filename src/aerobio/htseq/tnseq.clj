@@ -308,11 +308,13 @@
          prenames (mapv #(->> % first (coll/takev 2) (cljstr/join "-"))
                         namebits)
          sufnames (->> namebits
-                       (mapv #(->> % (map last) (cljstr/join "-")))
-                       (mapv #(str % ".csv")))
-         outnames (->> (interleave prenames sufnames)
-                       (coll/partitionv-all 2)
-                       (mapv #(fs/join aggr (cljstr/join "-" %))))]
+                       (mapv #(->> % last last (str/butlast 1))))
+         outnames (->> (interleave prenames
+                                   sufnames
+                                   (mapv #(format "BN-%s" %1) botnums))
+                       (coll/partitionv-all 3)
+                       (mapv #(fs/join aggr (cljstr/join "-" %)))
+                       (mapv #(str % ".csv")))]
      (mapv vector filegrps outnames botnums))))
 
 #_(->>  (get-aggregate-files eid "BottleNeck.csv") clojure.pprint/pprint)
