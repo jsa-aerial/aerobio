@@ -151,25 +151,47 @@
   #_(infof "ReqMap %s" reqmap)
   (binding [*ns* (find-ns 'aerobio.server)]
     (let [params (reqmap :params)
+          {:keys [user cmd action rep compfile eid]} params
+          eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
+          eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
           user-agent (get-in reqmap [:headers "user-agent"])
           reqtype (get-in reqmap [:headers "reqtype"])]
       (if (= reqtype "cmdline")
-        (let [{:keys [user cmd action rep compfile eid]} params
-              _ (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
-              exp (cmn/get-exp-info eid :exp)
-              work-item (if action action cmd)
-              tempnm (str (name exp) "-" work-item "-job-template")
-              template (get-jobinfo tempnm)
-              result (actions/action cmd eid params get-toolinfo template)]
-          (swap! dbg (fn[M] (assoc M eid result)))
-          (infof "%s : %s" cmd result)
-          (json/json-str
-           {:args args
-            :params params
-            :template tempnm
-            :recipient user
-            :user-agent user-agent
-            :reqtype reqtype}))
+        (try
+          (let [_ (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
+                exp (cmn/get-exp-info eid :exp)
+                work-item (if action action cmd)
+                tempnm (str (name exp) "-" work-item "-job-template")
+                template (get-jobinfo tempnm)
+                result (actions/action cmd eid params get-toolinfo template)]
+            (aerial.utils.misc/sleep 250)
+            (swap! dbg (fn[M] (assoc M eid result)))
+            (infof "%s : %s" cmd result)
+            (json/json-str
+             {:params params
+              :result (str result)
+              :template tempnm
+              :recipient user}))
+          (catch Error e
+            (let [estg (format "Error %s" (or (.getMessage e) e))]
+              (errorf "%s: %s - Assert: %s" eid cmd estg)
+              (json/json-str
+             {:args args
+              :params params
+              :result estg
+              :recipient user
+              :user-agent user-agent
+              :reqtype reqtype})))
+          (catch Exception e
+            (let [emsg (or (.getMessage e) e)]
+              (errorf "%s: %s, Exception on Job launch: %s" eid cmd emsg)
+              (json/json-str
+               {:args args
+                :params params
+                :result (format "Exception: %s" emsg)
+                :recipient user
+                :user-agent user-agent
+                :reqtype reqtype}))))
         (hiccup/html
          [:h1 "HI from HTSeq command route"]
          [:hr]
