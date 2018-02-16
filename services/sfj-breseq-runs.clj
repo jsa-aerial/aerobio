@@ -11,9 +11,10 @@
                        (infof "Fut (%s) starting ..." i)
                        (loop [q1 (<!! quads)]
                          (when q1
-                           (if (fs/exists? (last q1))
+                           (if (fs/exists?
+                                (fs/join (last q1) "output/index.html"))
                              (recur (<!! quads)) ; restart check
-                             (let [[[q1r1 q1r2] q1-refgbk q1-outdir] q1
+                             (let [[fqs q1-refgbk q1-outdir] q1
                                    _ (infof "Fut (%s),  %s start..."
                                             i q1-outdir)
                                    poly (if (re-find #"[Cc]lone" q1-outdir)
@@ -21,16 +22,17 @@
                                           ["-p"])
                                    ret (apply
                                         pg/breseq
-                                        (concat poly ["-j" "4"
-                                                      "-o" q1-outdir
-                                                      "-r" q1-refgbk
-                                                      q1r1 q1r2]
+                                        (concat poly
+                                                ["-j" "4"
+                                                 "-o" q1-outdir
+                                                 "-r" q1-refgbk]
+                                                fqs
                                                 [{:verbose true :throw false}]))
                                    exit-code @(ret :exit-code)
                                    exit (if (= 0 exit-code) :success exit-code)
                                    err (-> (ret :stderr) (str/split #"\n") last)
                                    retmap {:name "breseq-runs"
-                                           :value [[q1r1 q1r2] q1-outdir]
+                                           :value [fqs q1-outdir]
                                            :exit exit
                                            :err err}]
                                (swap! results (fn[a] (conj a retmap)))
