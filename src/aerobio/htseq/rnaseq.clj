@@ -65,11 +65,12 @@
          fpath (if rep? [:rep :fcnts] [:fcnts])
          bams (apply cmn/get-exp-info eid bpath)
          fcnts (apply cmn/get-exp-info eid fpath)
+         bam-regex (if rep? "-*.bam" "*.bam")
          compvec (->> comp-filename
                       (fs/join (pams/get-params :nextseq-base) eid)
                       slurp csv/read-csv rest)
          bamsvec (mapv (fn[v]
-                         (mapcat #(-> (fs/join bams (str % "*.bam"))
+                         (mapcat #(-> (fs/join bams (str % bam-regex))
                                       fs/glob sort)
                                  v))
                        compvec)
