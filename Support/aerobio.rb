@@ -103,6 +103,7 @@ elsif (not ['server',
             'list',
             'run',
             'compare',
+            'xcompare',
             'aggregate',
             'check-job'
            ].include?(@cmd))
@@ -177,7 +178,7 @@ def remote_cmd (cmd, args, *misc)
   ##args = args.each_slice(2).to_a
   args = args.insert(0,cmd)
   args = args.insert(0,ENV["USER"])
-  if ((cmd == "compare") or (cmd == "aggregate"))
+  if ((cmd == "compare") or (cmd == "xcompare") or (cmd == "aggregate"))
     keys = ["user", "cmd", "compfile", "eid"]
   else
     keys = ["user", "cmd", "action", "eid"]
@@ -991,10 +992,10 @@ elsif (@cmd == "run")
   end
   run_job(@args[1..args.length])
 
-elsif (@cmd == "compare")
+elsif ((@cmd == "compare") or (@cmd == "xcompare"))
   if (args.length <= 1)
     puts "#{@cmd} requires at least an experiment id. Use aerobio run -h for"
-    puts "details on how to use compare"
+    puts "details on how to use compare/xcompare"
     exit(1)
   end
   run_job(@args[1..args.length])
@@ -1002,7 +1003,7 @@ elsif (@cmd == "compare")
 elsif (@cmd == "aggregate")
   if (args.length <= 1)
     puts "#{@cmd} requires at least an experiment id. Use aerobio run -h for"
-    puts "details on how to use compare"
+    puts "details on how to use aggregate"
     exit(1)
   end
   run_job(@args[1..args.length])
