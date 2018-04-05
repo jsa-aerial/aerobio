@@ -84,6 +84,9 @@
   (apply get-comparison-files- args))
 
 
+(defn ensure-exp-set [eid]
+  (when (not (cmn/get-exp eid)) (cmn/set-exp eid)))
+
 (defn get-xcomparison-files-
   "Compute the set of Cross Experiment comparison bams and the
   corresponding output csv for the count table matrix. Cross
@@ -102,9 +105,11 @@
                       slurp csv/read-csv rest
                       (map (fn[[c1 c2]]
                              (let [[eid1 strain cond1] (str/split #"-" c1)
+                                   _ (ensure-exp-set eid1)
                                    gb1 (str strain "-" cond1 "*.bam")
                                    c1bams (apply cmn/get-exp-info eid1 bpath)
                                    [eid2 strain cond2] (str/split #"-" c2)
+                                   _ (ensure-exp-set eid2)
                                    gb2 (str strain "-" cond2 "*.bam")
                                    c2bams (apply cmn/get-exp-info eid2 bpath)]
                                [(fs/join c1bams gb1) (fs/join c2bams gb2)]))))
