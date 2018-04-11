@@ -1,10 +1,10 @@
 
-{:name "rnaseq-phase0-b",
+{:name "tnseq-phase0-b",
  :path "",
 
  :graph {:strtscratch {:type "func"
                        :name "start-scratch-space"
-                       :args ["#1"]}
+                       :args ["#1"]} ; EID
          :bcstats {:type "func"
                    :name "collect-barcode-stats"}
          :wrtstats {:type "func"
