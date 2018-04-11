@@ -3,7 +3,8 @@
  :path "",
 
  :graph {:coll {:type "func"
-                :name "collapser"}
+                :name "collapser"
+                :args ["#1"]}
          :mail {:type "func"
                 :name "mailit"
                 :args ["#2"         ; recipient
