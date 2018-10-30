@@ -50,7 +50,7 @@
 
             ;; Tunneling Cider nREPL support
             [clojure.tools.nrepl.server :as nrs]
-            [cider.nrepl :refer [cider-middleware]]
+            ;;[cider.nrepl :refer [cider-middleware]] cider.nrepl f*k up
             [refactor-nrepl.middleware :refer [wrap-refactor]]
 
             [cpath-clj.core :as cp] ; Extract Jar resources
@@ -90,7 +90,7 @@
     :default true]])
 
 ;; Incorporate correct cider middleware for tunneling nREPL support
-(apply nrs/default-handler (map resolve cider-middleware))
+#_(apply nrs/default-handler (map resolve cider-middleware))
 
 
 
@@ -206,6 +206,23 @@
   (svr/start! port))
 
 
+
+(defn nrepl-handler-hack []
+  (require 'cider.nrepl)
+  (let [cm (var-get (ns-resolve 'cider.nrepl 'cider-middleware))
+        ;;cm (filter #(not= % 'cider.nrepl/wrap-pprint-fn) cm)
+        resolve-or-fail (fn[sym] (println :sym sym)
+                          (or (ns-resolve 'cider.nrepl sym)
+                              (throw (IllegalArgumentException.
+                                      (format "Cannot resolve %s" sym)))))]
+    (clojure.pprint/pprint cm)
+    (apply nrs/default-handler
+           (concat (mapv resolve-or-fail cm)
+                   [#'wrap-refactor]))))
+#_(apply nrs/default-handler
+       (concat (map resolve cider-middleware)
+               [#'wrap-refactor]))
+
 (defn -main
   "Self installation and web server"
   [& args]
@@ -218,9 +235,7 @@
         http-port (options :port)
         rpl-port (options :repl-port)
         install? (options :install)
-        nrepl-handler (apply nrs/default-handler
-                             (concat (map resolve cider-middleware)
-                                     [#'wrap-refactor]))]
+        nrepl-handler (nrepl-handler-hack)]
     (if errors
       (do (println "Error(s): " errors)
           (System/exit 1))
