@@ -1,6 +1,6 @@
 
 {:nodes
- {:cmp
+ {:ph2
   {:name "rnaseq-xcompare",
    :type "tool",
    :args []}
