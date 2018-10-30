@@ -11,7 +11,7 @@
   :dependencies
   [[org.clojure/clojure       "1.8.0"]
    [org.clojure/tools.reader "1.0.0-beta3"]
-   [org.clojure/tools.nrepl  "0.2.12"] ; Explicit nREPL
+   [org.clojure/tools.nrepl  "0.2.13"] ; Explicit nREPL
 
    [org.clojure/core.async    "0.1.346.0-17112a-alpha"]
    ;;[org.clojure/core.async    "0.2.391"]
@@ -51,8 +51,8 @@
    [com.cognitect/transit-clj  "0.8.259"]
    [com.cognitect/transit-cljs "0.8.199"]]
 
-  :plugins [[cider/cider-nrepl "0.12.0"]
-            [refactor-nrepl    "2.2.0"]]
+  :plugins [[cider/cider-nrepl "0.17.0"]
+            [refactor-nrepl    "2.4.0-SNAPSHOT"]]
 
   :profiles {:uberjar {:aot :all}}
   :main aerobio.core
