@@ -237,14 +237,15 @@
                                   (let [crec (conj (coll/takev 2 crec) k)
                                         csv (str (cljstr/join "-" crec) ".csv")
                                         ef (expfacts (dec (offsets k)))]
-                                    (conj v csv ef)))
+                                    (conj v csv ef (offsets k))))
                                 %1))
                        mapsvec
                        compvec)]
      (if aggr?
        (mapv (fn[grp]
                (when (seq grp)
-                 (let [l (->> grp last first fs/basename (str/split #"-")
+                 (let [grp (sort-by last grp)
+                       l (->> grp last first fs/basename (str/split #"-")
                               last (str/split #"\.") first)
                        g (mapv (fn[[_ _ csv _]]
                                  [(fs/join aggr csv) (fs/join fit csv)])
