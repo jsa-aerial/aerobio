@@ -109,6 +109,14 @@
     (cmn/run-comparison
      exp eid recipient compfile get-toolinfo template)))
 
+(defmethod action :xcompare
+  [_ eid params get-toolinfo template]
+  (let [exp (cmn/get-exp-info eid :exp)
+        {:keys [user cmd action rep compfile]} params
+        user (get-mail-recipient user)]
+    (cmn/run-comparison
+     exp eid user compfile get-toolinfo template)))
+
 
 (defmethod action :aggregate
   [_ eid params get-toolinfo template]
