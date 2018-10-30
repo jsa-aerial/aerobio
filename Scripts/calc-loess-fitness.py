@@ -24,10 +24,12 @@ def print_usage():
         print "-t1" + "\t\t" + "The name of the bowtie mapfile from time 1." + "\n"
         print "-t2" + "\t\t" + "The name of the bowtie mapfile from time 2." + "\n"
         print "-out" + "\t\t" + "Name of a file to enter the .csv output." + "\n"
+        print "-out3" + "\t\t" + "Name of a file to write unsmoothed and smoothed mapfile data to." + "\n"
         print "\n"
         print "\033[1m" + "Optional" + "\033[0m" + "\n"
         print "-expansion" + "\t\t" + "Expansion factor (default: 250)" + "\n"
         print "-d" + "\t\t" + "All reads being analyzed are downstream of the transposon" + "\n"
+        print "-lfact" + "\t\t" + "The span factor to compute lowess processing window: 0.0 < lfact < 1.0"
         print "-reads1" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 0." + "\n\t\t" + "(default counted from bowtie output)" + "\n"
         print "-reads2" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 6." + "\n\t\t" + "(default counted from bowtie output)" + "\n"
         print "-cutoff" + "\t\t" + "Discard any positions where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n"
@@ -49,8 +51,10 @@ parser.add_argument("-t1", action="store", dest="mapfile1")
 parser.add_argument("-t2", action="store", dest="mapfile2")
 parser.add_argument("-out", action="store", dest="outfile")
 parser.add_argument("-out2", action="store", dest="outfile2")
+parser.add_argument("-out3", action="store", dest="outfile3")
 parser.add_argument("-expansion", action="store", dest="expansion_factor")
 parser.add_argument("-d", action="store", dest="downstream")
+parser.add_argument("-lfact", action="store", dest="lfact")
 parser.add_argument("-reads1", action="store", dest="reads1")
 parser.add_argument("-reads2", action="store", dest="reads2")
 parser.add_argument("-cutoff", action="store", dest="cutoff")
@@ -68,6 +72,10 @@ arguments = parser.parse_args()
 if (not arguments.ref_genome or not arguments.mapfile1 or not arguments.mapfile2 or not arguments.outfile):
         print_usage()
         quit()
+
+# Default lowess span factor is 0.6 => 60% of read total
+if (not arguments.lfact):
+        arguments.lfact = 0.60
 
 # Sets the default value of the expansion factor to 250, which is a
 # trivial placeholder number.
@@ -239,8 +247,8 @@ def smooth (read_map):
         srds = sorted(read_map.items(), key=lambda x: x[0])
         xa = np.array(map(lambda x: x[0], srds))
         ya = np.array(map(lambda x: x[1], srds))
-        ysmth = lowess(xa, ya, f=0.25, iter=3)
-        return dict(zip(xa.tolist(), ysmth.tolist()))
+        ysmth = lowess(xa, ya, f=float(arguments.lfact), iter=1)
+        return (dict(zip(xa.tolist(), ysmth.tolist())), dict(zip(xa.tolist(), ya.tolist())))
 
 ##pr1_l = sorted(plus_ref_1.items(),key=lambda x: x[0])
 ##print "\n\n-----------------"
@@ -257,10 +265,28 @@ def smooth (read_map):
 ##        simplejson.dump(pr1_lowess.tolist(), f)
 ##
 
-plus_ref_1 = smooth(plus_ref_1)
-minus_ref_1 = smooth(minus_ref_1)
-plus_ref_2 = smooth(plus_ref_2)
-minus_ref_2 = smooth(minus_ref_2)
+(plus_ref_1, oplus_ref_1) = smooth(plus_ref_1)
+(minus_ref_1, ominus_ref_1) = smooth(minus_ref_1)
+(plus_ref_2, oplus_ref_2) = smooth(plus_ref_2)
+(minus_ref_2, ominus_ref_2) = smooth(minus_ref_2)
+
+if arguments.outfile3:
+        with open(arguments.outfile3, "w") as f:
+                simplejson.dump(plus_ref_1, f)
+                f.write("\n")
+                simplejson.dump(oplus_ref_1, f)
+                f.write("\n")
+                simplejson.dump(minus_ref_1, f)
+                f.write("\n")
+                simplejson.dump(ominus_ref_1, f)
+                f.write("\n")
+                simplejson.dump(plus_ref_2, f)
+                f.write("\n")
+                simplejson.dump(oplus_ref_2, f)
+                f.write("\n")
+                simplejson.dump(minus_ref_2, f)
+                f.write("\n")
+                simplejson.dump(ominus_ref_2, f)
 
 pr1_tot = sum(p[1] for p in plus_ref_1.items())
 mr1_tot = sum(p[1] for p in minus_ref_1.items())
