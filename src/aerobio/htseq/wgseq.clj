@@ -160,7 +160,21 @@
   (run-wgseq-comparison
    eid recipient "ComparisonSheet.csv" get-toolinfo template))
 
+
+
+
 (comment
+
+  (let [dirs (->> (get-comparison-files
+                   :wgseq
+                   "171202_NS500751_0065_AHYYG3BGX3"
+                   "T4-D39nonclone-ComparisonSheet.csv")
+                  (mapv last))
+        old (fs/join (get-exp-info "171202_NS500751_0065_AHYYG3BGX3" :out)
+                     "Old")]
+    (fs/move dirs old))
+
+
 
   (fs/dodir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Raw/"
             #(fs/re-directory-files % "Day4N2*.fastq.gz")
