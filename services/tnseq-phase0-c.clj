@@ -4,7 +4,7 @@
 
  :graph {:bcstats {:type "func"
                :name "collect-barcode-stats"
-               :args ["#1"]}
+               :args ["#1"]}      ; EID
          :wrtstats {:type "func"
                     :name "write-bcmaps"}
          :setexp {:type "func"
