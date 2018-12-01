@@ -1,4 +1,4 @@
-(defproject aerial/aerobio "1.0.0"
+(defproject aerial/aerobio "2.0.0"
   :description "A full DAG pgm graph multi tool server for dynamic bio pipeline"
   :url "https://github.com/aerial/aerobio"
   :license {:name "The MIT License (MIT)"
@@ -9,47 +9,35 @@
                 *assert* true}
 
   :dependencies
-  [[org.clojure/clojure       "1.8.0"]
-   [org.clojure/tools.reader "1.0.0-beta3"]
-   [org.clojure/tools.nrepl  "0.2.13"] ; Explicit nREPL
-
-   [org.clojure/core.async    "0.1.346.0-17112a-alpha"]
-   ;;[org.clojure/core.async    "0.2.391"]
+  [[org.clojure/clojure       "1.9.0"]
+   [org.clojure/tools.reader  "1.0.0-beta3"]
+   [org.clojure/tools.nrepl   "0.2.13"] ; Explicit nREPL
+   [org.clojure/tools.cli     "0.3.3"]  ; cmd line arg processing
    [org.clojure/data.json     "0.2.6"]
-   [org.clojure/tools.cli     "0.3.3"] ; cmd line arg processing
+   [org.clojure/core.async    "0.4.474"]
 
-   [com.draines/postal        "2.0.1"] ; mail messaging
-   ;;[org.clojure/java.jdbc "0.6.2-alpha3"] ; sql RDB access
-   ;;[mysql/mysql-connector-java "6.0.4"]  ; mysql connector
-   ;;[com.mchange/c3p0 "0.9.2.1"] ; connection pooling
+   [ring/ring-defaults "0.3.1"]
+   [bk/ring-gzip "0.2.1"]
+   [ring-cljsjs "0.1.0"]
+
+   [com.rpl/specter "1.1.1"]
+
+   [aerial.hanasu             "0.2.1"] ; websockets
 
    [aerial.fs                 "1.1.5"]
    [aerial.utils              "1.2.0"]
    [aerial.bio.utils          "2.0.0"]
-   [aerial.msgpacket          "0.0.1"]
+   [net.apribase/clj-dns      "0.1.0"] ; reverse-dns-lookup bug
 
-   ;;[com.taoensso/sente        "1.4.1"] ; We use new msgpSente
-   [com.taoensso/encore      "1.22.0" :exclusions [org.clojure/tools.reader]]
-   [com.taoensso/timbre       "3.3.1" :exclusions [org.clojure/tools.reader]]
-   [me.raynes/conch           "0.8.0" :exclusions [org.clojure/tools.reader]]
-   [clojure-watch            "0.1.10"] ; watch dir for changes
-   [cpath-clj                 "0.1.2"] ; Installation JAR resources access
-   [prismatic/schema          "1.0.1"] ; data shape checks for pgm graphs
-
-   [http-kit                 "2.1.19"] ; Evented web server w/webscockets
-
-   [net.apribase/clj-dns      "0.1.0"] ; reverse-dns-lookup
-
-   [compojure                 "1.6.0" :exclusions [org.clojure/tools.reader]]
-   [ring                      "1.3.2" :exclusions [org.clojure/tools.reader]]
-   [ring/ring-defaults        "0.1.3" :exclusions [org.clojure/tools.reader]]
-   ;; ring-defaults includes [ring-anti-forgery      "1.0.0"]
    [hiccup                    "1.0.5"] ; Optional, just for HTML
+   [com.draines/postal        "2.0.1"] ; mail messaging
+   [com.taoensso/timbre       "3.3.1" :exclusions [org.clojure/tools.reader]]
+   [clojure-watch             "0.1.13"] ; watch dir for changes
+   [cpath-clj                 "0.1.2"] ; Installation JAR resources access
 
-   ;;; Transit deps optional; may be used to aid perf. of larger data payloads
-   ;;; (see reference example for details):
-   [com.cognitect/transit-clj  "0.8.259"]
-   [com.cognitect/transit-cljs "0.8.199"]]
+   [me.raynes/conch           "0.8.0" :exclusions [org.clojure/tools.reader]]
+   [prismatic/schema          "1.0.1"] ; data shape checks for pgm graphs
+   ]
 
   :plugins [[cider/cider-nrepl "0.17.0"]
             [refactor-nrepl    "2.4.0-SNAPSHOT"]]
