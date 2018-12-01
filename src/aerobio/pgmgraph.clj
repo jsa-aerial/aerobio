@@ -45,7 +45,6 @@
    ;; For pgm graph data shape validation
    [schema.core :as sch]
 
-   [aerial.msgpacket.binaryjs :as bjs]
    [aerial.utils.coll :as coll :refer [in takev-until dropv-until ensure-vec]]
    [aerial.fs :as fs]
 
@@ -611,9 +610,8 @@
         proxclient (urlmap :bsc)
         qid (urlmap :qid)
         ;;out (io/output-stream (fs/join (fs/pwd) "cache" "backstream.bam"))
-        stream (bjs/new-stream
-                (:clients msgpacket) (proxclient :id) nil
-                {:event "backstream", :params {:id qid}})
+        stream  {:clients-db-from-somewhere (proxclient :id)
+                 :event "backstream", :params {:id qid}}
         on (stream :on)]
     (infof "!!! Start getting backstream data...")
     (on :onData
