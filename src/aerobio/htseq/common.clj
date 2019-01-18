@@ -566,6 +566,9 @@
   (let [base (get-exp-info eid :base)
         sample-dirs (fs/directory-files (get-exp-info eid :samples) "")
         fqzs (mapcat #(fs/directory-files % "fastq.gz") sample-dirs)
+        fqzs (if (seq fqzs)
+               fqzs
+               (mapcat #(fs/directory-files % "fastq") sample-dirs))
         by-samples (group-by fqz-name->sample-name fqzs)]
     (into {} (map #(vector % (by-samples %))
                   (get-exp-info eid :sample-names)))))
