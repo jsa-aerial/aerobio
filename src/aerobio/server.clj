@@ -324,7 +324,7 @@
           reqtype (get-in reqmap [:headers "reqtype"])]
       (if (= reqtype "cmdline")
         (try
-          (let [_ (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
+          (let [_ (cmn/set-exp eid)
                 exp (cmn/get-exp-info eid :exp)
                 work-item (if action action cmd)
                 tempnm (str (name exp) "-" work-item "-job-template")
