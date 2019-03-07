@@ -28,4 +28,4 @@ While the system is general enough to apply to a range of domains, the intended 
 
 * Plots and charts for all analyses
 
-All output is placed in configurable output locations according canonical and consistent naming conventions. Further, all data is also directly accessible via supplied web interfaces.
+All output is placed in configurable output locations according canonical and consistent naming conventions. Further, all data is directly accessible via supplied web interfaces.
