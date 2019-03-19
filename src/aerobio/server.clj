@@ -39,8 +39,7 @@
    [clojure.data.json :as json]
    [clojure.java.io :as io]
    [clojure.tools.reader.edn :as edn]
-   [clojure.core.async :as async
-    :refer (<! <!! >! >!! put! chan go go-loop alt! timeout alt! alts!!)]
+   [clojure.core.async :as async :refer (<! >! go go-loop)]
 
    [ring.middleware.defaults]
    [ring.middleware.gzip :refer [wrap-gzip]]
@@ -62,7 +61,7 @@
    [com.rpl.specter :as sp]
 
    [aerial.hanasu.server :as srv]
-   [aerial.hanasu.common :as com]
+   [aerial.hanasu.common :as hc]
 
    [aerial.fs :as fs]
    [aerial.utils.misc :as aum]
@@ -87,9 +86,6 @@
    [aerobio.actions :as actions]
    ))
 
-
-;;; Logging config
-;;; (sente/set-logging-level! :trace) ; Uncomment for more logging
 
 
 
@@ -276,112 +272,6 @@
   ([key-path] (com/get-db app-db key-path)))
 
 
-;;; ------------------------------------------------------------------------;;;
-;;;                      Server routes and handlers                         ;;;
-;;; ------------------------------------------------------------------------;;;
-
-
-(defn landing-handler [request]
-  #_(infof "landing handler request: %s" request)
-  (content-type
-   {:status 200
-    :body (io/input-stream (io/resource "public/index.html"))}
-   "text/html"))
-
-
-(defn upload-file [args reqmap]
-  (println :ARGS args)
-  (println :REQMAP reqmap)
-  (let [resource-dir "/NextSeq/TVOLab"
-        base (fs/join "/data1" resource-dir)
-        files (->> args :dir (fs/join base)
-                   ((fn[d] (fs/directory-files d "")))
-                   (filter (fn[f] (not (fs/directory? f))))
-                   (map fs/basename))]
-    (hiccup/html
-     [:h1 "UPLD-file path"]
-     [:hr]
-     [:p (str "ARGS" args)]
-     [:hr]
-     [:p (str "REQMAP" reqmap)]
-     [:hr]
-     [:ul
-      (map #(vector :li [:a {:href (fs/join resource-dir (args :dir) %)} %])
-           files)])))
-
-
-(def dbg (atom {}))
-
-(defn htseq-file-get [args reqmap]
-  (infof "Args %s\nParams %s" args (reqmap :params))
-  #_(infof "ReqMap %s" reqmap)
-  (binding [*ns* (find-ns 'aerobio.server)]
-    (let [params (reqmap :params)
-          {:keys [user cmd action rep compfile eid]} params
-          eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
-          eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
-          user-agent (get-in reqmap [:headers "user-agent"])
-          reqtype (get-in reqmap [:headers "reqtype"])]
-      (if (= reqtype "cmdline")
-        (try
-          (let [_ (cmn/set-exp eid)
-                exp (cmn/get-exp-info eid :exp)
-                work-item (if action action cmd)
-                tempnm (str (name exp) "-" work-item "-job-template")
-                template (get-jobinfo tempnm)
-                result (actions/action cmd eid params get-toolinfo template)]
-            (aerial.utils.misc/sleep 250)
-            (swap! dbg (fn[M] (assoc M eid result)))
-            (infof "%s : %s" cmd result)
-            (json/json-str
-             {:params params
-              :result (str result)
-              :template tempnm
-              :recipient user}))
-          (catch Error e
-            (let [estg (format "Error %s" (or (.getMessage e) e))]
-              (errorf "%s: %s - Assert: %s" eid cmd estg)
-              (json/json-str
-             {:args args
-              :params params
-              :result estg
-              :recipient user
-              :user-agent user-agent
-              :reqtype reqtype})))
-          (catch Exception e
-            (let [emsg (or (.getMessage e) e)]
-              (errorf "%s: %s, Exception on Job launch: %s" eid cmd emsg)
-              (json/json-str
-               {:args args
-                :params params
-                :result (format "Exception: %s" emsg)
-                :recipient user
-                :user-agent user-agent
-                :reqtype reqtype}))))
-        (hiccup/html
-         [:h1 "HI from HTSeq command route"]
-         [:hr]
-         [:p (str "command and args: " args)]
-         [:hr]
-         [:p (str "Params" params)]
-         [:hr]
-         [:p (str "User Agent: " user-agent)])))))
-
-
-(def aerobio-routes
-  (apply routes
-         (conj (srv/hanasu-handlers)
-               (GET "/" request (landing-handler request))
-               (GET "/htseq/cmd"   [:as reqmap & args]
-                    (htseq-file-get args reqmap))
-               (route/resources "/"))))
-
-(def aerobio-handler
-  (-> aerobio-routes
-      #_(ring.middleware.defaults/wrap-defaults
-       ring.middleware.defaults/site-defaults)
-      #_(wrap-cljsjs)
-      #_(wrap-gzip)))
 
 
 ;;; ------------------------------------------------------------------------;;;
@@ -394,6 +284,8 @@
   (infof "ERROR: unknown user message %s" msg)
   #_(srv/send-msg
    (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
+
+
 
 
 ;;; ------------------------------------------------------------------------;;;
@@ -459,6 +351,120 @@
             (update-adb)
             (srv/stop-server))
     (infof ":SRV :WTF {:op %s :payload %s}" op payload)))
+
+
+
+
+;;; ------------------------------------------------------------------------;;;
+;;;                Server routes, handlers, start and stop                  ;;;
+;;; ------------------------------------------------------------------------;;;
+
+
+(defn landing-handler [request index-path]
+  #_(printchan request)
+  (content-type
+   {:status 200
+    :body (io/input-stream (io/resource index-path))}
+   "text/html"))
+
+(defn aerobio-routes [& {:keys [landing-handler index-path]
+                         :or {landing-handler landing-handler
+                              index-path "public/index.html"}}]
+  (apply routes
+         (conj (srv/hanasu-handlers)
+               (GET "/" request (landing-handler request index-path))
+               (route/resources "/"))))
+
+(defn aerobio-handler [aerobio-routes & middle-ware-stack]
+  (reduce (fn[R mwfn] (mwfn R)) aerobio-routes middle-ware-stack))
+
+
+
+(defn start-server
+  [port & {:keys [route-handler connfn]
+           :or {route-handler (aerobio-handler (aerobio-routes))
+                connfn identity}}]
+  (let [ch (srv/start-server port :main-handler route-handler)]
+    (printchan "Server start, reading msgs from " ch)
+    (update-adb :chan ch
+                :connfn [connfn])
+    (go-loop [msg (<! ch)]
+      (let [{:keys [op payload]} msg]
+        (future (server-dispatch ch op payload))
+        (when (not= op :stop)
+          (recur (<! ch)))))))
+
+(defn stop-server []
+  (async/>!! (get-adb :chan) {:op :stop :payload {:cause :userstop}}))
+
+
+#_(hmi/start-server
+   7070
+   :route-handler (hmi/aerobio-handler
+                   (hmi/aerobio-routes :index-path "public/Fig/index.html"))
+   :idfn (constantly "Exploring")
+   :connfn connfn)
+
+
+
+(def dbg (atom {}))
+
+(defn htseq-file-get [args reqmap]
+  (infof "Args %s\nParams %s" args (reqmap :params))
+  #_(infof "ReqMap %s" reqmap)
+  (binding [*ns* (find-ns 'aerobio.server)]
+    (let [params (reqmap :params)
+          {:keys [user cmd action rep compfile eid]} params
+          eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
+          eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
+          user-agent (get-in reqmap [:headers "user-agent"])
+          reqtype (get-in reqmap [:headers "reqtype"])]
+      (if (= reqtype "cmdline")
+        (try
+          (let [_ (cmn/set-exp eid)
+                exp (cmn/get-exp-info eid :exp)
+                work-item (if action action cmd)
+                tempnm (str (name exp) "-" work-item "-job-template")
+                template (get-jobinfo tempnm)
+                result (actions/action cmd eid params get-toolinfo template)]
+            (aerial.utils.misc/sleep 250)
+            (swap! dbg (fn[M] (assoc M eid result)))
+            (infof "%s : %s" cmd result)
+            (json/json-str
+             {:params params
+              :result (str result)
+              :template tempnm
+              :recipient user}))
+          (catch Error e
+            (let [estg (format "Error %s" (or (.getMessage e) e))]
+              (errorf "%s: %s - Assert: %s" eid cmd estg)
+              (json/json-str
+             {:args args
+              :params params
+              :result estg
+              :recipient user
+              :user-agent user-agent
+              :reqtype reqtype})))
+          (catch Exception e
+            (let [emsg (or (.getMessage e) e)]
+              (errorf "%s: %s, Exception on Job launch: %s" eid cmd emsg)
+              (json/json-str
+               {:args args
+                :params params
+                :result (format "Exception: %s" emsg)
+                :recipient user
+                :user-agent user-agent
+                :reqtype reqtype}))))
+        (hiccup/html
+         [:h1 "HI from HTSeq command route"]
+         [:hr]
+         [:p (str "command and args: " args)]
+         [:hr]
+         [:p (str "Params" params)]
+         [:hr]
+         [:p (str "User Agent: " user-agent)])))))
+
+
 
 (defn start-server
   [port]
