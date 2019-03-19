@@ -37,6 +37,9 @@
 
    [me.raynes/conch           "0.8.0" :exclusions [org.clojure/tools.reader]]
    [prismatic/schema          "1.0.1"] ; data shape checks for pgm graphs
+   [expound                   "0.7.2"] ; Human optimized msgs for spec
+   [spec-provider            "0.4.14"] ; infer specs from sample data
+   [phrase               "0.3-alpha4"] ; Actual end user msgs for spec?
    ]
 
   :plugins [[cider/cider-nrepl "0.17.0"]
