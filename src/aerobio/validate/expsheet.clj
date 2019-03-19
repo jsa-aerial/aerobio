@@ -12,7 +12,7 @@
    [aerobio.params :as pams]
    [aerobio.validate.common :as vc
     :refer [validate-msg make-validator bases? cols->maps
-            set-exp-sheet-data get-exp-sheet-data]]
+            update-vdb get-vdb get-exp-sheet-data]]
    [aerobio.htseq.common :as ac]))
 
 
@@ -20,7 +20,7 @@
 
 
 #_(def EID "181013_NS500751_0092_AH57C5BGX9")
-#_(set-exp-sheet-data EID)
+#_(vc/set-exp-sheet-data EID)
 #_(map #(get-exp-sheet-data EID %) [:gbks :gtfs :indices :bt1indices :norms])
 
 
@@ -77,26 +77,25 @@
 
 (defn make-scr-rec [EID x]
   (let [[s c r o] (str/split #"-" x)
-        rec {:EID EID, :s s :c c :r r :v x}]
+        dups (get-exp-sheet-data EID :sampdups)
+        rec {:EID EID, :s s :c c :r r :v x :dupcnt (dups x 0)}]
     (if o (assoc rec :o o) rec)))
 
-(defn illumbc? [x]
-  (contains? (get-exp-sheet-data (x :EID) :bcsets) (x :illumbc)))
-(defn sampbc?  [x]
-  (contains? (get-exp-sheet-data (x :EID) :sampbcs) (x :sampbc)))
 (defn strain? [x]
   (contains? (get-exp-sheet-data (x :EID) :strains) (x :s)))
 
+(defn nodup? [x] (= 0 (x :dupcnt)))
 (defn cond-ok? [x] (re-matches #"[A-Za-z0-9]+" (x :c)))
 (defn repid-ok? [x] (re-matches #"[A-Z]|[a-z]|[0-9]" (x :r)))
-(defn len3? [x] (= (count (dissoc x :EID :v)) 3))
+(defn len3? [x] (= (count (dissoc x :EID :v :dupcnt)) 3))
 
 (s/def ::len3? len3?)
 (s/def ::strain? strain?)
+(s/def ::nodup? nodup?)
 (s/def ::cond-ok? cond-ok?)
 (s/def ::repid-ok? repid-ok?)
 (s/def ::strain-cond-rep?
-  (s/merge ::len3? ::strain? ::cond-ok? ::repid-ok?))
+  (s/merge ::len3? ::strain? ::cond-ok? ::repid-ok? ::nodup?))
 
 
 (p/defphraser len3?
@@ -127,6 +126,13 @@
     (format
 "rep id `%s` in `%s` must be a single upper case or lower case letter or digit"
      repid fieldval)))
+
+(p/defphraser nodup?
+  [_ problem]
+  (let [fieldval (-> problem :val :v)
+        cnt (-> problem :val :dupcnt)]
+    (format "entry `%s` is duplicated %s times - must be unique"
+            fieldval cnt)))
 
 (def validate-sample-field
   (make-validator ::strain-cond-rep? :sep " and\n     " :suffix "\n"))
@@ -210,6 +216,7 @@
   (->> exp-samp-sheet
        validate-exp-samp-sheet
        (str/split #"\n")
+       (filter #(not (empty? %)))
        (map #(format " %s. %s" %1 %2) (iterate inc 1))
        (cljstr/join "\n")))
 
@@ -227,22 +234,29 @@
         ncbi-recs (mapv #(assoc (dissoc % :num) :EID EID)
                         (cols->maps ncbi-cols ncbi-xref-rows))
 
-        bc-xref-rows (recs :bc-xref)
-        bc-cols [:num :strain-cond-repid :illumbc :sampbc]
+        bc-xref-rows (->> recs :bc-xref
+                          (reduce (fn[R [n scr ibc sbc]]
+                                    (assoc R scr [(Integer. n) scr ibc sbc]))
+                                  {})
+                          vals (sort-by first) (mapv #(-> % rest vec)))
+        bc-cols [:strain-cond-repid :illumbc :sampbc]
         bc-recs (mapv #(assoc (dissoc % :num)
                               :EID EID
                               :strain-cond-repid
-                              (make-scr-rec EID(% :strain-cond-repid)))
+                              (make-scr-rec EID (% :strain-cond-repid)))
                       (cols->maps bc-cols bc-xref-rows))
-        exp-sheet {:ncxref ncbi-recs :repxref bc-recs}]
+
+        exp-sheet {:ncxref ncbi-recs :repxref bc-recs}
+        vstg (if (#{"rnaseq" "tnseq" "termseq"} (exp-rec :type))
+               (validate-exp-sheet exp-sheet)
+               (validate-nc-xref-recs ncbi-recs))]
     #_(do (pprint exp-rec)
           (pprint ncbi-recs)
           (pprint bc-recs))
     (with-out-str
-      (print (format "%s has errors\n" exp-sampsheet))
-      (if (#{"rnaseq" "tnseq" "termseq"} (exp-rec :type))
-        (print (validate-exp-sheet exp-sheet))
-        (print (validate-nc-xref-recs ncbi-recs))))))
+      (when (not (empty? vstg))
+        (print (format "%s has errors\n" exp-sampsheet)))
+      (print vstg))))
 
 
 
@@ -250,6 +264,7 @@
 (comment
 
   (def EID "181013_NS500751_0092_AH57C5BGX9")
+  (def EID "190218_NS500751_0120_AHNK5TBGX9")
 
   (fs/join "/NextSeq2/" EID "Exp-SampleSheet.csv")
 

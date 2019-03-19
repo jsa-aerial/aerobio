@@ -7,9 +7,12 @@
     :refer [defphraser phrase phrase-first]]
 
    [clojure.string :as cljstr]
+
    [aerial.utils.string :as str]
    [aerial.fs :as fs]
+   [aerial.hanasu.common :as hc]
 
+   [aerobio.params :as pams]
    [aerobio.htseq.common :as ac]))
 
 
@@ -84,31 +87,74 @@
                (fs/directory-files (fs/join refdir "NormGenes") ".txt"))]
     [gbks gtfs indices bt1indices norms]))
 
-(def exp-sheet-data (atom {}))
+
+
+
+(def sheet-db (atom {}))
+
+(defn update-vdb
+  ([keypath vorf] #_(printchan [:db :update] "UPDATE-ADB " keypath vorf)
+   (hc/update-db sheet-db keypath vorf))
+  ([kp1 vof1 kp2 vof2 & kps-vs]
+   (apply hc/update-db sheet-db kp1 vof1 kp2 vof2 kps-vs)))
+
+(defn get-vdb
+  ([] (hc/get-db sheet-db []))
+  ([key-path] #_(printchan [:db :get]"GET-ADB " key-path)
+   (hc/get-db sheet-db key-path)))
+
 
 (defn set-exp-sheet-data [EID]
   (let [exinfo (ac/get-exp EID)
+        sample-vec (->> exinfo
+                        :exp-illumina-xref
+                        vals (apply concat)
+                        (mapv second))
+        samples (->> sample-vec (into #{}))
+        sampdups (->> sample-vec
+                      frequencies
+                      (filter (fn[[k v]] (not= 1 v)))
+                      (into {}))
+        sampnames (exinfo :sample-names)
+
         bcsets (->> exinfo :barcode-maps
                     (mapv (fn[[k v]] [k (-> v keys set)]))
                     (into {}))
         sampbcs (->> bcsets vals (apply concat) set)
+
+        Isampnames (->> exinfo :sample-sheet (mapv first) (into #{}))
+        Isampdups (->> exinfo :sample-sheet (mapv first)
+                       frequencies
+                       (filter (fn[[k v]] (not= 1 v)))
+                       (into {}))
+
         NCs (->> exinfo :exp-sample-info :ncbi-xref
                  (mapv second) (into #{}))
-        strains (exinfo :strains)
+        strains (->> exinfo :exp-sample-info :ncbi-xref (mapv last) (into #{}))
         [gbks gtfs indices bt1indices norms] (get-known-refs EID)]
     #_(pprint [(take 3 bcsets) NCs strains])
-    (swap! exp-sheet-data
+    (swap! sheet-db
            assoc
            EID {:bcsets bcsets :sampbcs sampbcs :ncs NCs :strains strains
+                :samples samples :sampdups sampdups :sampnames sampnames
+                :Isampnames Isampnames :Isampdups Isampdups
                 :gbks gbks :gtfs gtfs
                 :indices indices :bt1indices bt1indices
                 :norms norms})))
 
 (defn get-exp-sheet-data [EID k]
-  (get-in @exp-sheet-data [EID k]))
+  (get-in @sheet-db [EID k]))
+
+
 
 
 (comment
+
+  (def EID "181013_NS500751_0092_AH57C5BGX9")
+
+  (print (validate-files-exist {:sampsheet EID :expsheet EID}))
+  (print (validate-sheets-exist EID))
+
 
   (let [recs (ac/get-exp-sample-info
               (fs/join "/NextSeq2/" EID "Exp-SampleSheet.csv"))

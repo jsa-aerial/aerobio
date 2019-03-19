@@ -20,18 +20,20 @@
 ;;; SampleSheet.csv
 
 (defn id-eq-nm? [m] (= (m :sid) (m :snm)))
+(defn nodup? [x] (= 0 (x :dupcnt)))
 
 (s/def ::sid string?)
 (s/def ::snm string?)
 (s/def ::index bases?)
 (s/def ::index2 bases?)
 (s/def ::id-eq-nm? id-eq-nm?)
+(s/def ::nodup? nodup?)
 
 ;;; NOTE!!! need to use s/merge as s/and (for some idiotic reason)
 ;;; uses short circuit semantics!! WTF!!!
 (s/def ::samp-sheet-rec
   (s/merge (s/keys :req-un [::sid ::snm ::index] :opt-un [::index2])
-           ::id-eq-nm?))
+           ::id-eq-nm? ::nodup?))
 
 (s/def ::samp-sheet (s/coll-of ::samp-sheet-rec))
 
@@ -63,26 +65,41 @@
         snm (value :snm)]
     (format "Sample_ID `%s` must equal Sample_NAME `%s`" sid snm)))
 
+(p/defphraser nodup?
+  [_ problem]
+  (let [sidnm (-> problem :val :sid)
+        cnt (-> problem :val :dupcnt)]
+    (format "entry `%s` is duplicated %s times - must be unique"
+            sidnm cnt)))
 
-(def validate-samp-sheet
-  (make-validator
-   ::samp-sheet
-   :prefix    "Problems: "
-   :sep " and\n          "))
+
+(def validate-ssheet (make-validator ::samp-sheet :sep "\n"))
+
+(defn validate-samp-sheet [samp-sheet]
+  (->> samp-sheet
+       validate-ssheet
+       (str/split #"\n")
+       (filter #(not (empty? %)))
+       (map #(format " %s. %s" %1 %2) (iterate inc 1))
+       (cljstr/join "\n")))
 
 
 (defn validate-sample-sheet [EID]
   (let [sampsheet (fs/join (pams/get-params :nextseq-base)
                            EID "SampleSheet.csv")
-        recs (ac/get-sample-info sampsheet)
+        rows (->> sampsheet ac/get-sample-info
+                  (reduce (fn[M r] (assoc M (first r) r)) {})
+                  vals vec)
+        dups (vc/get-exp-sheet-data EID :Isampdups)
         cols [:sid, :snm, :index]
-        recs (cols->maps cols recs)
+        recs (->> rows (cols->maps cols)
+                  (mapv (fn[m] (assoc m :dupcnt (dups (m :sid) 0)))))
         valid (validate-samp-sheet recs)]
     #_(pprint recs)
-    (when (not (empty? valid))
-      (with-out-str
-        (print (format "%s has errors\n" sampsheet))
-        (print valid)))))
+    (with-out-str
+      (when (not (empty? valid))
+        (print (format "%s has errors\n" sampsheet)))
+      (print valid))))
 
 
 
