@@ -80,6 +80,8 @@
    [aerobio.htseq.termseq :as httm]
    [aerobio.htseq.tnseq   :as htts]
    [aerobio.htseq.wgseq   :as htws]
+   ;; Validation
+   [aerobio.validate.all :as va]
    ;; Program graph construction, execution, delivery
    [aerobio.pgmgraph :as pg]
    ;; REST actions
@@ -261,15 +263,15 @@
 (defonce app-db (atom {:rcvcnt 0 :sntcnt 0}))
 
 (defn update-adb
-  ([] (com/update-db app-db {:rcvcnt 0 :sntcnt 0}))
+  ([] (hc/update-db app-db {:rcvcnt 0 :sntcnt 0}))
   ([keypath vorf]
-   (com/update-db app-db keypath vorf))
+   (hc/update-db app-db keypath vorf))
   ([kp1 vof1 kp2 vof2 & kps-vs]
-   (apply com/update-db app-db kp1 vof1 kp2 vof2 kps-vs)))
+   (apply hc/update-db app-db kp1 vof1 kp2 vof2 kps-vs)))
 
 (defn get-adb
-  ([] (com/get-db app-db []))
-  ([key-path] (com/get-db app-db key-path)))
+  ([] (hc/get-db app-db []))
+  ([key-path] (hc/get-db app-db key-path)))
 
 
 
@@ -283,21 +285,28 @@
 (defmethod user-msg :default [msg]
   (infof "ERROR: unknown user message %s" msg)
   #_(srv/send-msg
-   (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
+     (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
 
-
-
-
-;;; ------------------------------------------------------------------------;;;
-;;;                Control  starting and stoping Webserver                  ;;;
-;;; ------------------------------------------------------------------------;;;
+(defmethod user-msg :run [msg]
+  (let [info (msg :payload)
+        ws (info :ws)
+        eid (info "eid")
+        eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
+        eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)]
+    (infof "RUN: %s" info)
+    (srv/send-msg ws {:op :validate :payload (va/validate-exp eid)})
+    (srv/send-msg ws {:op :stop :payload {}} :noenvelope true)))
 
 (defn msg-handler [msg]
-  (infof ":MSG-HANDLER :MSG %s" msg)
-  (let [{:keys [op data]} (msg :data)]
+  (let [{:keys [ws data]} msg
+        {:keys [op data]} data]
+    (infof "MSG-HANDLER: MSG %s" (msg :data))
     (case op
+      (:done "done")
+      (do (infof "WS: %s, sending stop msg" ws)
+          (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
       ;;null for now
-      (user-msg (msg :data)))))
+      (user-msg {:op op :payload (assoc data :ws ws)}))))
 
 
 (defn on-open [ch op payload]
@@ -309,11 +318,12 @@
         data (connfn {:uid uid})
         name-uuids (or (get-adb uid-name) [])]
     (infof ":SRV :open %s" uid)
-    (update-adb [uuid :ws] ws, [uuid :name] uid-name
-                [uuid :rcvcnt] 0, [uuid :sntcnt] 0
+    (update-adb :ws ws
                 [ws :uuid] uuid
+                [uuid :ws] ws, [uuid :name] uid-name
+                [uuid :rcvcnt] 0, [uuid :sntcnt] 0
                 uid-name (conj name-uuids uuid))
-    (srv/send-msg ws {:op :register :data data})))
+    (srv/send-msg ws {:op :register :payload data})))
 
 
 (defn server-dispatch [ch op payload]
@@ -381,12 +391,13 @@
 
 
 (defn start-server
-  [port & {:keys [route-handler connfn]
+  [port & {:keys [route-handler idfn connfn]
            :or {route-handler (aerobio-handler (aerobio-routes))
                 connfn identity}}]
   (let [ch (srv/start-server port :main-handler route-handler)]
-    (printchan "Server start, reading msgs from " ch)
+    (infof "Server start, reading msgs from %s" ch)
     (update-adb :chan ch
+                :idfn [idfn]
                 :connfn [connfn])
     (go-loop [msg (<! ch)]
       (let [{:keys [op payload]} msg]
@@ -398,12 +409,36 @@
   (async/>!! (get-adb :chan) {:op :stop :payload {:cause :userstop}}))
 
 
-#_(hmi/start-server
+(defn connfn [data] data)
+
+#_(start-server
    7070
-   :route-handler (hmi/aerobio-handler
-                   (hmi/aerobio-routes :index-path "public/Fig/index.html"))
-   :idfn (constantly "Exploring")
+   :route-handler (aerobio-handler
+                   (aerobio-routes :index-path "public/index.html"))
+   :idfn (constantly "Aerobio")
    :connfn connfn)
+#_(stop-server)
+
+
+(defn start! [port]
+  (timbre/set-level! :info) ; :debug
+  (start-tool-watcher)
+  (start-job-watcher)
+  (start-server
+   port
+   :idfn (constantly "Aerobio")
+   :connfn connfn
+   :route-handler
+   (aerobio-handler (aerobio-routes :index-path "public/index.html"))))
+
+(defn stop! []
+  (stop-tool-watcher)
+  (stop-job-watcher)
+  (stop-server))
+
+
+
+
 
 
 
@@ -463,34 +498,3 @@
          [:p (str "Params" params)]
          [:hr]
          [:p (str "User Agent: " user-agent)])))))
-
-
-
-(defn start-server
-  [port]
-  (let [ch (srv/start-server port :main-handler aerobio-handler)]
-    (infof "Server start, reading msgs from %s" ch)
-    (update-adb :chan ch
-                :idfn [(partial gensym "aerobio-")]
-                :connfn [identity])
-    (go-loop [msg (<! ch)]
-      (let [{:keys [op payload]} msg]
-        (future (server-dispatch ch op payload))
-        (when (not= op :stop)
-          (recur (<! ch)))))))
-
-(defn stop-server []
-  (async/>!! (get-adb :chan) {:op :stop :payload {:cause :userstop}}))
-
-
-(defn start! [port]
-  (timbre/set-level! :info) ; :debug
-  (start-tool-watcher)
-  (start-job-watcher)
-  (start-server port))
-
-(defn stop! []
-  (stop-tool-watcher)
-  (stop-job-watcher)
-  (stop-server))
-
