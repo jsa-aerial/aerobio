@@ -22,7 +22,7 @@
 
    [com.rpl/specter "1.1.1"]
 
-   [aerial.hanasu             "0.2.1"] ; websockets
+   [aerial.hanasu             "0.2.3"] ; websockets
 
    [aerial.fs                 "1.1.5"]
    [aerial.utils              "1.2.0"]
