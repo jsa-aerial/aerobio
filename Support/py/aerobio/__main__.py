@@ -1,7 +1,8 @@
-import time
+import os
+import getopt, sys
 import pkg_resources
-import asyncio
-import gochans as gc
+import time
+import trio
 import client as cli
 from client import close, error, bpwait, bpresume, sent, stop, rmv
 
@@ -14,46 +15,43 @@ def update_udb (keys, val):
     cli.update_db(udb, keys, val)
 
 
-kwdone = cli.keyword('done')
-
 dsdict = lambda dict, *keys: list((dict[key] for key in keys))
 
 
-
-def usermsg (op, payload):
-    print("UOP:", op, "\nUPAYLOAD", payload)
-
+def appmsg (ws, data):
+    op, payload = dsdict(data, cli.op, cli.payload)
+    if op == cli.keyword('validate'):
+        print("")
+        print(payload)
+    elif op == cli.keyword('jobinfo'):
+        print(payload)
+    elif op == cli.keyword('register'):
+        update_udb(['register'], payload)
+    else:
+        print("UOP:", op, "\nUPAYLOAD", payload)
 
 def dispatcher (ch, op, payload):
-    ## print("DISPATCH:", op, payload)
+    #print("DISPATCH:", op, payload)
 
     if op == cli.msg or op == 'msg':
-        ws, appmsg = dsdict(payload, 'ws', 'data')
-        mop = cli.get_msg_op(appmsg)
-        mpload = cli.get_msg_payload(appmsg)
-        if mop == kwdone or mop == 'done':
-          ## print("close_connection and exit ...")
-          closech = get_udb(['close', 'chan'])
-          gc.go(closech.send, 'stop')
-        else:
-          update_udb([ws, 'lastrcv'], appmsg)
-          update_udb([ws, 'rcvcnt'], get_udb([ws, 'rcvcnt'])+1)
-          usermsg(mop, mpload)
+        ws, data = dsdict(payload, 'ws', 'data')
+        #print('CLIENT :msg/payload = ', payload)
+        update_udb([ws, 'lastrcv'], data)
+        update_udb([ws, 'rcvcnt'], get_udb([ws, 'rcvcnt'])+1)
+        appmsg(ws, data)
     elif op == cli.sent:
         ws, msg = dsdict(payload, 'ws', cli.msg)
-        print("CLIENT, Sent msg ", msg)
+        #print("CLIENT, Sent msg ", msg)
         update_udb([ws, 'lastsnt'], msg)
         update_udb([ws, 'sntcnt'], get_udb([ws, 'sntcnt'])+1)
     elif op == cli.open:
         ws = payload
-        ##print("CLIENT :open/ws = ", ws)
+        #print("CLIENT :open/ws = ", ws)
         update_udb([ws], {'chan': ch, 'rcvcnt': 0, 'sntcnt': 0, 'errcnt': 0})
         update_udb(['com'], [ch, ws])
     elif op == close:
         ws, code, reason = dsdict(payload, 'ws', 'code', 'reason')
         print("CLIENT RMTclose/payload = ", payload)
-        go(ch.send, {cli.op: stop,
-                     cli.payload: {'ws': ws, 'cause': 'rmtclose'}})
     elif op == error:
         ws, err = dsdict(payload, 'ws', 'err')
         print("CLIENT :error/payload = ", payload)
@@ -61,61 +59,86 @@ def dispatcher (ch, op, payload):
     elif op == bpwait:
         ws, msg, encode = dsdict(payload, 'ws', cli.msg, 'encode')
         print("CLIENT, Waiting to send msg ", msg)
-        time.sleep(2)
-        print("CLIENT, Trying resend ...")
-        cli.send_msg(ws, msg, encode=encode)
+        v = udb["bpwait"] if "bpwait" in udb else []
+        v.append([ws, msg, encode])
+        update_udb(["bpwait"], v)
+        time.sleep(0.1)
     elif op == bpresume:
         print("CLIENT, BP Resume ", payload)
+        update_udb(["resume"], payload)
     elif op == stop:
         ws, cause = dsdict(payload, 'ws', 'cause')
         print("CLIENT, Stopping reads... Cause ", cause)
-        cli.close_connection(ws)
         update_udb([ws], rmv)
     else:
         print("CLIENT :WTF/op = ", op, " payload = ", payload)
 
 
-# 'ws://localhost:8765/ws'
-def startit (url):
-    close_chan = gc.Chan(size=2)
-    update_udb(['close', 'chan'], close_chan)
-    ch = cli.open_connection(url)
-    cli.gorun(ch, dispatcher)
+
+def getarg (arglist):
+    arg = arglist[0]
+    arglist = arglist[1:]
+    return (arg, arglist)
+
+def args2map ():
+    user = os.environ['USER']
+    argmap = {'user': user}
+    fullArgs = sys.argv
+    arglist = fullArgs[1:]
+    (cmd,arglist) = getarg(arglist)
+    argmap['cmd'] = cli.keyword(cmd)
+    if cmd == 'run':
+        (phase,arglist) = getarg(arglist)
+        argmap['phase'] = phase
+        (x, arglist) = getarg(arglist)
+        if (x == 'replicates') or (x == 'combined'):
+            argmap['modifier'] = x
+        else:
+            argmap['eid'] = x
+        if not 'eid' in argmap:
+            (eid, arglist) = getarg(arglist)
+            argmap['eid'] = eid
+        if not 'modifier' in argmap:
+            argmap['modifier'] = 'replicates'
+    elif (cmd == 'compare') or (cmd == 'xcompare') or (cmd == 'aggregate'):
+        (compfile, arglist) = getarg(arglist)
+        argmap['compfile'] = compfile
+        (eid, arglist) = getarg(arglist)
+        argmap['eid'] = eid
+    return argmap
 
 
-@asyncio.coroutine
-def waitclose ():
-  closech = get_udb(['close', 'chan'])
-  x = yield from closech.recv()
-  return x
+async def bpretry ():
+    return "bpwait" in udb and udb["bpwait"]
 
-import threading
-import atexit
-cloop = asyncio.get_event_loop()
-atexit.register(cloop.close)
-threading.Thread(name='closeloop-thread', target=cloop.run_forever).start()
+async def resume ():
+    while "resume" not in udb:
+        await trio.sleep(0.1)
+    return True
+
+async def command (info):
+    while not 'com' in udb:
+        time.sleep(0.1)
+    ws = info["ws"]
+    argmap = info["appinfo"]["argmap"]
+    await cli.send_msg(
+        ws, {cli.op: argmap['cmd'], cli.keyword('data'): argmap})
 
 
 def main():
-  ## print("Hello from Aerobio Python")
-  ## print(pkg_resources.resource_string(
+    ## print("Hello from Aerobio Python")
+    ## print(pkg_resources.resource_string(
     ##__name__, "resources/usage.txt").decode("utf-8").strip())
-  ## print("connecting to 7070")
-  startit('ws://localhost:7070/ws')
-  ## closech = get_udb(['close', 'chan'])
-  print("go(closech.recv)")
-  ## time.sleep(.3)
-  ## f = gc.go(closech.recv)
-  ## x = f.result()
-  f = asyncio.run_coroutine_threadsafe(waitclose(), cloop)
-  x = f.result()
-  print("closech result: ", x)
-  ch, ws = get_udb(['com'])
-  cli.close_connection(ws)
+    ## print("connecting to 7070")
+    argmap = args2map()
+    #print("ArgMap:", argmap)
+    url = 'ws://localhost:7070/ws'
+    trio.run(cli.open_connection,
+             url, dispatcher, command, {"argmap": argmap})
 
 
 if __name__ == "__main__":
-  main()
+    main()
 
 
 
