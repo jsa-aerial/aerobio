@@ -24,7 +24,7 @@
 (defn sample-name? [x]
   (contains? (get-exp-sheet-data (x :EID) :sampnames) (x :nm)))
 
-(defn efstg? [s] (re-matches #"(^(?![\s\S])|[0-9]+|[0-9]+\.[0-9+])" s))
+(defn efstg? [s] (re-matches #"(^(?![\s\S])|[0-9]+|[0-9]+\.[0-9]+)" s))
 
 (s/def ::sampx sample-name?)
 (s/def ::sampy sample-name?)
