@@ -11,18 +11,46 @@
 
    [aerobio.params :as pams]
    [aerobio.validate.common :as vc
-    :refer [validate-msg make-validator bases? cols->maps
+    :refer [make-sheet-fspec eolOK?
+            validate-msg make-validator bases? cols->maps
             update-vdb get-vdb get-exp-sheet-data]]
    [aerobio.htseq.common :as ac]))
 
 
 ;;; Exp-SampleSheet.csv
 
+;;; EOL check
+;;;
+(defn expsamp-eolok [EID]
+  (eolOK? (make-sheet-fspec EID "Exp-SampleSheet.csv")))
 
-#_(def EID "181013_NS500751_0092_AH57C5BGX9")
-#_(vc/set-exp-sheet-data EID)
-#_(map #(get-exp-sheet-data EID %) [:gbks :gtfs :indices :bt1indices :norms])
+(s/def ::expsamp-eol expsamp-eolok)
 
+(s/def ::eolsok? (s/keys :req-un [::expsamp-eol]))
+
+(p/defphraser expsamp-eolok
+  [_ problem]
+  "'Exp-SampleSheet.csv' must use Linux or Win/Dos End Of Line (EOL) markers")
+
+(def validate-eols (make-validator ::eolsok? :sep "\n"))
+
+(defn validate-eols-ok [EID]
+  (let [expsheet (make-sheet-fspec EID "Exp-SampleSheet.csv")
+        vstg (->> {:expsamp-eol EID}
+                  validate-eols
+                  (str/split #"\n")
+                  (filter #(not (empty? %)))
+                  (map #(format " %s. %s" %1 %2) (iterate inc 1))
+                  (cljstr/join "\n"))]
+    (with-out-str
+      (when (not (empty? vstg))
+        (print (format "%s has errors\n" expsheet)))
+      (print vstg))))
+
+
+
+
+;;; Content checks
 
 ;;; 'NC' xref section
 
@@ -222,41 +250,44 @@
 
 
 (defn validate-exp-sample-sheet [EID]
-  (let [exp-sampsheet (fs/join (pams/get-params :nextseq-base)
-                               EID "Exp-SampleSheet.csv")
-        recs (ac/get-exp-sample-info exp-sampsheet)
-        exp-rows (recs :exp-rec)
-        exp-cols [:type :name :comment]
-        exp-rec (first (cols->maps exp-cols exp-rows))
+  (let [veol (validate-eols-ok EID)]
+    (if (not-empty veol)
+      veol
+      (let [exp-sampsheet (make-sheet-fspec EID "Exp-SampleSheet.csv")
+            recs (ac/get-exp-sample-info exp-sampsheet)
+            exp-rows (recs :exp-rec)
+            exp-cols [:type :name :comment]
+            exp-rec (first (cols->maps exp-cols exp-rows))
 
-        ncbi-xref-rows (recs :ncbi-xref)
-        ncbi-cols [:num :ncid :expnm]
-        ncbi-recs (mapv #(assoc (dissoc % :num) :EID EID)
-                        (cols->maps ncbi-cols ncbi-xref-rows))
+            ncbi-xref-rows (recs :ncbi-xref)
+            ncbi-cols [:num :ncid :expnm]
+            ncbi-recs (mapv #(assoc (dissoc % :num) :EID EID)
+                            (cols->maps ncbi-cols ncbi-xref-rows))
 
-        bc-xref-rows (->> recs :bc-xref
-                          (reduce (fn[R [n scr ibc sbc]]
-                                    (assoc R scr [(Integer. n) scr ibc sbc]))
-                                  {})
-                          vals (sort-by first) (mapv #(-> % rest vec)))
-        bc-cols [:strain-cond-repid :illumbc :sampbc]
-        bc-recs (mapv #(assoc (dissoc % :num)
-                              :EID EID
-                              :strain-cond-repid
-                              (make-scr-rec EID (% :strain-cond-repid)))
-                      (cols->maps bc-cols bc-xref-rows))
+            bc-xref-rows (->> recs :bc-xref
+                              (reduce (fn[R [n scr ibc sbc]]
+                                        (assoc R scr
+                                               [(Integer. n) scr ibc sbc]))
+                                      {})
+                              vals (sort-by first) (mapv #(-> % rest vec)))
+            bc-cols [:strain-cond-repid :illumbc :sampbc]
+            bc-recs (mapv #(assoc (dissoc % :num)
+                                  :EID EID
+                                  :strain-cond-repid
+                                  (make-scr-rec EID (% :strain-cond-repid)))
+                          (cols->maps bc-cols bc-xref-rows))
 
-        exp-sheet {:ncxref ncbi-recs :repxref bc-recs}
-        vstg (if (#{"rnaseq" "tnseq" "termseq"} (exp-rec :type))
-               (validate-exp-sheet exp-sheet)
-               (validate-nc-xref-recs ncbi-recs))]
-    #_(do (pprint exp-rec)
-          (pprint ncbi-recs)
-          (pprint bc-recs))
-    (with-out-str
-      (when (not (empty? vstg))
-        (print (format "%s has errors\n" exp-sampsheet)))
-      (print vstg))))
+            exp-sheet {:ncxref ncbi-recs :repxref bc-recs}
+            vstg (if (#{"rnaseq" "tnseq" "termseq"} (exp-rec :type))
+                   (validate-exp-sheet exp-sheet)
+                   (validate-nc-xref-recs ncbi-recs))]
+        #_(do (pprint exp-rec)
+              (pprint ncbi-recs)
+              (pprint bc-recs))
+        (with-out-str
+          (when (not (empty? vstg))
+            (print (format "%s has errors\n" exp-sampsheet)))
+          (print vstg))))))
 
 
 

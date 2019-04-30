@@ -13,12 +13,46 @@
 
    [aerobio.params :as pams]
    [aerobio.validate.common :as vc
-    :refer [validate-msg make-validator bases? cols->maps]]
+    :refer [make-sheet-fspec eolOK?
+            validate-msg make-validator bases? cols->maps]]
    [aerobio.htseq.common :as ac]))
 
 
 ;;; SampleSheet.csv
 
+;;; EOL check
+;;;
+(defn samp-eolok [EID]
+  (eolOK? (make-sheet-fspec EID "SampleSheet.csv")))
+
+(s/def ::samp-eol samp-eolok)
+
+(s/def ::eolsok? (s/keys :req-un [::samp-eol]))
+
+(p/defphraser samp-eolok
+  [_ problem]
+  "'SampleSheet.csv' must use Linux or Win/Dos End Of Line (EOL) markers")
+
+(def validate-eols (make-validator ::eolsok? :sep "\n"))
+
+(defn validate-eols-ok [EID]
+  (let [sampsheet (make-sheet-fspec EID "SampleSheet.csv")
+        vstg (->> {:samp-eol EID}
+                  validate-eols
+                  (str/split #"\n")
+                  (filter #(not (empty? %)))
+                  (map #(format " %s. %s" %1 %2) (iterate inc 1))
+                  (cljstr/join "\n"))]
+    (with-out-str
+      (when (not (empty? vstg))
+        (print (format "%s has errors\n" sampsheet)))
+      (print vstg))))
+
+
+
+
+;;; Content checks
+;;;
 (defn id-eq-nm? [m] (= (m :sid) (m :snm)))
 (defn nodup? [x] (= 0 (x :dupcnt)))
 
@@ -85,21 +119,23 @@
 
 
 (defn validate-sample-sheet [EID]
-  (let [sampsheet (fs/join (pams/get-params :nextseq-base)
-                           EID "SampleSheet.csv")
-        rows (->> sampsheet ac/get-sample-info
-                  (reduce (fn[M r] (assoc M (first r) r)) {})
-                  vals vec)
-        dups (vc/get-exp-sheet-data EID :Isampdups)
-        cols [:sid, :snm, :index]
-        recs (->> rows (cols->maps cols)
-                  (mapv (fn[m] (assoc m :dupcnt (dups (m :sid) 0)))))
-        valid (validate-samp-sheet recs)]
-    #_(pprint recs)
-    (with-out-str
-      (when (not (empty? valid))
-        (print (format "%s has errors\n" sampsheet)))
-      (print valid))))
+  (let [veol (validate-eols-ok EID)]
+    (if (not-empty veol)
+      veol
+      (let [sampsheet (make-sheet-fspec EID "SampleSheet.csv")
+            rows (->> sampsheet ac/get-sample-info
+                      (reduce (fn[M r] (assoc M (first r) r)) {})
+                      vals vec)
+            dups (vc/get-exp-sheet-data EID :Isampdups)
+            cols [:sid, :snm, :index]
+            recs (->> rows (cols->maps cols)
+                      (mapv (fn[m] (assoc m :dupcnt (dups (m :sid) 0)))))
+            valid (validate-samp-sheet recs)]
+        #_(pprint recs)
+        (with-out-str
+          (when (not (empty? valid))
+            (print (format "%s has errors\n" sampsheet)))
+          (print valid))))))
 
 
 

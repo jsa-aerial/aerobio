@@ -12,12 +12,47 @@
 
    [aerobio.params :as pams]
    [aerobio.validate.common :as vc
-    :refer [validate-msg make-validator bases? cols->maps
+    :refer [make-sheet-fspec eolOK?
+            validate-msg make-validator bases? cols->maps
             set-exp-sheet-data get-exp-sheet-data]]
    [aerobio.htseq.common :as ac]))
 
 
 ;;; ComparisonSheet.csv
+
+;;; EOL check
+;;;
+
+(defn comp-eolok [info]
+  (eolOK? (make-sheet-fspec (info :eid) (info :name))))
+
+(s/def ::comp-eol comp-eolok)
+
+(s/def ::eolsok? (s/keys :req-un [::comp-eol]))
+
+(p/defphraser comp-eolok
+  [_ problem]
+  "'CompSheet.csv' must use Linux or Win/Dos End Of Line (EOL) markers")
+
+(def validate-eols (make-validator ::eolsok? :sep "\n"))
+
+(defn validate-eols-ok [EID compname]
+  (let [compsheet (make-sheet-fspec EID compname)
+        vstg (->> {:comp-eol {:eid EID :name compname}}
+                  validate-eols
+                  (str/split #"\n")
+                  (filter #(not (empty? %)))
+                  (map #(format " %s. %s" %1 %2) (iterate inc 1))
+                  (cljstr/join "\n"))]
+    (with-out-str
+      (when (not (empty? vstg))
+        (print (format "%s has errors\n" compsheet)))
+      (print vstg))))
+
+
+
+
+;;; Content checks
 
 ;;; sample names section
 
@@ -126,17 +161,19 @@
 
 (defn validate-comparison-sheet
   ([EID compname]
-   (let [compsheet (fs/join (pams/get-params :nextseq-base)
-                            EID compname)
-         rows (->> compsheet slurp csv/read-csv rest)
-         exp (ac/get-exp-info EID :exp)
-         vstg (cond
-                (= exp :wgseq) (validate-wgcomparison-sheet EID rows)
-                :else (validate-rtcomparison-sheet EID rows))]
-     (with-out-str
-       (when (not (empty? vstg))
-         (print (format "%s has errors\n" compsheet)))
-       (print vstg))))
+   (let [veol (validate-eols-ok EID compname)]
+     (if (not-empty veol)
+       veol
+       (let [compsheet (make-sheet-fspec EID compname)
+             rows (->> compsheet slurp csv/read-csv rest)
+             exp (ac/get-exp-info EID :exp)
+             vstg (cond
+                    (= exp :wgseq) (validate-wgcomparison-sheet EID rows)
+                    :else (validate-rtcomparison-sheet EID rows))]
+         (with-out-str
+           (when (not (empty? vstg))
+             (print (format "%s has errors\n" compsheet)))
+           (print vstg))))))
   ([EID]
    (validate-comparison-sheet EID "ComparisonSheet.csv")))
 

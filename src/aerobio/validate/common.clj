@@ -55,6 +55,17 @@
   (format "`%s` must be a map" (problem :val)))
 
 
+;;; Check proper line EOL for sheets
+;;;
+(defn make-sheet-fspec [EID sheetname]
+  (fs/join (pams/get-params :nextseq-base) EID sheetname))
+
+(defn eolOK? [csv]
+  (->> csv slurp (re-find #"\n")))
+
+
+
+
 (def bases-regex  #"[ACGT]+")
 (defn bases? [x] (and (string? x) (re-matches bases-regex x)))
 
