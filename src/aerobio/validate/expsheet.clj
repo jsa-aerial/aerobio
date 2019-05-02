@@ -266,8 +266,10 @@
 
             bc-xref-rows (->> recs :bc-xref
                               (reduce (fn[R [n scr ibc sbc]]
-                                        (assoc R scr
-                                               [(Integer. n) scr ibc sbc]))
+                                        (if (empty? scr)
+                                          R
+                                          (assoc R scr
+                                                 [(Integer. n) scr ibc sbc])))
                                       {})
                               vals (sort-by first) (mapv #(-> % rest vec)))
             bc-cols [:strain-cond-repid :illumbc :sampbc]
