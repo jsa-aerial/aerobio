@@ -75,6 +75,15 @@ def dispatcher (ch, op, payload):
 
 
 
+# msg attributes as keywords
+#
+kwcmd = cli.keyword("cmd")
+kwuser = cli.keyword("user")
+kwphase = cli.keyword("phase")
+kwmodifier = cli.keyword("modifier")
+kweid = cli.keyword("eid")
+kwcompfile = cli.keyword("compfile")
+
 def getarg (arglist):
     arg = arglist[0]
     arglist = arglist[1:]
@@ -82,29 +91,29 @@ def getarg (arglist):
 
 def args2map ():
     user = os.environ['USER']
-    argmap = {'user': user}
+    argmap = {kwuser: user}
     fullArgs = sys.argv
     arglist = fullArgs[1:]
     (cmd,arglist) = getarg(arglist)
-    argmap['cmd'] = cli.keyword(cmd)
+    argmap[kwcmd] = cli.keyword(cmd)
     if cmd == 'run':
         (phase,arglist) = getarg(arglist)
-        argmap['phase'] = phase
+        argmap[kwphase] = phase
         (x, arglist) = getarg(arglist)
         if (x == 'replicates') or (x == 'combined'):
-            argmap['modifier'] = x
+            argmap[kwmodifier] = x
         else:
-            argmap['eid'] = x
-        if not 'eid' in argmap:
+            argmap[kweid] = x
+        if not kweid in argmap:
             (eid, arglist) = getarg(arglist)
-            argmap['eid'] = eid
-        if not 'modifier' in argmap:
-            argmap['modifier'] = 'replicates'
+            argmap[kweid] = eid
+        if not kwmodifier in argmap:
+            argmap[kwmodifier] = 'replicates'
     elif (cmd == 'compare') or (cmd == 'xcompare') or (cmd == 'aggregate'):
         (compfile, arglist) = getarg(arglist)
-        argmap['compfile'] = compfile
+        argmap[kwcompfile] = compfile
         (eid, arglist) = getarg(arglist)
-        argmap['eid'] = eid
+        argmap[kweid] = eid
     return argmap
 
 
@@ -122,7 +131,7 @@ async def command (info):
     ws = info["ws"]
     argmap = info["appinfo"]["argmap"]
     await cli.send_msg(
-        ws, {cli.op: argmap['cmd'], cli.keyword('data'): argmap})
+        ws, {cli.op: argmap[kwcmd], cli.keyword('data'): argmap})
 
 
 def main():
