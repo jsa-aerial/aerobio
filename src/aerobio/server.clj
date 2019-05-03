@@ -39,7 +39,8 @@
    [clojure.data.json :as json]
    [clojure.java.io :as io]
    [clojure.tools.reader.edn :as edn]
-   [clojure.core.async :as async :refer (<! >! go go-loop)]
+   [clojure.core.async :as async
+    :refer (<! >! <!! >!! put! chan go go-loop)]
 
    [ring.middleware.defaults]
    [ring.middleware.gzip :refer [wrap-gzip]]
@@ -247,6 +248,16 @@
              :callback config-job
              :options {:recursive true}}])))
 
+(defn job-exists? [jobname]
+  (@job-configs jobname))
+
+(defn validate-job [exp cmd work-item]
+  (let [jobname (str (name exp) "-" work-item "-job-template")]
+    (if (job-exists? jobname)
+      ""
+      (format "No job for experiment type '%s' with cmd '%s' for '%s'"
+              (name exp) cmd work-item))))
+
 (defn get-jobinfo [jobname]
   (assert (@job-configs jobname)
           (format "No such job %s" jobname))
@@ -280,6 +291,10 @@
 ;;;                   Aerobio Application Messaging...                      ;;;
 ;;; ------------------------------------------------------------------------;;;
 
+(defn send-end-msg [ws msg]
+  (srv/send-msg ws msg)
+  (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
+
 (defmulti user-msg :op)
 
 (defmethod user-msg :default [msg]
@@ -288,25 +303,51 @@
      (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
 
 (defmethod user-msg :run [msg]
-  (let [info (msg :payload)
-        ws (info :ws)
-        eid (info "eid")
-        eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
-        eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)]
-    (infof "RUN: %s" info)
-    (srv/send-msg ws {:op :validate :payload (va/validate-exp eid)})
-    (srv/send-msg ws {:op :stop :payload {}} :noenvelope true)))
+  (let [params (msg :params)
+        {:keys [ws eid phase]} params]
+    (infof "RUN: %s" params)
+    (let [vmsg (va/validate-exp eid)]
+      (if (not-empty vmsg)
+        (send-end-msg ws {:op :validate :payload vmsg})
+        (let [{:keys [cmd eid template]} params
+              ;;result (actions/action cmd eid params get-toolinfo template)
+              ]
+          (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))))))
 
 (defn msg-handler [msg]
   (let [{:keys [ws data]} msg
-        {:keys [op data]} data]
-    (infof "MSG-HANDLER: MSG %s" (msg :data))
-    (case op
-      (:done "done")
-      (do (infof "WS: %s, sending stop msg" ws)
-          (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
-      ;;null for now
-      (user-msg {:op op :payload (assoc data :ws ws)}))))
+        {:keys [op data]} data
+        {:keys [user cmd phase modifier compfile eid]} data
+        eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
+        eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
+        params {:user user, :cmd op, :modifier modifier
+                :phase phase, :eid eid :ws ws}]
+    #_(infof "MSG-HANDLER: MSG %s" (msg :data))
+    (try
+      (case op
+        (:done "done")
+        (do (infof "WS: %s, sending stop msg" ws)
+            (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
+        ;;null for now
+        (let [vmsg (va/validate-sheets-exist eid)]
+          (if (not-empty vmsg)
+            (send-end-msg ws {:op :validate :payload vmsg})
+            (let [_ (cmn/set-exp eid)
+                  exp (cmn/get-exp-info eid :exp)
+                  vmsg (validate-job exp op (or phase compfile))]
+              (if (not-empty vmsg)
+                (send-end-msg ws {:op :validate :payload vmsg})
+                (let [work-item (or phase cmd)
+                      tempnm (str (name exp) "-" work-item "-job-template")
+                      template (get-jobinfo tempnm)
+                      params (assoc params :template template)]
+                  (user-msg {:op op :params params})))))))
+      (catch Error e
+        (infof "ERROR %s" (or (.getMessage e) e))
+        (send-end-msg ws {:op :validate :payload (.getMessage e)}))
+      (catch Exception e
+        (infof "EXCEPTION %s" (or (.getMessage e) e))
+        (send-end-msg ws {:op :validate :payload (.getMessage e)})))))
 
 
 (defn on-open [ch op payload]
@@ -399,6 +440,8 @@
     (update-adb :chan ch
                 :idfn [idfn]
                 :connfn [connfn])
+    (start-job-watcher)
+    (start-tool-watcher)
     (go-loop [msg (<! ch)]
       (let [{:keys [op payload]} msg]
         (future (server-dispatch ch op payload))
