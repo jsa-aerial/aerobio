@@ -62,14 +62,14 @@
 
 (defmethod action :run
   [_ eid params get-toolinfo template]
-  (let [{:keys [user cmd action rep compfile]} params
-        rep (if rep :rep nil)
+  (let [{:keys [user cmd phase modifier compfile]} params
+        rep (if modifier :rep nil)
         exp (cmn/get-exp-info eid :exp)
         user (get-mail-recipient user)]
     (cmn/launch-action
      eid user
      get-toolinfo template
-     :action action
+     :action phase
      :rep rep
      :compfile compfile)))
 
@@ -86,8 +86,8 @@
 #_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :stats)))
 (defmethod action :rerun
   [_ eid params get-toolinfo template]
-  (let [{:keys [user cmd action rep compfile]} params
-        rep (if rep :rep nil)
+  (let [{:keys [user cmd phase modifier compfile]} params
+        rep (if modifier :rep nil)
         outdir (cmn/get-exp-info eid :out)
 
         exp (cmn/get-exp-info eid :exp)
@@ -96,7 +96,7 @@
     (cmn/launch-action
      eid user
      get-toolinfo template
-     :action action
+     :action phase
      :rep rep
      :compfile compfile)))
 
@@ -104,7 +104,7 @@
 (defmethod action :compare
   [_ eid params get-toolinfo template]
   (let [exp (cmn/get-exp-info eid :exp)
-        {:keys [user cmd action rep compfile]} params
+        {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (cmn/run-comparison
      exp eid recipient compfile get-toolinfo template)))
@@ -112,7 +112,7 @@
 (defmethod action :xcompare
   [_ eid params get-toolinfo template]
   (let [exp (cmn/get-exp-info eid :exp)
-        {:keys [user cmd action rep compfile]} params
+        {:keys [user cmd phase modifier compfile]} params
         user (get-mail-recipient user)]
     (cmn/run-comparison
      exp eid user compfile get-toolinfo template)))
@@ -121,7 +121,7 @@
 (defmethod action :aggregate
   [_ eid params get-toolinfo template]
   (let [exp (cmn/get-exp-info eid :exp)
-        {:keys [user cmd action rep compfile]} params
+        {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (htts/run-aggregation
      eid recipient compfile get-toolinfo template)))
