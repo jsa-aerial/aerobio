@@ -92,6 +92,14 @@
 
 
 
+(defn date-time-map []
+  (let [dt (->> (java.time.LocalDateTime/now) str (austr/split #"T")
+                (mapv #(vector %1 %2) [:date :time]) (into {}))
+        time (->> dt :time (austr/split #":")
+                  (mapv #(vector %1 %2) [:hour :min :sec]) (into {}))
+        dt (assoc dt :time-bits time)]
+    dt))
+
 ;;; ------------------------------------------------------------------------;;;
 ;;;                    Tool Config and  Watcher                             ;;;
 ;;; ------------------------------------------------------------------------;;;
@@ -264,6 +272,8 @@
   (@job-configs jobname))
 
 
+
+
 ;;; ------------------------------------------------------------------------;;;
 ;;;                     Server communication database                       ;;;
 ;;; ------------------------------------------------------------------------;;;
@@ -285,15 +295,59 @@
   ([key-path] (hc/get-db app-db key-path)))
 
 
+;;; ------------------------------------------------------------------------;;;
+;;;                               Job database                              ;;;
+;;; ------------------------------------------------------------------------;;;
+
+(defonce job-db (atom {}))
+
+(defn read-job-db []
+  (let [dir (fs/fullpath (pams/get-params [:jobs :dir]))
+        f (fs/join dir (pams/get-params [:jobs :file]))]
+    (->> f slurp edn/read-string (reset! job-db))))
+
+(defn valuefy [db]
+  (sp/transform
+   sp/ALL
+   (fn[v]
+     (cond
+       (coll? v) (valuefy v)
+       (not (future? v)) v
+       (future-done? v) (deref v)
+       :else :future-not-yet-finished))
+   db))
+
+(defn write-job-db []
+  (let [dir (fs/fullpath (pams/get-params [:jobs :dir]))
+        f (fs/join dir (pams/get-params [:jobs :file]))]
+    (aio/with-out-writer f
+      (prn (valuefy @job-db)))))
+
+(defn update-jdb
+  ([] (hc/update-db job-db {}))
+  ([keypath vorf]
+   (hc/update-db job-db keypath vorf))
+  ([kp1 vof1 kp2 vof2 & kps-vs]
+   (apply hc/update-db job-db kp1 vof1 kp2 vof2 kps-vs)))
+
+(defn get-jdb
+  ([] (hc/get-db job-db []))
+  ([key-path] (hc/get-db job-db key-path)))
+
+
 
 
 ;;; ------------------------------------------------------------------------;;;
-;;;                   Aerobio Application Messaging...                      ;;;
+;;;                      Aerobio Application Messaging...                   ;;;
 ;;; ------------------------------------------------------------------------;;;
 
 (defn send-end-msg [ws msg]
   (srv/send-msg ws msg)
   (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
+
+
+(def dbg (atom {}))
+
 
 (defmulti user-msg :op)
 
@@ -304,14 +358,25 @@
 
 (defmethod user-msg :run [msg]
   (let [params (msg :params)
-        {:keys [ws eid phase]} params]
+        {:keys [ws user eid phase]} params]
     (infof "RUN: %s" params)
     (let [vmsg (va/validate-exp eid)]
       (if (not-empty vmsg)
         (send-end-msg ws {:op :validate :payload vmsg})
         (let [{:keys [cmd eid template]} params
-              ;;result (actions/action cmd eid params get-toolinfo template)
-              ]
+              dt (date-time-map)
+              resfut (actions/action cmd eid params get-toolinfo template)]
+          (aerial.utils.misc/sleep 250)
+          (swap! dbg (fn[M] (assoc M eid resfut)))
+          (infof "%s : %s" cmd resfut)
+          (update-jdb [user (dt :date) (dt :time)]
+                      {:action {:params params :template template}
+                       :result resfut})
+          (if (future-done? resfut)
+            (let [cause (->> @resfut (austr/split #">>") second
+                             (str "Launch Failed: "))]
+              (srv/send-msg ws {:op :error :payload cause}))
+            (srv/send-msg ws {:op :launch :payload "Successful"}))
           (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))))))
 
 (defn msg-handler [msg]
@@ -322,7 +387,7 @@
         eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
         params {:user user, :cmd op, :modifier modifier
                 :phase phase, :eid eid :ws ws}]
-    #_(infof "MSG-HANDLER: MSG %s" (msg :data))
+    (infof "MSG-HANDLER: MSG %s" (msg :data))
     (try
       (case op
         (:done "done")
@@ -485,7 +550,6 @@
 
 
 
-(def dbg (atom {}))
 
 (defn htseq-file-get [args reqmap]
   (infof "Args %s\nParams %s" args (reqmap :params))
