@@ -59,6 +59,15 @@
 
 
 
+(defmacro future+ [& body]
+  `(future
+     (try
+       ~@body
+       (catch Error e#
+         {:error (type e#), :msg ((Throwable->map e#) :cause)})
+       (catch Exception e#
+         {:error (type e#), :msg ((Throwable->map e#) :cause)}))))
+
 
 (defn init-pgms
   "Setup external 'canned' programs as standard functions. This makes
@@ -699,8 +708,8 @@
         bufsize (* 64 1040)
         buf (byte-array bufsize)]
     (if (seq inputs)
-      (let [[outfut errfut] [(future (outfn output outputs :cache false))
-                             (future (errfn proc outputs))]]
+      (let [[outfut errfut] [(future+ (outfn output outputs :cache false))
+                             (future+ (errfn proc outputs))]]
         (loop [chs inputs]
           (let [goch (go<!chans chs ch data
                       (try
@@ -837,7 +846,7 @@
   "
   [dfg]
   (mapv (fn[node]
-          (future
+          (future+
            (let [jnres (apply job-node node)]
              (if (proc? (first node))
                (let [exit-code (shl/exit-code (first node))

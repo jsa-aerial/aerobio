@@ -188,11 +188,11 @@
         repcfg (assoc-in template
                          [:nodes :ph2 :args]
                          [eid comparison-file true ftype :NA recipient])
-        repjob (future (cmn/flow-program repcfg get-toolinfo :run true))
+        repjob (pg/future+ (cmn/flow-program repcfg get-toolinfo :run true))
         cfg (assoc-in template
                       [:nodes :ph2 :args]
                       [eid comparison-file false ftype :NA recipient])
-        cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
+        cfgjob (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))]
     #_(clojure.pprint/pprint repflow)
     [repjob cfgjob]))
 

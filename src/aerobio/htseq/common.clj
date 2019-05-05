@@ -166,7 +166,7 @@
 
 (defn bcfreqs
   [smap bcsz fq]
-  (future
+  (pg/future+
     (letio [kw (->> fq fs/basename
                     (str/split #".fastq") first (str/split #"_S")
                     first smap) ; kw is associated illumina barcode
@@ -476,7 +476,7 @@
     (dorun
      (mapv (fn[fut] (deref fut))
            (mapv (fn[[fd recs]]
-                   (future (bufiles/write-fqrecs fd recs)))
+                   (pg/future+ (bufiles/write-fqrecs fd recs)))
                  file-groups)))))
 
 (defn split-barcodes
@@ -712,11 +712,11 @@ ComparisonSheet.csv
       (let [phase action]
         (cond
           (#{"phase-0" "phase-0b" "phase-0c" "phase-0d"} phase)
-          (future
+          (pg/future+
             (run-phase-0 eid recipient get-toolinfo template))
 
           (#{"phase-1" "bt2-phase-1" "bt1-phase-1" "star-phase-1"} phase)
-          (future
+          (pg/future+
             (run-phase-1 eid recipient get-toolinfo template :repk rep))
 
           (#{"phase-2" "phase-2b"} phase)

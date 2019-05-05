@@ -143,7 +143,7 @@
 
 (defn run-collapse-group
   [pairs]
-  (let [futs (mapv (fn[pair] (future (collapse-one pair))) pairs)]
+  (let [futs (mapv (fn[pair] (pg/future+ (collapse-one pair))) pairs)]
     (mapv (fn[fut] (deref fut)) futs)))
 
 
@@ -276,7 +276,7 @@
         cfg    (assoc-in template
                          [:nodes :ph2 :args]
                          [eid comparison-file recipient])]
-    (future (cmn/flow-program cfg get-toolinfo :run true))))
+    (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))))
 
 (defmethod cmn/run-comparison :tnseq
   [_ eid recipient compfile get-toolinfo template]
@@ -327,7 +327,7 @@
                       [:nodes :ph2 :args]
                       [eid compfile recipient])]
     #_(prn cfg)
-    (future (cmn/flow-program cfg get-toolinfo :run true))))
+    (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))))
 
 
 

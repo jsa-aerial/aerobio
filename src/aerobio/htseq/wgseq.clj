@@ -151,7 +151,7 @@
   (let [cfg (assoc-in template
                       [:nodes :ph2 :args]
                       [eid comparison-file :NA recipient])
-        cfgjob (future (cmn/flow-program cfg get-toolinfo :run true))]
+        cfgjob (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))]
     cfgjob))
 
 (defmethod cmn/run-comparison :wgseq
