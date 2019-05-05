@@ -23,6 +23,12 @@ def appmsg (ws, data):
     if op == cli.keyword('validate'):
         print("")
         print(payload)
+    elif op == cli.keyword("error"):
+        print("")
+        print("Error :", payload)
+    elif op == cli.keyword("launch"):
+        print("")
+        print("Job launch: ", payload)
     elif op == cli.keyword('jobinfo'):
         print(payload)
     elif op == cli.keyword('register'):
