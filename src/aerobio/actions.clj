@@ -89,50 +89,53 @@
 #_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :stats)))
 (defmethod action :rerun
   [_ eid params get-toolinfo template]
-  (let [status (atom "starting...")
+  (let [status (atom {:done []})
         {:keys [user cmd phase modifier compfile]} params
         rep (if modifier :rep nil)
         outdir (cmn/get-exp-info eid :out)
 
         exp (cmn/get-exp-info eid :exp)
         user (get-mail-recipient user)]
-
-    (cmn/launch-action
-     eid user
-     get-toolinfo template
-     :action phase
-     :rep rep
-     :compfile compfile
-     :status status)))
+    {:status status
+     :fut (cmn/launch-action
+           eid user
+           get-toolinfo template
+           :action phase
+           :rep rep
+           :compfile compfile
+           :status status)}))
 
 
 (defmethod action :compare
   [_ eid params get-toolinfo template]
-  (let [status (atom "starting...")
+  (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
-    (cmn/run-comparison
-     exp eid recipient compfile get-toolinfo template status)))
+    {:status status
+     :fut (cmn/run-comparison
+           exp eid recipient compfile get-toolinfo template status)}))
 
 (defmethod action :xcompare
   [_ eid params get-toolinfo template]
-  (let [status (atom "starting...")
+  (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         user (get-mail-recipient user)]
-    (cmn/run-comparison
-     exp eid user compfile get-toolinfo template status)))
+    {:status status
+     :fut (cmn/run-comparison
+           exp eid user compfile get-toolinfo template status)}))
 
 
 (defmethod action :aggregate
   [_ eid params get-toolinfo template]
-  (let [status (atom "starting...")
+  (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
-    (htts/run-aggregation
-     eid recipient compfile get-toolinfo template status)))
+    {:status status
+     :fut (htts/run-aggregation
+           eid recipient compfile get-toolinfo template status)}))
 
 
 (comment
