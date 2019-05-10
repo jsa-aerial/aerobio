@@ -29,7 +29,7 @@ def appmsg (ws, data):
     elif op == cli.keyword("launch"):
         print("")
         print("Job launch: ", payload)
-    elif op == cli.keyword('jobinfo'):
+    elif op == cli.keyword('status'):
         print(payload)
     elif op == cli.keyword('register'):
         update_udb(['register'], payload)
@@ -86,6 +86,7 @@ def dispatcher (ch, op, payload):
 kwcmd = cli.keyword("cmd")
 kwuser = cli.keyword("user")
 kwphase = cli.keyword("phase")
+kwaction = cli.keyword("action")
 kwmodifier = cli.keyword("modifier")
 kweid = cli.keyword("eid")
 kwcompfile = cli.keyword("compfile")
@@ -119,6 +120,11 @@ def args2map ():
         (compfile, arglist) = getarg(arglist)
         argmap[kwcompfile] = compfile
         (eid, arglist) = getarg(arglist)
+        argmap[kweid] = eid
+    elif (cmd == 'status'):
+        (action,arglist) = getarg(arglist)
+        argmap[kwaction] = action
+        (eid,arglist) = getarg(arglist)
         argmap[kweid] = eid
     return argmap
 
