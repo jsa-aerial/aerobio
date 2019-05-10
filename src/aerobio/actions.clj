@@ -62,16 +62,19 @@
 
 (defmethod action :run
   [_ eid params get-toolinfo template]
-  (let [{:keys [user cmd phase modifier compfile]} params
-        rep (if modifier :rep nil)
+  (let [status (atom {:done []})
+        {:keys [user cmd phase modifier compfile]} params
+        rep (if (= modifier "replicates") :rep nil)
         exp (cmn/get-exp-info eid :exp)
         user (get-mail-recipient user)]
-    (cmn/launch-action
-     eid user
-     get-toolinfo template
-     :action phase
-     :rep rep
-     :compfile compfile)))
+    {:status status
+     :fut  (cmn/launch-action
+            eid user
+            get-toolinfo template
+            :action phase
+            :rep rep
+            :compfile compfile
+            :status status)}))
 
 
 ;;; phase-0b remove Fastqs, Out, Samples, Stats
@@ -86,7 +89,8 @@
 #_(->> (cmn/exp-ids) (map #(cmn/get-exp-info % :stats)))
 (defmethod action :rerun
   [_ eid params get-toolinfo template]
-  (let [{:keys [user cmd phase modifier compfile]} params
+  (let [status (atom "starting...")
+        {:keys [user cmd phase modifier compfile]} params
         rep (if modifier :rep nil)
         outdir (cmn/get-exp-info eid :out)
 
@@ -98,30 +102,46 @@
      get-toolinfo template
      :action phase
      :rep rep
-     :compfile compfile)))
+     :compfile compfile
+     :status status)))
 
 
 (defmethod action :compare
   [_ eid params get-toolinfo template]
-  (let [exp (cmn/get-exp-info eid :exp)
+  (let [status (atom "starting...")
+        exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (cmn/run-comparison
-     exp eid recipient compfile get-toolinfo template)))
+     exp eid recipient compfile get-toolinfo template status)))
 
 (defmethod action :xcompare
   [_ eid params get-toolinfo template]
-  (let [exp (cmn/get-exp-info eid :exp)
+  (let [status (atom "starting...")
+        exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         user (get-mail-recipient user)]
     (cmn/run-comparison
-     exp eid user compfile get-toolinfo template)))
+     exp eid user compfile get-toolinfo template status)))
 
 
 (defmethod action :aggregate
   [_ eid params get-toolinfo template]
-  (let [exp (cmn/get-exp-info eid :exp)
+  (let [status (atom "starting...")
+        exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     (htts/run-aggregation
-     eid recipient compfile get-toolinfo template)))
+     eid recipient compfile get-toolinfo template status)))
+
+
+(comment
+  #_{:status status
+     :fut (aerobio.pgmgraph/future+
+           (doseq [s [5000 3000 3000 7000]]
+             (swap! status #(assoc % :done (conj (% :done) (/ s 1000))))
+             (aerial.utils.misc/sleep s))
+           #_(/ 10 0)
+           #_(assert (= 1 0) ">>Unknown tool 'foobar'>>")
+           "The result %s" [user eid template phase rep compfile])}
+)
