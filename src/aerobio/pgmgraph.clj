@@ -64,7 +64,12 @@
      (try
        ~@body
        (catch Error e#
-         {:error (type e#), :msg ((Throwable->map e#) :cause)})
+         {:error (type e#),
+          :msg (->  ((Throwable->map e#) :cause)
+                    (str/split #"\n") first (str/split #": ") rest
+                    (->> (str/join ": ")))})
+       (catch clojure.lang.ExceptionInfo e#
+         {:error (type e#) :msg (str (.getMessage e#) ": " (.getData e#))})
        (catch Exception e#
          {:error (type e#), :msg ((Throwable->map e#) :cause)}))))
 
@@ -847,18 +852,22 @@
   [dfg]
   (mapv (fn[node]
           (future+
-           (let [jnres (apply job-node node)]
-             (if (proc? (first node))
-               (let [exit-code (shl/exit-code (first node))
-                     msg (if (= 0 exit-code)
-                           :success
-                           (shl/stream-to-string (first node) :err))]
-                 (infof "%s: exit code: %s\n%s"
-                        (-> node first :id)
-                        exit-code
-                        msg))
-               (infof "Done, node %s" (-> node first :id)))
-             jnres)))
+           (let [jnres (apply job-node node)
+                 msg (if (proc? (first node))
+                       (let [exit-code (shl/exit-code (first node))
+                             msg (if (= 0 exit-code)
+                                   :success
+                                   (shl/stream-to-string (first node) :err))]
+                         (format "%s: exit code: %s\n%s"
+                                 (-> node first :id)
+                                 exit-code
+                                 msg))
+                       (format "Done, node %s" (-> node first :id)))]
+             (infof "%s" msg)
+             {:request {:name (-> node first :name)
+                        :args (-> node first :args)
+                        :msg msg}
+              :result jnres})))
         dfg))
 
 
