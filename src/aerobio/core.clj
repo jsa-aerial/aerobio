@@ -125,7 +125,7 @@
     (println "Installing resources...")
     (fs/mkdir (fs/join aerobiodir "pipes"))
     (fs/mkdir (fs/join aerobiodir "cache"))
-    (doseq [res ["bin" "Jobs" "Scripts" "services" "Support"]]
+    (doseq [res ["bin" "Jobs" "Scripts" "services" "Support" "DBs"]]
       (doseq [[path uris] (cp/resources (io/resource res))
               :let [uri (first uris)
                     relative-path (subs path 1)
@@ -178,14 +178,21 @@
      :else nil)))
 
 
-(defn- set-configuration []
+(defn set-async-threads []
+  (System/setProperty
+   "clojure.core.async.pool-size"
+   (-> (Runtime/getRuntime)
+       (.availableProcessors)
+       (* 2) (+ 42) str)))
+
+(defn set-configuration []
   (let [m (->> "config.clj" (fs/join (fs/pwd))
                slurp edn/read-string)]
     (swap! pams/params (fn[_] m))
     (bpams/set-configuration (pams/get-params :biodb-info))
     m))
 
-(defn- setup-timbre []
+(defn setup-timbre []
   "timbre-pre-v2 settings"
   (timbre/set-config! [:shared-appender-config :spit-filename]
                       (fs/fullpath
@@ -194,12 +201,13 @@
   (timbre/set-config! [:appenders :standard-out   :enabled?] false)
   (timbre/set-config! [:appenders :spit           :enabled?] true))
 
-(defn- run-server
+(defn run-server
   "Run the aerobio server on port PORT. Change clj-aerobio-port in
    bam.aerobio.io if it is not the same as port. This ensures user can
    start server on different ports w/o needing to edit JS files.
   "
   [port]
+  (set-async-threads)
   (set-configuration)
   (pg/init-pgms)
   (setup-timbre)
