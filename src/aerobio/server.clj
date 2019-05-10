@@ -35,6 +35,7 @@
 
   (:require
    [clojure.string :as str]
+   [clojure.pprint :refer [pprint]]
    [clojure.set :as set]
    [clojure.data.json :as json]
    [clojure.java.io :as io]
@@ -99,6 +100,11 @@
                   (mapv #(vector %1 %2) [:hour :min :sec]) (into {}))
         dt (assoc dt :time-bits time)]
     dt))
+
+(defn date-time-stg []
+  (let [dt (date-time-map)]
+    (str (dt :date) "-"
+         (str/join ":" [(-> dt :time-bits :hour) (-> dt :time-bits :min)]))))
 
 ;;; ------------------------------------------------------------------------;;;
 ;;;                    Tool Config and  Watcher                             ;;;
@@ -311,6 +317,7 @@
    sp/ALL
    (fn[v]
      (cond
+       (isa? (type v) clojure.lang.Atom) (recur (deref v))
        (coll? v) (valuefy v)
        (not (future? v)) v
        (future-done? v) (deref v)
@@ -335,6 +342,9 @@
   ([key-path] (hc/get-db job-db key-path)))
 
 
+(defn get-job-status [user ])
+
+
 
 
 ;;; ------------------------------------------------------------------------;;;
@@ -356,6 +366,40 @@
   #_(srv/send-msg
      (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
 
+
+(defmethod user-msg :status [msg]
+  (let [params (msg :params)
+        {:keys [ws user eid action]} params]
+    (let [jinfo (hc/get-db (atom (valuefy @job-db)) [user eid action])
+          result (if (seq jinfo)
+                   (->> jinfo (sort-by #(-> % :request :timestamp))
+                        (mapv #(vector (-> % :request :timestamp)
+                                       (% :status)
+                                       (% :result))))
+                   (format "No job information for [%s %s %s]"
+                           user eid action))
+          retmsg (if (string? result)
+                   result
+                   (str/join
+                    "\n"
+                    (mapv #(let [timestamp (first %)
+                                 status (second %)
+                                 res (last %)
+                                 rstg (if (= res :future-not-yet-finished)
+                                        (format
+                                         "Currently still running:\n%s"
+                                         (with-out-str (pprint status)))
+                                        (format
+                                         "Finished:\n%s\nFinal result:\n%s"
+                                         (with-out-str (pprint status))
+                                         (with-out-str (pprint res))))]
+                             (with-out-str
+                               (print (format "%s : %s started @ %s\n%s"
+                                              eid action timestamp rstg))))
+                          result)))]
+      (send-end-msg ws {:op :status :payload retmsg}))))
+
+
 (defmethod user-msg :run [msg]
   (let [params (msg :params)
         {:keys [ws user eid phase]} params]
@@ -364,35 +408,45 @@
       (if (not-empty vmsg)
         (send-end-msg ws {:op :validate :payload vmsg})
         (let [{:keys [cmd eid template]} params
-              dt (date-time-map)
-              resfut (actions/action cmd eid params get-toolinfo template)]
+              dt (date-time-stg)
+              resmap (actions/action cmd eid params get-toolinfo template)
+              resfut (resmap :fut)
+              jobdb-info (or (get-jdb [user eid phase]) [])]
           (aerial.utils.misc/sleep 250)
-          (swap! dbg (fn[M] (assoc M eid resfut)))
-          (infof "%s : %s" cmd resfut)
-          (update-jdb [user (dt :date) (dt :time)]
-                      {:action {:params params :template template}
-                       :result resfut})
-          (if (future-done? resfut)
-            (let [cause (->> @resfut (austr/split #">>") second
-                             (str "Launch Failed: "))]
+          (swap! dbg (fn[M] (assoc M eid resmap)))
+          (infof "%s : %s" cmd (prn-str resfut))
+          (update-jdb [user eid phase]
+                      (conj jobdb-info
+                            {:request {:timestamp dt
+                                       :params (dissoc params :ws)}
+                             :status (resmap :status)
+                             :result resfut}))
+          (if (and (future-done? resfut) (map? @resfut) (@resfut :error))
+            (let [cause (->> (or (@resfut :msg) (prn-str (@resfut :error)))
+                             (str "Job Launch : "))]
               (srv/send-msg ws {:op :error :payload cause}))
             (srv/send-msg ws {:op :launch :payload "Successful"}))
           (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))))))
 
+
 (defn msg-handler [msg]
   (let [{:keys [ws data]} msg
         {:keys [op data]} data
-        {:keys [user cmd phase modifier compfile eid]} data
+        {:keys [user cmd phase modifier compfile eid action]} data
         eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
         eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
         params {:user user, :cmd op, :modifier modifier
-                :phase phase, :eid eid :ws ws}]
+                :phase phase, :action action :eid eid :ws ws}]
     (infof "MSG-HANDLER: MSG %s" (msg :data))
     (try
       (case op
         (:done "done")
         (do (infof "WS: %s, sending stop msg" ws)
             (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
+
+        (:status "status")
+        (user-msg {:op op :params params})
+
         ;;null for now
         (let [vmsg (va/validate-sheets-exist eid)]
           (if (not-empty vmsg)
@@ -408,10 +462,10 @@
                       params (assoc params :template template)]
                   (user-msg {:op op :params params})))))))
       (catch Error e
-        (infof "ERROR %s" (or (.getMessage e) e))
+        (errorf "ERROR %s: %s, %s" eid op (or (.getMessage e) e))
         (send-end-msg ws {:op :validate :payload (.getMessage e)}))
       (catch Exception e
-        (infof "EXCEPTION %s" (or (.getMessage e) e))
+        (errorf "EXCEPTION %s: %s, %s" eid op (or (.getMessage e) e))
         (send-end-msg ws {:op :validate :payload (.getMessage e)})))))
 
 
@@ -547,61 +601,28 @@
 
 
 
+(comment
+
+  (let [eid "Ngon_cipro"
+        repk :rep
+        exp (cmn/get-exp-info eid :exp)
+        sample-names (cmn/get-exp-info eid :sample-names)
+        sample-names (if repk
+                       (mapcat #((cmn/get-exp-info eid :replicate-names) %)
+                               (cmn/get-exp-info eid :sample-names))
+                       sample-names)]
+    (partition-all 2 sample-names))
 
 
-
-
-(defn htseq-file-get [args reqmap]
-  (infof "Args %s\nParams %s" args (reqmap :params))
-  #_(infof "ReqMap %s" reqmap)
-  (binding [*ns* (find-ns 'aerobio.server)]
-    (let [params (reqmap :params)
-          {:keys [user cmd action rep compfile eid]} params
-          eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
-          eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
-          user-agent (get-in reqmap [:headers "user-agent"])
-          reqtype (get-in reqmap [:headers "reqtype"])]
-      (if (= reqtype "cmdline")
-        (try
-          (let [_ (cmn/set-exp eid)
-                exp (cmn/get-exp-info eid :exp)
-                work-item (if action action cmd)
-                tempnm (str (name exp) "-" work-item "-job-template")
-                template (get-jobinfo tempnm)
-                result (actions/action cmd eid params get-toolinfo template)]
-            (aerial.utils.misc/sleep 250)
-            (swap! dbg (fn[M] (assoc M eid result)))
-            (infof "%s : %s" cmd result)
-            (json/json-str
-             {:params params
-              :result (str result)
-              :template tempnm
-              :recipient user}))
-          (catch Error e
-            (let [estg (format "Error %s" (or (.getMessage e) e))]
-              (errorf "%s: %s - Assert: %s" eid cmd estg)
-              (json/json-str
-             {:args args
-              :params params
-              :result estg
-              :recipient user
-              :user-agent user-agent
-              :reqtype reqtype})))
-          (catch Exception e
-            (let [emsg (or (.getMessage e) e)]
-              (errorf "%s: %s, Exception on Job launch: %s" eid cmd emsg)
-              (json/json-str
-               {:args args
-                :params params
-                :result (format "Exception: %s" emsg)
-                :recipient user
-                :user-agent user-agent
-                :reqtype reqtype}))))
-        (hiccup/html
-         [:h1 "HI from HTSeq command route"]
-         [:hr]
-         [:p (str "command and args: " args)]
-         [:hr]
-         [:p (str "Params" params)]
-         [:hr]
-         [:p (str "User Agent: " user-agent)])))))
+  (let [eid "Ngon_cipro"
+        recipient "jsa"
+        template {:nodes
+                  {:ph0 {:name "rnaseq-phase0", :type "tool", :args []},
+                   :prn1 {:type "func", :name "prn"}},
+                  :edges {:ph0 [:prn1]}}
+        ph0 template
+        cfg (-> (assoc-in ph0 [:nodes :ph0 :args] [eid recipient])
+                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                pg/config-pgm-graph)]
+    cfg)
+  )
