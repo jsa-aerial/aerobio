@@ -577,6 +577,8 @@
   (let [fqzmap (get-all-replicate-fqzs eid)
         rnm-bits (str/split #"-" repname)
         fqzs (fqzmap (cljstr/join "-" (coll/takev 2 rnm-bits)))]
+    (assert (seq fqzs)
+            (format "%s : There are no fastq files for %s" eid repname))
     (if (< (count rnm-bits) 3)
       fqzs
       (->> fqzs
@@ -599,16 +601,40 @@
       prn (->> cfg clojure.pprint/pprint)
       :else cfg)))
 
+(defmacro safe-deref
+  "Deref future fut ensuring against throwing an 'errant' exception due
+  to being canceled"
+  [fut]
+  `(try
+     (deref ~fut)
+     (catch Error e#
+       {:error (type e#), :msg ((Throwable->map e#) :cause)})
+     (catch Exception e#
+       {:error (type e#), :msg ((Throwable->map e#) :cause)})))
+
+(defn job-flow-node-results
+  ""
+  [futs-vec status-atom]
+  (reduce (fn[abort? fut]
+              (when abort? (future-cancel fut))
+              (let [res (safe-deref fut)]
+                (swap! status-atom #(assoc % :done (conj (% :done) res)))
+                (if (and (map? res) (res :error))
+                  true
+                  false)))
+            false futs-vec))
+
 
 (defn run-phase-0
-  [eid recipient get-toolinfo template]
+  [eid recipient get-toolinfo template status-atom]
   (let [ph0 template
         cfg (-> (assoc-in ph0 [:nodes :ph0 :args] [eid recipient])
                 (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                 pg/config-pgm-graph)
         ;;_ (clojure.pprint/pprint cfg)
         futs-vec (->> cfg pg/make-flow-graph pg/run-flow-program)]
-    (mapv (fn[fut] (deref fut)) futs-vec)))
+    (job-flow-node-results futs-vec status-atom)
+    (@status-atom :done)))
 
 
 ;;;(ns-unmap 'aerobio.htseq.common 'get-phase-1-args)
@@ -620,7 +646,7 @@
   (fn[exptype & args] exptype))
 
 (defn run-phase-1
-  [eid recipient get-toolinfo template & {:keys [repk]}]
+  [eid recipient get-toolinfo template status-atom & {:keys [repk]}]
   (let [exp (get-exp-info eid :exp)
         phase1-job-template template
         bt (if (-> template (get-in [:nodes :ph1 :name])
@@ -633,27 +659,49 @@
                        (mapcat #((get-exp-info eid :replicate-names) %)
                                (get-exp-info eid :sample-names))
                        sample-names)]
-    (doseq [tuple (partition-all 2 sample-names)]
-      (let [futs-vecs
-            (mapv
-             (fn[snm]
-               (let [job (assoc-in phase1-job-template [:nodes :ph1 :args]
-                                   (get-phase-1-args
-                                    exp eid snm :repk repk
-                                    :bowtie bt :star star))
-                     cfg (-> job
-                             (pg/config-pgm-graph-nodes get-toolinfo nil nil)
-                             pg/config-pgm-graph)]
-                 #_(clojure.pprint/pprint cfg)
-                 (->> cfg pg/make-flow-graph pg/run-flow-program)))
-             tuple)]
-        (mapv (fn[futs] (mapv (fn[fut] (deref fut)) futs))
-              futs-vecs)))
+    (swap! status-atom assoc :DONE [])
+    (loop [tuples (partition-all 2 sample-names)
+           abort? false]
+      (if (or (empty? tuples) abort?)
+        abort?
+        (let [tuple (first tuples)
+              futs-vecs
+              (mapv
+               (fn[snm]
+                 (let [job (assoc-in phase1-job-template [:nodes :ph1 :args]
+                                     (get-phase-1-args
+                                      exp eid snm :repk repk
+                                      :bowtie bt :star star))
+                       cfg (-> job
+                               (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+                               pg/config-pgm-graph)]
+                   #_(clojure.pprint/pprint cfg)
+                   (->> cfg pg/make-flow-graph pg/run-flow-program)))
+               tuple)]
+          (recur (rest tuples)
+                 (coll/reducem
+                  (fn[replicate futs]
+                    (let [abort? (job-flow-node-results futs status-atom)
+                          flow-results (@status-atom :done)]
+                      (swap! status-atom
+                             #(assoc % :DONE
+                                     (conj (% :DONE) [replicate flow-results])))
+                      abort?))
+                  (fn ([] false) ([x y] #_(println x y) (or x y)))
+                  :|| tuple futs-vecs)))))
     (pg/send-msg
      [recipient]
      (str "Aerobio job status: " exp " phase-1  " eid)
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
 
+#_(let [a (atom [])]
+  [(coll/reducem
+    (fn [x y]
+      (swap! a conj [x y])
+      (if (= 0 x) true false))
+    (fn ([] false) ([x y] (println x y) (or x y)))
+    :|| (range 5) [:one :two :three :four :five])
+   @a])
 
 ;;;(ns-unmap 'aerobio.htseq.common 'get-comparison-files)
 (defmulti
@@ -699,7 +747,7 @@ ComparisonSheet.csv
 
 
 (defn launch-action
-  [eid recipient get-toolinfo template & {:keys [action rep compfile]}]
+  [eid recipient get-toolinfo template & {:keys [action rep compfile status]}]
   (prn "LAUNCH: "
        [eid recipient template action rep compfile])
   (let [exp (get-exp-info eid :exp)]
@@ -713,11 +761,11 @@ ComparisonSheet.csv
         (cond
           (#{"phase-0" "phase-0b" "phase-0c" "phase-0d"} phase)
           (pg/future+
-            (run-phase-0 eid recipient get-toolinfo template))
+            (run-phase-0 eid recipient get-toolinfo template status))
 
           (#{"phase-1" "bt2-phase-1" "bt1-phase-1" "star-phase-1"} phase)
           (pg/future+
-            (run-phase-1 eid recipient get-toolinfo template :repk rep))
+            (run-phase-1 eid recipient get-toolinfo template status :repk rep))
 
           (#{"phase-2" "phase-2b"} phase)
           (run-phase-2 exp eid recipient get-toolinfo template)
