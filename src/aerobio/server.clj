@@ -404,7 +404,7 @@
   (let [params (msg :params)
         {:keys [ws user eid phase]} params]
     (infof "RUN: %s" params)
-    (let [vmsg (va/validate-exp eid)]
+    (let [vmsg (va/validate-exp eid phase)]
       (if (not-empty vmsg)
         (send-end-msg ws {:op :validate :payload vmsg})
         (let [{:keys [cmd eid template]} params
@@ -559,8 +559,6 @@
     (update-adb :chan ch
                 :idfn [idfn]
                 :connfn [connfn])
-    (start-job-watcher)
-    (start-tool-watcher)
     (go-loop [msg (<! ch)]
       (let [{:keys [op payload]} msg]
         (future (server-dispatch ch op payload))
@@ -572,14 +570,6 @@
 
 
 (defn connfn [data] data)
-
-#_(start-server
-   7070
-   :route-handler (aerobio-handler
-                   (aerobio-routes :index-path "public/index.html"))
-   :idfn (constantly "Aerobio")
-   :connfn connfn)
-#_(stop-server)
 
 
 (defn start! [port]
@@ -597,6 +587,9 @@
   (stop-tool-watcher)
   (stop-job-watcher)
   (stop-server))
+
+#_(start! 7070)
+#_(stop-server)
 
 
 
