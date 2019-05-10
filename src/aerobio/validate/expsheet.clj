@@ -56,10 +56,13 @@
 
 (defn gbk? [x] (contains? (get-exp-sheet-data (x :EID) :gbks) (x :ncid)))
 (defn gtf? [x] (contains? (get-exp-sheet-data (x :EID) :gtfs) (x :ncid)))
-(defn normgenes? [x] (contains? (get-exp-sheet-data (x :EID) :norms) (x :ncid)))
 (defn index? [x] (contains? (get-exp-sheet-data (x :EID) :indices) (x :ncid)))
 (defn bt1index? [x]
   (contains? (get-exp-sheet-data (x :EID) :bt1indices) (x :ncid)))
+(defn normgenes? [x]
+  (or (not= (ac/get-exp-info (x :EID) :exp) :tnseq)
+      (contains? (get-exp-sheet-data (x :EID) :norms) (x :ncid))))
+
 
 (s/def ::gbk? gbk?)
 (s/def ::gtf? gtf?)
