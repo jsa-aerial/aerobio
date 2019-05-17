@@ -139,6 +139,22 @@ def args2map ():
     return argmap
 
 
+def get_port ():
+    #os.path.isfile("/home/jsa/Clojure/Projects/aerobio/.ports")
+    #os.getcwd()
+    #os.path.dirname(os.path.realpath(__file__))
+    #os.chdir("/home/varun/temp")
+    hmdir = os.path.expanduser(~aerobio)
+    portfile = os.path.join(hmdir, ".aerobio/.ports")
+    print("Port file:", portfile)
+    if os.path.isfile(portfile):
+        a = None
+        with open() as ports:
+            a = eval(ports.read())
+        return a['http']
+    else:
+        return 7070
+        
 
 
 async def bpretry ():
@@ -165,7 +181,7 @@ def main():
     ## print("connecting to 7070")
     argmap = args2map()
     #print("ArgMap:", argmap)
-    url = 'ws://localhost:7070/ws'
+    url = 'ws://localhost:' + get_port() + '/ws'
     trio.run(cli.open_connection,
              url, dispatcher, command, {"argmap": argmap})
 
