@@ -126,7 +126,19 @@ def args2map ():
         argmap[kwaction] = action
         (eid,arglist) = getarg(arglist)
         argmap[kweid] = eid
+    elif (cmd == 'reset'):
+        (action,arglist) = getarg(arglist)
+        argmap[kwaction] = action
+        (eid,arglist) = getarg(arglist)
+        argmap[kweid] = eid
+    else:
+        (action,arglist) = getarg(arglist)
+        argmap[kwaction] = action
+        (eid,arglist) = getarg(arglist)
+        argmap[kweid] = eid
     return argmap
+
+
 
 
 async def bpretry ():
