@@ -271,21 +271,24 @@
     (cmn/ensure-dirs fit aggr)))
 
 (defn run-fitness-aggregate
-  [eid recipient comparison-file get-toolinfo template]
+  [eid recipient comparison-file get-toolinfo template status-atom]
   (let [_ (get-phase-2-dirs eid)
         cfg    (assoc-in template
                          [:nodes :ph2 :args]
-                         [eid comparison-file recipient])]
-    (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))))
+                         [eid comparison-file recipient])
+        futs-vec (cmn/flow-program cfg get-toolinfo :run true)]
+    (cmn/job-flow-node-results futs-vec status-atom)
+    (@status-atom :done)))
 
 (defmethod cmn/run-comparison :tnseq
-  [_ eid recipient compfile get-toolinfo template]
-  (run-fitness-aggregate eid recipient compfile get-toolinfo template))
+  [_ eid recipient compfile get-toolinfo template status-atom]
+  (run-fitness-aggregate
+   eid recipient compfile get-toolinfo template status-atom))
 
 (defmethod cmn/run-phase-2 :tnseq
-  [_ eid recipient get-toolinfo template]
+  [_ eid recipient get-toolinfo template status-atom]
   (run-fitness-aggregate
-   eid recipient "ComparisonSheet.csv" get-toolinfo template))
+   eid recipient "ComparisonSheet.csv" get-toolinfo template status-atom))
 
 
 (defn get-aggregate-files
@@ -320,14 +323,20 @@
 
 #_(->>  (get-aggregate-files eid "BottleNeck.csv") clojure.pprint/pprint)
 
-(defn run-aggregation
-  [eid recipient compfile get-toolinfo template]
+(defn run-global-aggregation
+  [eid recipient compfile get-toolinfo template status-atom]
   #_(prn eid compfile)
   (let [cfg (assoc-in template
                       [:nodes :ph2 :args]
-                      [eid compfile recipient])]
-    #_(prn cfg)
-    (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))))
+                      [eid compfile recipient])
+        futs-vec (cmn/flow-program cfg get-toolinfo :run true)]
+    (cmn/job-flow-node-results futs-vec status-atom)
+    (@status-atom :done)))
+
+(defmethod cmn/run-aggregation :tnseq
+  [_ eid recipient compfile get-toolinfo template status-atom]
+  (run-global-aggregation
+   eid recipient compfile get-toolinfo template status-atom))
 
 
 
