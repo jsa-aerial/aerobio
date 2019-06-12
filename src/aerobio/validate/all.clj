@@ -16,7 +16,9 @@
              set-exp-sheet-data validate-msg make-validator]]
     [sampsheet :refer [validate-sample-sheet]]
     [expsheet :refer [validate-exp-sample-sheet]]
-    [compsheet :refer [validate-comparison-sheet]]]
+    [compsheet :refer [validate-comparison-sheet]]
+    [datasets :refer [validate-expexists
+                      validate-phase-0 validate-phase-1 validate-phase-2]]]
 
    [aerobio.htseq.common :as ac]))
 
@@ -68,29 +70,43 @@
 
 
 
+(defn norm-action [action]
+  (if (not (string? action))
+    action
+    (if-let [x (re-find #"phase-[0-9]" action)]
+      x
+      action)))
+
 (defn validate-exp [EID action]
-  (set-exp-sheet-data EID)
-  (let [vse (validate-sheets-exist EID)]
+  (let [action (norm-action action)
+        vse (validate-expexists EID)
+        vse (if (empty? vse) (validate-sheets-exist EID) vse)]
     (with-out-str
       (if (not (empty? vse))
         (print vse)
-        (print (cljstr/join
-                "\n\n"
-                (case action
-                  "phase-0"
-                  (filter #(not (empty? %))
-                          [(validate-sample-sheet EID)
-                           (validate-exp-sample-sheet EID)])
-                  "phase-1"
-                  (filter #(not (empty? %))
-                          [(validate-sample-sheet EID)
-                           (validate-exp-sample-sheet EID)
-                           #_(validate-data-sets-phase-1 EID)])
-                  ("all" "phase-2" "compare" "xcompare")
-                  (filter #(not (empty? %))
-                          [(validate-sample-sheet EID)
-                           (validate-exp-sample-sheet EID)
-                           (validate-comparison-sheet EID)]) )))))))
+        (do
+          (set-exp-sheet-data EID)
+          (print (cljstr/join
+                  "\n\n"
+                  (case action
+                    "phase-0"
+                    (filter #(not (empty? %))
+                            [(validate-phase-0 EID)
+                             (validate-sample-sheet EID)
+                             (validate-exp-sample-sheet EID)])
+                    "phase-1"
+                    (filter #(not (empty? %))
+                            [(validate-sample-sheet EID)
+                             (validate-exp-sample-sheet EID)
+                             (validate-phase-1 EID)])
+                    ("all" "phase-2"
+                     :compare "compare"
+                     :xcompare "xcompare")
+                    (filter #(not (empty? %))
+                            [(validate-sample-sheet EID)
+                             (validate-exp-sample-sheet EID)
+                             (validate-comparison-sheet EID)
+                             #_(validate-phase-2 EID)]) ))))))))
 
 
 (comment
