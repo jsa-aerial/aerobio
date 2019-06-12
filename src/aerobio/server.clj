@@ -84,6 +84,7 @@
    [aerobio.htseq.wgseq   :as htws]
    ;; Validation
    [aerobio.validate.all :as va]
+   [aerobio.validate.datasets :as vds]
    ;; Program graph construction, execution, delivery
    [aerobio.pgmgraph :as pg]
    ;; REST actions
@@ -265,12 +266,20 @@
 (defn job-exists? [jobname]
   (@job-configs jobname))
 
+(defn get-job-name [exp cmd work-item]
+  (if (= cmd :run)
+    (str (name exp) "-" work-item "-job-template")
+    (str (name exp) "-" (name cmd)"-job-template")))
+
 (defn validate-job [exp cmd work-item]
-  (let [jobname (str (name exp) "-" work-item "-job-template")]
+  (let [jobname (get-job-name exp cmd work-item)]
     (if (job-exists? jobname)
       ""
-      (format "No job for experiment type '%s' with cmd '%s' for '%s'"
-              (name exp) cmd work-item))))
+      (if (= cmd :run)
+        (format "No job for experiment type '%s' with cmd '%s' for phase '%s'"
+                (name exp) (name cmd) work-item)
+        (format "No job for experiment type '%s' with cmd '%s'"
+                (name exp) (name cmd))))))
 
 (defn get-jobinfo [jobname]
   (assert (@job-configs jobname)
@@ -318,6 +327,7 @@
    (fn[v]
      (cond
        (isa? (type v) clojure.lang.Atom) (recur (deref v))
+       (isa? (type v) clojure.core.async.impl.channels.ManyToManyChannel) :chan
        (coll? v) (valuefy v)
        (not (future? v)) v
        (future-done? v) (deref v)
@@ -362,14 +372,18 @@
 (defmulti user-msg :op)
 
 (defmethod user-msg :default [msg]
-  (infof "ERROR: unknown user message %s" msg)
-  #_(srv/send-msg
-     (msg :ws) {:op "error" :payload "ERROR: unknown user message"}))
+  (let [params (msg :params)
+        {:keys [ws user eid action]} params]
+    (infof "ERROR: unknown user message %s" msg)
+    (send-end-msg
+     ws {:op :error
+         :payload (format "unknown user-msg '%s'" (msg :op))})))
 
 
 (defmethod user-msg :status [msg]
   (let [params (msg :params)
         {:keys [ws user eid action]} params]
+    #_(infof "STATUS %s" params)
     (let [jinfo (hc/get-db (atom (valuefy @job-db)) [user eid action])
           result (if (seq jinfo)
                    (->> jinfo (sort-by #(-> % :request :timestamp))
@@ -391,13 +405,64 @@
                                          (with-out-str (pprint status)))
                                         (format
                                          "Finished:\n%s\nFinal result:\n%s"
-                                         (with-out-str (pprint status))
-                                         (with-out-str (pprint res))))]
+                                         (with-out-str
+                                           (pprint (status :DONE [])))
+                                         (with-out-str
+                                           (pprint res))))]
                              (with-out-str
                                (print (format "%s : %s started @ %s\n%s"
                                               eid action timestamp rstg))))
                           result)))]
       (send-end-msg ws {:op :status :payload retmsg}))))
+
+
+(defn user-msg-body [ws user eid action params]
+  (let [action (name action)
+        vmsg (va/validate-exp eid action)]
+    (if (not-empty vmsg)
+      (send-end-msg ws {:op :validate :payload vmsg})
+      (let [{:keys [cmd eid template]} params
+            dt (date-time-stg)
+            resmap (actions/action cmd eid params get-toolinfo template)
+            resfut (resmap :fut)
+            jobdb-info (or (get-jdb [user eid action]) [])]
+        (aerial.utils.misc/sleep 250)
+        (swap! dbg (fn[M] (assoc M eid resmap)))
+        (infof "%s : %s" cmd (prn-str resfut))
+        (update-jdb [user eid action]
+                    (conj jobdb-info
+                          {:request {:timestamp dt
+                                     :params (dissoc params :ws)}
+                           :status (resmap :status)
+                           :result resfut}))
+        (if (and (future-done? resfut) (map? @resfut) (@resfut :error))
+          (let [cause (->> (or (@resfut :msg) (prn-str (@resfut :error)))
+                           (str "Job Launch : "))]
+            (srv/send-msg ws {:op :error :payload cause}))
+          (srv/send-msg ws {:op :launch :payload "Successful"}))
+        (srv/send-msg ws {:op :stop :payload {}} :noenvelope true)))))
+
+
+(defmethod user-msg :aggregate [msg]
+  (let [params (msg :params)
+        {:keys [ws user eid compfile]} params]
+    (infof "AGGREGATE: %s" params)
+    (user-msg-body ws user eid (params :cmd) params)
+    #_(send-end-msg ws {:op :status :payload "Aggregating"})))
+
+(defmethod user-msg :xcompare [msg]
+  (let [params (msg :params)
+        {:keys [ws user eid compfile]} params]
+    (infof "XCOMPARE: %s" params)
+    (user-msg-body ws user eid (params :cmd) params)
+    #_(send-end-msg ws {:op :status :payload "Xcomparing"})))
+
+(defmethod user-msg :compare [msg]
+  (let [params (msg :params)
+        {:keys [ws user eid compfile]} params]
+    (infof "COMPARE: %s" params)
+    (user-msg-body ws user eid (params :cmd) params)
+    #_(send-end-msg ws {:op :status :payload "Comparing"})))
 
 
 (defmethod user-msg :run [msg]
@@ -429,14 +494,30 @@
           (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))))))
 
 
+(defmethod user-msg :check [msg]
+  (let [params (msg :params)
+        {:keys [ws user eid]} params]
+    (infof "CHECK: %s" params)
+    (let [vmsg (vds/validate-expexists eid)
+          vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
+      (if (not-empty vmsg)
+        (send-end-msg ws {:op :validate :payload vmsg})
+        (let [_ (cmn/set-exp eid)
+              vmsg (va/validate-exp eid "all")]
+          (if (not-empty vmsg)
+            (send-end-msg ws {:op :validate :payload vmsg})
+            (send-end-msg ws {:op :validate :payload "All checks pass!"})))))))
+
+
 (defn msg-handler [msg]
   (let [{:keys [ws data]} msg
         {:keys [op data]} data
         {:keys [user cmd phase modifier compfile eid action]} data
         eid (if (str/ends-with? eid "/") (austr/butlast 1 eid) eid)
         eid (if (str/starts-with? eid "/") (austr/drop 1 eid) eid)
-        params {:user user, :cmd op, :modifier modifier
-                :phase phase, :action action :eid eid :ws ws}]
+        params {:user user, :cmd op, :eid eid
+                :phase phase, :action action :compfile compfile
+                :modifier modifier, :ws ws}]
     (infof "MSG-HANDLER: MSG %s" (msg :data))
     (try
       (case op
@@ -444,11 +525,12 @@
         (do (infof "WS: %s, sending stop msg" ws)
             (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
 
-        (:status "status")
+        (:status :check)
         (user-msg {:op op :params params})
 
-        ;;null for now
-        (let [vmsg (va/validate-sheets-exist eid)]
+        (:run :compare :xcompare :aggregate)
+        (let [vmsg (vds/validate-expexists eid)
+              vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
           (if (not-empty vmsg)
             (send-end-msg ws {:op :validate :payload vmsg})
             (let [_ (cmn/set-exp eid)
@@ -456,11 +538,13 @@
                   vmsg (validate-job exp op (or phase compfile))]
               (if (not-empty vmsg)
                 (send-end-msg ws {:op :validate :payload vmsg})
-                (let [work-item (or phase cmd)
-                      tempnm (str (name exp) "-" work-item "-job-template")
+                (let [tempnm (get-job-name exp op (or phase compfile))
                       template (get-jobinfo tempnm)
                       params (assoc params :template template)]
-                  (user-msg {:op op :params params})))))))
+                  (user-msg {:op op :params params}))))))
+
+        (send-end-msg
+         ws {:op :error :payload (format "No such cmd '%s'" (name op))}))
       (catch Error e
         (errorf "ERROR %s: %s, %s" eid op (or (.getMessage e) e))
         (send-end-msg ws {:op :validate :payload (.getMessage e)}))
