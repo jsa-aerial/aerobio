@@ -181,20 +181,16 @@
   "Run a condition/replicate set of comparisons based on an experiment
   designated by eid (experiement id) and the input comparison sheet
   CSV comparison-sheet"
-  [eid recipient comparison-file get-toolinfo template]
+  [eid recipient comparison-file get-toolinfo template status-atom]
   (let [_ (get-phase-2-dirs eid nil)
         _ (get-phase-2-dirs eid :rep)
         ftype "CDS" ; <-- BAD 'magic number'
-        repcfg (assoc-in template
+        cfg (assoc-in template
                          [:nodes :ph2 :args]
                          [eid comparison-file true ftype :NA recipient])
-        repjob (pg/future+ (cmn/flow-program repcfg get-toolinfo :run true))
-        cfg (assoc-in template
-                      [:nodes :ph2 :args]
-                      [eid comparison-file false ftype :NA recipient])
-        cfgjob (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))]
-    #_(clojure.pprint/pprint repflow)
-    [repjob cfgjob]))
+        futs-vec (cmn/flow-program cfg get-toolinfo :run true)]
+    (cmn/job-flow-node-results futs-vec status-atom)
+    (@status-atom :done)))
 
 
 #_(defmethod cmn/run-xcomparison :rnaseq
@@ -203,13 +199,13 @@
    eid recipient compfile get-toolinfo template))
 
 (defmethod cmn/run-comparison :rnaseq
-  [_ eid recipient compfile get-toolinfo template]
+  [_ eid recipient compfile get-toolinfo template status-atom]
   (run-rnaseq-comparison
-   eid recipient compfile get-toolinfo template))
+   eid recipient compfile get-toolinfo template status-atom))
 
 (defmethod cmn/run-phase-2 :rnaseq
-  [_ eid recipient get-toolinfo template]
+  [_ eid recipient get-toolinfo template status-atom]
   (run-rnaseq-comparison
-   eid recipient "ComparisonSheet.csv" get-toolinfo template))
+   eid recipient "ComparisonSheet.csv" get-toolinfo template status-atom))
 
 
