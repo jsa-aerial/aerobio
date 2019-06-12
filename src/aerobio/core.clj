@@ -57,6 +57,7 @@
 
             [aerial.fs :as fs]
             [aerial.utils.misc :refer [getenv]]
+            [aerial.utils.io :refer [with-out-writer]]
             [aerial.utils.coll :as coll]
 
             [aerial.bio.utils.params :as bpams]
@@ -214,6 +215,13 @@
   (svr/start! port))
 
 
+(defn write-port-file [http-port repl-port]
+  (let [port-file (fs/join (fs/pwd) ".ports")]
+    (with-out-writer port-file
+      (print (format "{'http': '%s', 'repl': '%s'}" http-port repl-port)))))
+
+
+
 
 (defn nrepl-handler-hack []
   (require 'cider.nrepl)
@@ -260,6 +268,7 @@
         (if (find-set-home-dir)
           (do
             (println :http-port http-port :rpl-port rpl-port)
+            (write-port-file http-port rpl-port)
             (nrs/start-server :port rpl-port :handler nrepl-handler)
             (run-server http-port))
           (do (println "aerobio server must run in home directory")
