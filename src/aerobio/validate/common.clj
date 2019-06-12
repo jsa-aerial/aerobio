@@ -86,6 +86,7 @@
   (let [refdir (ac/get-exp-info EID :refs)
         indexdir (ac/get-exp-info EID :index)
         bt1indexdir (ac/get-exp-info EID :bt1index)
+        starindexdir (ac/get-exp-info EID :starindex)
         gbks (get-ref-names (fs/directory-files refdir ".gbk"))
         gtfs (get-ref-names (fs/directory-files refdir ".gtf"))
         indices (->> (fs/directory-files indexdir ".rev.1.bt2")
@@ -94,9 +95,12 @@
         bt1indices (->> (fs/directory-files bt1indexdir ".rev.1.ebwt")
                         get-ref-names
                         (map #(->> % (str/split #"\.") first)) set)
+        starindices (->> (fs/directory-files starindexdir "")
+                         (filter fs/directory?)
+                         (mapv fs/basename) set)
         norms (get-ref-names
                (fs/directory-files (fs/join refdir "NormGenes") ".txt"))]
-    [gbks gtfs indices bt1indices norms]))
+    [gbks gtfs indices bt1indices starindices norms]))
 
 
 
@@ -142,7 +146,7 @@
         NCs (->> exinfo :exp-sample-info :ncbi-xref
                  (mapv second) (into #{}))
         strains (->> exinfo :exp-sample-info :ncbi-xref (mapv last) (into #{}))
-        [gbks gtfs indices bt1indices norms] (get-known-refs EID)]
+        [gbks gtfs indices bt1indices starindices norms] (get-known-refs EID)]
     #_(pprint [(take 3 bcsets) NCs strains])
     (swap! sheet-db
            assoc
@@ -150,7 +154,7 @@
                 :samples samples :sampdups sampdups :sampnames sampnames
                 :Isampnames Isampnames :Isampdups Isampdups
                 :gbks gbks :gtfs gtfs
-                :indices indices :bt1indices bt1indices
+                :indices indices :bt1indices bt1indices :starindices starindices
                 :norms norms})))
 
 (defn get-exp-sheet-data [EID k]
