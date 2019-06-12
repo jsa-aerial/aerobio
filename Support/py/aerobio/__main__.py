@@ -1,4 +1,6 @@
 import os
+import sys
+import pwd
 import getopt, sys
 import pkg_resources
 import time
@@ -101,8 +103,20 @@ def args2map ():
     argmap = {kwuser: user}
     fullArgs = sys.argv
     arglist = fullArgs[1:]
+
+    if (len(arglist) < 2):
+        print(pkg_resources.resource_string(
+            __name__, "resources/usage.txt").decode("utf-8").strip())
+        sys.exit()
+
     (cmd,arglist) = getarg(arglist)
     argmap[kwcmd] = cli.keyword(cmd)
+
+    if (cmd != 'check') and (len(arglist) < 2):
+        print(pkg_resources.resource_string(
+            __name__, "resources/usage.txt").decode("utf-8").strip())
+        sys.exit()
+
     if cmd == 'run':
         (phase,arglist) = getarg(arglist)
         argmap[kwphase] = phase
@@ -126,6 +140,9 @@ def args2map ():
         argmap[kwaction] = action
         (eid,arglist) = getarg(arglist)
         argmap[kweid] = eid
+    elif (cmd == 'check'):
+        (eid,arglist) = getarg(arglist)
+        argmap[kweid] = eid
     elif (cmd == 'reset'):
         (action,arglist) = getarg(arglist)
         argmap[kwaction] = action
@@ -144,17 +161,19 @@ def get_port ():
     #os.getcwd()
     #os.path.dirname(os.path.realpath(__file__))
     #os.chdir("/home/varun/temp")
-    hmdir = os.path.expanduser(~aerobio)
-    portfile = os.path.join(hmdir, ".aerobio/.ports")
-    print("Port file:", portfile)
-    if os.path.isfile(portfile):
-        a = None
-        with open() as ports:
-            a = eval(ports.read())
-        return a['http']
+    users = map(lambda x: x[0], pwd.getpwall())
+    if "aerobio" in users:
+        hmdir = os.path.expanduser("~aerobio")
+        portfile = os.path.join(hmdir, ".aerobio/.ports")
+        ## print("Port file:", portfile)
+        if os.path.isfile(portfile):
+            a = None
+            with open(portfile) as ports:
+                a = eval(ports.read())
+            return a['http']
     else:
-        return 7070
-        
+        return "7070"
+
 
 
 async def bpretry ():
