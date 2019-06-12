@@ -147,22 +147,23 @@
   "Run set of population and/or clones against reference seqs defined
   by experiement designated by eid (experiment id) and the input
   comparison sheet CSV comparison-file"
-  [eid recipient comparison-file get-toolinfo template]
+  [eid recipient comparison-file get-toolinfo template status-atom]
   (let [cfg (assoc-in template
                       [:nodes :ph2 :args]
                       [eid comparison-file :NA recipient])
-        cfgjob (pg/future+ (cmn/flow-program cfg get-toolinfo :run true))]
-    cfgjob))
+        futs-vec (cmn/flow-program cfg get-toolinfo :run true)]
+    (cmn/job-flow-node-results futs-vec status-atom)
+    (@status-atom :done)))
 
 (defmethod cmn/run-comparison :wgseq
-  [_ eid recipient compfile get-toolinfo template]
+  [_ eid recipient compfile get-toolinfo template status-atom]
   (run-wgseq-comparison
-   eid recipient compfile get-toolinfo template))
+   eid recipient compfile get-toolinfo template status-atom))
 
 (defmethod cmn/run-phase-2 :wgseq
-  [_ eid recipient get-toolinfo template]
+  [_ eid recipient get-toolinfo template status-atom]
   (run-wgseq-comparison
-   eid recipient "ComparisonSheet.csv" get-toolinfo template))
+   eid recipient "ComparisonSheet.csv" get-toolinfo template status-atom))
 
 
 
