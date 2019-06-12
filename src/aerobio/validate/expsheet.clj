@@ -56,9 +56,13 @@
 
 (defn gbk? [x] (contains? (get-exp-sheet-data (x :EID) :gbks) (x :ncid)))
 (defn gtf? [x] (contains? (get-exp-sheet-data (x :EID) :gtfs) (x :ncid)))
+
 (defn index? [x] (contains? (get-exp-sheet-data (x :EID) :indices) (x :ncid)))
 (defn bt1index? [x]
   (contains? (get-exp-sheet-data (x :EID) :bt1indices) (x :ncid)))
+(defn starindex? [x]
+  (contains? (get-exp-sheet-data (x :EID) :starindices) (x :ncid)))
+
 (defn normgenes? [x]
   (or (not= (ac/get-exp-info (x :EID) :exp) :tnseq)
       (contains? (get-exp-sheet-data (x :EID) :norms) (x :ncid))))
@@ -66,8 +70,12 @@
 
 (s/def ::gbk? gbk?)
 (s/def ::gtf? gtf?)
+
 (s/def ::index? index?)
 (s/def ::bt1index? bt1index?)
+(s/def ::bowtie? (s/and ::index? ::bt1index?))
+(s/def ::starindex? starindex?)
+(s/def ::bowtie-or-star? (s/or :bowtie ::bowtie? :star ::starindex?))
 (s/def ::normgenes? normgenes?)
 
 (s/def ::ncid string?)
@@ -75,7 +83,7 @@
 
 (s/def ::nc-xref-rec
   (s/merge (s/keys :req-un [::ncid ::expnm])
-           ::gbk? ::gtf? ::index? ::bt1index? ::normgenes?))
+           ::gbk? ::gtf? ::bowtie-or-star? ::normgenes?))
 (s/def ::nc-xref-recs (s/coll-of ::nc-xref-rec))
 
 
@@ -87,6 +95,7 @@
   [_ problem]
   (format "reference `%s` does not have a registered gtf"
           (-> problem :val :ncid)))
+
 (p/defphraser index?
   [_ problem]
   (format "reference `%s` does not have a Bowtie-2 index"
@@ -95,6 +104,11 @@
   [_ problem]
   (format "reference `%s` does not have a Bowtie-1 index"
           (-> problem :val :ncid)))
+(p/defphraser starindex?
+  [_ problem]
+  (format "reference `%s` does not have a STAR index"
+          (-> problem :val :ncid)))
+
 (p/defphraser normgenes?
   [_ problem]
   (format "reference `%s` does not have normalization genes registered"
@@ -116,9 +130,17 @@
   (contains? (get-exp-sheet-data (x :EID) :strains) (x :s)))
 
 (defn nodup? [x] (= 0 (x :dupcnt)))
-(defn cond-ok? [x] (re-matches #"[A-Za-z0-9]+" (x :c)))
-(defn repid-ok? [x] (re-matches #"[A-Z]|[a-z]|[0-9]" (x :r)))
-(defn len3? [x] (= (count (dissoc x :EID :v :dupcnt)) 3))
+
+(defn cond-ok? [x]
+  (let [c (x :c)]
+    (and c (re-matches #"[A-Za-z0-9]+" (x :c)))))
+
+(defn repid-ok? [x]
+  (let [r (x :r)]
+    (and r (re-matches #"[A-Z]|[a-z]|[0-9]" (x :r)))))
+
+(defn len3? [x] (and (= (count (dissoc x :EID :v :dupcnt)) 3)
+                     (x :s) (x :c) (x :r)))
 
 (s/def ::len3? len3?)
 (s/def ::strain? strain?)
