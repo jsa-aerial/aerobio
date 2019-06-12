@@ -32,7 +32,8 @@
 
 (p/defphraser comp-eolok
   [_ problem]
-  "'CompSheet.csv' must use Linux or Win/Dos End Of Line (EOL) markers")
+  (format "'%s' must use Linux or Win/Dos End Of Line (EOL) markers"
+          (-> problem :val :name)))
 
 (def validate-eols (make-validator ::eolsok? :sep "\n"))
 
