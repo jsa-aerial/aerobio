@@ -91,9 +91,8 @@
   [_ eid params get-toolinfo template]
   (let [status (atom {:done []})
         {:keys [user cmd phase modifier compfile]} params
-        rep (if modifier :rep nil)
+        rep (if (= modifier "replicates") :rep nil)
         outdir (cmn/get-exp-info eid :out)
-
         exp (cmn/get-exp-info eid :exp)
         user (get-mail-recipient user)]
     {:status status
@@ -113,7 +112,13 @@
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     {:status status
-     :fut (cmn/run-comparison
+     :fut (cmn/launch-action
+           eid user
+           get-toolinfo template
+           :action (name cmd)
+           :compfile compfile
+           :status status)
+     #_(cmn/run-comparison
            exp eid recipient compfile get-toolinfo template status)}))
 
 (defmethod action :xcompare
@@ -123,8 +128,14 @@
         {:keys [user cmd phase modifier compfile]} params
         user (get-mail-recipient user)]
     {:status status
-     :fut (cmn/run-comparison
-           exp eid user compfile get-toolinfo template status)}))
+     :fut (cmn/launch-action
+           eid user
+           get-toolinfo template
+           :action (name cmd)
+           :compfile compfile
+           :status status)
+     #_(cmn/run-comparison
+      exp eid user compfile get-toolinfo template status)}))
 
 
 (defmethod action :aggregate
@@ -134,8 +145,14 @@
         {:keys [user cmd phase modifier compfile]} params
         recipient (pams/get-params [:email (keyword user)])]
     {:status status
-     :fut (htts/run-aggregation
-           eid recipient compfile get-toolinfo template status)}))
+     :fut (cmn/launch-action
+           eid user
+           get-toolinfo template
+           :action (name cmd)
+           :compfile compfile
+           :status status)
+     #_(htts/run-aggregation
+        eid recipient compfile get-toolinfo template status)}))
 
 
 (comment
