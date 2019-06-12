@@ -59,7 +59,19 @@
 
 
 
-(defmacro future+ [& body]
+(defmacro future+
+  "Protected future task running. `body' is a set of expressions to run
+  in a separate thread. These are wrapped in a `try' expression with
+  specific arms for Error, ExceptionInfo, and general runtime
+  Exception. For each of these an attempt is made to construct a
+  meaningful message from the various pieces of exception
+  information.
+
+  This is used to launch all program flow graph nodes, so that any
+  problems in the processing of a node may be caught and (with a
+  dollop of luck...) handled and then used in a controlled shutdown of
+  the remaining graph."
+  [& body]
   `(future
      (try
        ~@body
@@ -69,9 +81,11 @@
                     (str/split #"\n") first (str/split #": ") rest
                     (->> (str/join ": ")))})
        (catch clojure.lang.ExceptionInfo e#
-         {:error (type e#) :msg (str (.getMessage e#) ": " (.getData e#))})
+         {:error (type e#)
+          :msg (str (.getMessage e#) ": " (.getData e#))})
        (catch Exception e#
-         {:error (type e#), :msg ((Throwable->map e#) :cause)}))))
+         {:error (type e#), :cause ((Throwable->map e#) :cause)
+          :msg (-> e# Throwable->map :via first :message)}))))
 
 
 (defn init-pgms
@@ -846,9 +860,10 @@
 
 
 (defn run-flow-program
-  "Takes a data flow graph, as produced by a 'make-pipeline',
-   activates the nodes and runs the graph to completion
-  "
+  "Takes a data flow graph, as produced by a 'make-pipeline', activates
+  the nodes and runs the graph to completion. Wraps each node body in
+  exception protection and ensures errors are propagated to driver for
+  status report."
   [dfg]
   (mapv (fn[node]
           (future+
@@ -864,11 +879,13 @@
                                  msg))
                        (format "Done, node %s" (-> node first :id)))]
              (infof "%s" msg)
-             {:request {:name (-> node first :name)
+             {:request {:name (-> node first :id)
                         :args (-> node first :args)
                         :msg msg}
               :result jnres})))
         dfg))
+
+
 
 
 (comment
