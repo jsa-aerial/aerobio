@@ -46,6 +46,7 @@
    [aerial.bio.utils.filters :as fil]
 
    [aerobio.params :as pams]
+   [aerobio.htseq.paired :refer [demux-R2-samp]]
    [aerobio.pgmgraph :as pg]])
 
 
@@ -432,7 +433,7 @@
 (defn get-exp-file-specs
   [exp-illumina-xref exp-dir ibc ftype]
   (->>  ibc exp-illumina-xref
-        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc ftype)]))
+        (map (fn[[id nm ibc sbc]] [sbc (str nm "-" sbc "-R1" ftype)]))
         (map (fn[[sbc spec]] [sbc (fs/join exp-dir spec)]))
         (into {})))
 
@@ -535,15 +536,20 @@
         [qc-ctpt _] (fil/qcscore-min-entropy baseqc% 0.9 10)
         bc-file-specs (get-bc-file-specs
                        base exp-illumina-xref illumina-sample-xref)
-        ifastqs (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
+        ifastqs (->> (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
+                     (group-by #(->> % fs/basename
+                                     (re-find #"R[1-2]") keyword)))
         sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
         sample-ifq-xref (reduce (fn[M fq]
                                   (let [samp (->> fq fs/basename
                                                   (str/split #"\.") first
                                                   (str/split #"_") first)]
                                     (assoc M samp fq)))
-                                {} ifastqs)]
+                                {} (ifastqs :R1))]
     (ensure-sample-dirs base illumina-sample-xref)
+
+    ;; QC filter, demultiplex R1 reads
+    ;;
     (doseq [samp (sort (keys sample-ifq-xref))]
       (let [ibc (sample-illumina-xref samp)
             sid ibc]
@@ -554,6 +560,14 @@
                           (barcode-maps ibc)
                           (red1codes sid)
                           qc-ctpt sqc%))))
+
+    ;; If we have paired reads (R2 has data) demultiplex R2s
+    ;;
+    (when (ifastqs :R2)
+      (let [futs (mapv #(pg/future+ (demux-R2-samp eid %))
+                       (vals illumina-sample-xref))]
+        (mapv deref futs)))
+
     :success))
 
 
@@ -579,11 +593,12 @@
         fqzs (fqzmap (cljstr/join "-" (coll/takev 2 rnm-bits)))]
     (assert (seq fqzs)
             (format "%s : There are no fastq files for %s" eid repname))
-    (if (< (count rnm-bits) 3)
-      fqzs
-      (->> fqzs
-           (keep-indexed (fn[idx itm] (when (str/substring? repname itm) idx)))
-           first fqzs vector))))
+    (sort
+     (if (< (count rnm-bits) 3)
+       fqzs
+       (->> fqzs
+            (keep-indexed (fn[idx itm] (when (str/substring? repname itm) idx)))
+            (mapv fqzs))))))
 
 (defn replicate-name->strain-name [eid rnm]
   ((get-exp-info eid :ncbi-sample-xref) (->> rnm (str/split #"-") first)))
@@ -775,7 +790,8 @@ ComparisonSheet.csv
     (let [exp (get-exp-info eid :exp)]
       (cond
         (#{"phase-0" "phase-0b" "phase-0c" "phase-0d"
-           "phase-1" "bt2-phase-1" "bt1-phase-1" "star-phase-1"
+           "phase-1" "bt2-phase-1" "bt1-phase-1"
+           "star-phase-1" "star-paired-phase-1"
            "phase-2" "phase-2b"
            "phase-2-rnaseq" "phase-2-termseq"
            "phase-2-5NTap" "phase-2-5PTap"} action)
@@ -785,7 +801,8 @@ ComparisonSheet.csv
             (pg/future+
              (run-phase-0 eid recipient get-toolinfo template status))
 
-            (#{"phase-1" "bt2-phase-1" "bt1-phase-1" "star-phase-1"} phase)
+            (#{"phase-1" "bt2-phase-1" "bt1-phase-1"
+               "star-phase-1" "star-paired-phase-1"} phase)
             (pg/future+
              (run-phase-1 eid recipient get-toolinfo template status :repk rep))
 
