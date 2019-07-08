@@ -167,8 +167,9 @@
 ;;; fastq set, the collapsed fastas, output map file, output bam and
 ;;; bai file names
 (defmethod cmn/get-phase-1-args :tnseq
-  [_ eid repname & {:keys [repk bowtie] :or {bowtie :bt1}}]
-  (let [fqs (cljstr/join "," (cmn/get-replicate-fqzs eid repname repk))
+  [_ eid repname & {:keys [repk bowtie paired] :or {bowtie :bt1}}]
+  (let [{:keys [R1 R2]} (cmn/get-paired-fqs eid repname repk)
+        fqs R1
         fnas (cljstr/join
               "," (mapv (fn[fq]
                           (->> fq (str/split #"\.")
