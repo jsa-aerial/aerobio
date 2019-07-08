@@ -147,17 +147,11 @@
     (mapv (fn[fut] (deref fut)) futs-vec)))
 
 
-(defn get-fqs [eid repname repk]
-  (->> (cmn/get-replicate-fqzs eid repname repk)
-       (group-by (fn[fq] (if (re-find #"R2" fq) :R2 :R1)))
-       (map (fn[[k v]] [k (cljstr/join "," v)]))
-       (into {})))
-
 ;;; Get primary phase 1 arguments. These are the bowtie index, the
 ;;; fastq set, output bam and bai file names
 (defmethod cmn/get-phase-1-args :rnaseq
-  [_ eid repname & {:keys [repk star]}]
-  (let [{:keys [R1 R2]} (get-fqs eid repname repk)
+  [_ eid repname & {:keys [repk star paired]}]
+  (let [{:keys [R1 R2]} (cmn/get-paired-fqs eid repname repk)
         refnm (cmn/replicate-name->strain-name eid repname)
         btindex (fs/join (cmn/get-exp-info eid :index) refnm)
         starindex (when star
@@ -171,10 +165,12 @@
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai]))
     (when star (cmn/ensure-dirs (fs/dirname starprefix)))
     (if star
-      (if R2
+      (if (and paired R2)
         [starindex R1 R2 otbam otbai starprefix]
         [starindex R1 otbam otbai starprefix])
-      [btindex R1 otbam otbai])))
+      (if (and paired R2)
+        [btindex R1 R2 otbam otbai]
+        [btindex R1 otbam otbai]))))
 
 
 (defn get-phase-2-dirs [eid repk]
