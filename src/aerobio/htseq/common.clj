@@ -600,6 +600,13 @@
             (keep-indexed (fn[idx itm] (when (str/substring? repname itm) idx)))
             (mapv fqzs))))))
 
+(defn get-paired-fqs [eid repname repk]
+  (->> (get-replicate-fqzs eid repname repk)
+       (group-by (fn[fq] (if (re-find #"R2" fq) :R2 :R1)))
+       (map (fn[[k v]] [k (cljstr/join "," v)]))
+       (into {})))
+
+
 (defn replicate-name->strain-name [eid rnm]
   ((get-exp-info eid :ncbi-sample-xref) (->> rnm (str/split #"-") first)))
 
@@ -673,6 +680,8 @@
              :bt1 :bt2)
         star (-> template (get-in [:nodes :ph1 :name])
                  (cljstr/includes? "star"))
+        paired (-> template (get-in [:nodes :ph1 :name])
+                 (cljstr/includes? "paired"))
         sample-names (get-exp-info eid :sample-names)
         sample-names (if repk
                        (mapcat #((get-exp-info eid :replicate-names) %)
@@ -690,7 +699,7 @@
                  (let [job (assoc-in phase1-job-template [:nodes :ph1 :args]
                                      (get-phase-1-args
                                       exp eid snm :repk repk
-                                      :bowtie bt :star star))
+                                      :bowtie bt :star star :paired paired))
                        cfg (-> job
                                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                                pg/config-pgm-graph)]
