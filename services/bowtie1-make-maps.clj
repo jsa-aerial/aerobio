@@ -30,6 +30,7 @@
                           "\t"
                           [(-> (rec 0) (str/split #"-") second)
                            (rec 1)
+                           (rec 2)
                            (rec 3)
                            (count (rec 4))])]
                    (.write ot l)
