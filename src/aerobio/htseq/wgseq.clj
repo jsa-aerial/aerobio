@@ -124,14 +124,15 @@
                       slurp csv/read-csv rest)
          quads (->> compvec
                     (map (fn[[samp ref]]
-                           [(-> (fs/join samps (str samp "_*.fastq.gz"))
-                                fs/glob
-                                (->> (filter #(re-find ; glob bug!
-                                               (re-pattern
-                                                (str "/" samp)) %)))
-                                sort)
-                            (fs/join refbase (str (refxref ref) ".gbk"))
-                            (fs/join outs samp)]))
+                           (let [samp (cljstr/trim samp)]
+                             [(-> (fs/join samps (str samp "_*.fastq.gz"))
+                                  fs/glob
+                                  (->> (filter #(re-find ; glob bug!
+                                                 (re-pattern
+                                                  (str "/" samp)) %)))
+                                  sort)
+                              (fs/join refbase (str (refxref ref) ".gbk"))
+                              (fs/join outs samp)])))
                     (mapv #(vector % (fs/size (ffirst %))))
                     (sort-by second)
                     (mapv first))]
