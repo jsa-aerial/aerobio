@@ -28,11 +28,11 @@
                  (let [rec (str/split line #"\t")
                        l (str/join
                           "\t"
-                          [(-> (rec 0) (str/split #"-") second)
-                           (rec 1)
-                           (rec 2)
-                           (rec 3)
-                           (count (rec 4))])]
+                          [(-> (rec 0) (str/split #"-") second) ; count
+                           (rec 1)                              ; strand
+                           (rec 3)                              ; start
+                           (count (rec 4))                      ; length
+                           (rec 2)])]                           ; refname
                    (.write ot l)
                    (.newLine ot)))))))
 
