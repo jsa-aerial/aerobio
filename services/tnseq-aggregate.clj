@@ -13,19 +13,23 @@
                 (when (seq grp)
                   (let [pairs (butlast grp)
                         allins (mapv second pairs)
-                        allcsv (last grp)
-                        strain (-> pairs ffirst fs/basename
-                                   (str/split #"-") first)
-                        refnm  ((cmn/get-exp-info eid :ncbi-sample-xref) strain)
+                        [refnm allcsv] (last grp)
                         gtf (fs/join refdir (str refnm ".gbk"))
-                        norm   (fs/join refdir "NormGenes" (str refnm ".txt"))]
+                        norm (fs/join refdir "NormGenes" (str refnm ".txt"))
+                        main ["-m" norm "-w" "1" "-x" "10"
+                              "-l" "50" "-b" "0" "-c" gtf]
+                        argcard ((get-toolinfo "tnseq-aggregate" eid) :argcard)
+                        cmdargs ((cmn/get-exp-info eid :cmdsargs) "aggregate")
+                        theargs (pg/merge-arg-sets argcard main cmdargs)
+                        theargs (conj theargs "-o")]
                     (coll/vfold
                      (fn[oiv]
+                       (infof "TNSEQ-AGGREGATE: %s"
+                              (vec (concat theargs oiv)))
                        (let [ret (apply
                                   pg/perl script
-                                  (concat ["-m" norm "-w" "1" "-x" "10"
-                                           "-l" "50" "-b" "0" "-c" gtf "-o"]
-                                          oiv [{:verbose true :throw false}]))
+                                  (vec (concat theargs oiv
+                                               [{:verbose true :throw false}])))
                              exit-code @(ret :exit-code)
                              exit (if (= 0 exit-code) :success exit-code)
                              err (-> (ret :stderr) (str/split #"\n") last)]
@@ -36,5 +40,12 @@
                      (conj pairs (coll/concatv [allcsv] allins))))))
               grps))))
 
- :description "Function wrapping calc_fitness.py taking cmp-quads [t1 t2 csv ef]."
+ ;; Cardinalities of arguments
+ ;;
+ :argcard {"-m" 1, "-w" 1, "-x" 1
+           "-l" 1, "-b" 1, "-c" 1
+           "-o" 1}
+
+ :description
+ "Function wrapping aggregate.pl."
 }
