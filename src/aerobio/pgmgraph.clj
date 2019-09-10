@@ -205,6 +205,32 @@
                     Ins ovec))
           {} edges))
 
+(defn merge-arg-sets [argcard argset cmdargs]
+  #_(println :MERGE argcard argset cmdargs)
+  (if (or (= argcard {}) (= cmdargs {})
+          (= argcard nil) (= cmdargs nil))
+    (vec argset)
+    (loop [args []
+           argset argset
+           cmdargs cmdargs]
+      (if (not (seq argset))
+        (->> cmdargs (map (fn[[k v]] (if (= 0 (argcard k)) k [k v])))
+             (conj (seq args))
+             flatten #_(filter #(-> % nil? not)) vec)
+        (let [arg (first argset)
+              cnt (inc (argcard arg 0))
+              argval (cmdargs arg)
+              argval (if argval
+                       argval
+                       (when (> cnt 1)
+                         (->> argset (drop 1) (take (dec cnt)))))
+              thearg (cond (= argval :rmv) []
+                           (and argval (> cnt 1)) [arg argval]
+                           :else [arg])]
+          (recur (conj args thearg)
+                 (drop cnt argset)
+                 (dissoc cmdargs arg)))))))
+
 (defn node-graph [graph get-toolinfo inputs args]
   #_(prn :GRAPH graph :INPUTS inputs :ARGS args)
   (let [nodes (->> graph (filter (fn[[k v]] (v :type))) (into {}))
@@ -214,12 +240,16 @@
                    (into {}))
         tools (->> tools
                    (map (fn[[k v]]
-                          (let [{:keys [graph path func src repeat]}
+                          (let [{:keys [graph path func src repeat
+                                        args argcard]}
                                 (get-toolinfo (or (v :name) (v :path)))]
                             [k (merge {:inpipes [], :outpipes []
                                        :id (gensym (or (v :name) (v :path)))
                                        :func func :src src :repeat repeat
-                                       :tool (v :path)} v)])))
+                                       :tool (v :path)}
+                                      v
+                                      {:args (merge-arg-sets
+                                              argcard (v :args) args)})])))
                    (into {}))
         edges (or (graph :edges) {})
         ins (edges->ins edges)
