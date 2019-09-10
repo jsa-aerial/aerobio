@@ -191,15 +191,46 @@
      otmap otbam otbai]))
 
 
+
+
 (def offsets
   (let [llets "abcdefghijklmnopqrstuvwxyz"
-        offset (-> "a" str/codepoints first dec)
-        chints (mapv #(- % offset) (str/codepoints llets))
+        ulets (cljstr/upper-case llets)
+        loffset (-> "a" str/codepoints first dec)
+        lchints (mapv #(- % loffset) (str/codepoints llets))
+        uoffset (-> "A" str/codepoints first dec)
+        uchints (mapv #(- % uoffset) (str/codepoints ulets))
         offmap (into {} (map
                          (fn[[k v]] [(str k) v])
-                         (partition 2 (interleave (seq llets) chints))))
+                         (partition 2 (interleave (seq llets) lchints))))
+        offmap (into offmap (map
+                             (fn[[k v]] [(str k) v])
+                             (partition 2 (interleave (seq ulets) uchints))))
         offmap (into offmap (map #(vector (str %) %) (range 1 27)))]
     offmap))
+
+(defn expand-by-refs [grp refnms]
+  (mapv (fn[refnm]
+          (let [[_ tcsv] (last grp)
+                tdir (fs/dirname tcsv)
+                tfname (str refnm "-" (fs/basename tcsv))
+                pairs (butlast grp)]
+            (conj
+             (mapv (fn [[ag ft]]
+                     (let [agdir (fs/dirname ag)
+                           ftdir (fs/dirname ft)
+                           fname (str refnm "-" (fs/basename ft))]
+                       [(fs/join agdir fname)
+                        (fs/join ftdir fname)]))
+                   pairs)
+             [refnm (fs/join tdir tfname)])))
+        refnms))
+
+(defn refloci [refnm refdir]
+  (->> (str refnm ".gtf") (fs/join refdir)
+       slurp (#(csv/read-csv % :separator \tab))
+       (reduce (fn [S [nm & tail]] (conj S nm)) #{})
+       sort))
 
 (defn get-comparison-files-
   "Compute the set of comparison pairs for tnseq fitness
@@ -212,7 +243,8 @@
   ([eid aggr?]
    (get-comparison-files- eid "ComparisonSheet.csv" aggr?))
   ([eid comp-filename aggr?]
-   (let [maps (cmn/get-exp-info eid :rep :maps)
+   (let [refs (cmn/get-exp-info eid :refs)
+         maps (cmn/get-exp-info eid :rep :maps)
          fit  (cmn/get-exp-info eid :rep :fit)
          aggr (cmn/get-exp-info eid :rep :aggrs)
          compvec (->> comp-filename
@@ -241,29 +273,57 @@
                                     (conj v csv ef (offsets k))))
                                 %1))
                        mapsvec
-                       compvec)]
+                       compvec)
+         refinfo (volatile! {})]
      (if aggr?
-       (mapv (fn[grp]
-               (when (seq grp)
-                 (let [grp (sort-by last grp)
-                       l (->> grp last first fs/basename (str/split #"-")
-                              last (str/split #"\.") first)
-                       g (mapv (fn[[_ _ csv _]]
-                                 [(fs/join aggr csv) (fs/join fit csv)])
-                               grp)
-                       allcsv (->> g first first
-                                   (#(fs/replace-type % (str "-" l ".csv"))))]
-                   (conj g allcsv))))
-             cmpgrps)
+       (->>
+        cmpgrps
+        (mapcat (fn[grp]
+                  (when (seq grp)
+                    (let [grp (sort-by last grp)
+                          l (->> grp last first fs/basename (str/split #"-")
+                                 last (str/split #"\.") first)
+                          g (mapv (fn[[_ _ csv _]]
+                                    [(fs/join aggr csv) (fs/join fit csv)])
+                                  grp)
+                          strain-map (cmn/get-exp-info eid :ncbi-sample-xref)
+                          refnm (-> g ffirst fs/basename
+                                    (cljstr/split #"-") first
+                                    strain-map)
+                          allcsv (-> g first first
+                                     (fs/replace-type (str "-" l ".csv")))
+                          newgrp (conj g [refnm allcsv])]
+                      (when (not (@refinfo refnm))
+                        (vswap! refinfo
+                                (fn[refm]
+                                  (assoc refm refnm (refloci refnm refs)))))
+                      (if (> (count (@refinfo refnm)) 1)
+                        (expand-by-refs newgrp (@refinfo refnm))
+                        [newgrp])))))
+        vec)
        ;; else fitness groups
        (mapcat (fn[grp]
                  (mapv (fn[[t1 t2 csv ef]] [t1 t2 (fs/join fit csv) ef]) grp))
                cmpgrps)
        ))))
 
+#_(let [eid "JSA-TEST-MULTI-TNSEQ"
+      compfile "ComparisonSheet.csv"
+      refdir (cmn/get-exp-info eid :refs)
+      grps (cmn/get-comparison-files :tnseq eid compfile true)
+      grp (first grps)
+      pairs (butlast grp)
+      allins (mapv second pairs)
+      [refnm allcsv] (last grp)
+      gtf (fs/join refdir (str refnm ".gbk"))
+      norm   (fs/join refdir "NormGenes" (str refnm ".txt"))]
+  [gtf norm])
+
 (defmethod cmn/get-comparison-files :tnseq
   [_ & args]
   (apply get-comparison-files- args))
+
+
 
 
 (defn get-phase-2-dirs [eid]
