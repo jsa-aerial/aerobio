@@ -258,16 +258,23 @@
          (reduce (fn[M [bc v]] (assoc M bc (conj (get M bc []) v))) {}))))
 
 
+(defn get-cmds-args [cfgfile]
+  (if (fs/exists? cfgfile)
+    (-> cfgfile slurp read-string)
+    {}))
+
+
 (def exp-info (atom {}))
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
 ;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
-(defn init-exp-data [base ssheet exp-ssheet]
+(defn init-exp-data [base ssheet exp-ssheet cfgfile]
   (-> {}
       (assoc :sample-sheet
              (get-sample-info ssheet))
       ((fn[m]
          (assoc m :base base
+                :cmdsargs  (get-cmds-args cfgfile)
                 :refs      (pams/get-params :refdir)
                 :index     (fs/join (pams/get-params :refdir) "Index")
                 :bt1index  (fs/join (pams/get-params :refdir) "BT1Index")
@@ -374,11 +381,12 @@
         nextseq-base (pams/get-params :nextseq-base)
         expdir (fs/join nextseq-base eid)
         sample-sheet (fs/join expdir "SampleSheet.csv")
-        exp-sample-sheet (fs/join expdir "Exp-SampleSheet.csv")]
+        exp-sample-sheet (fs/join expdir "Exp-SampleSheet.csv")
+        cfgfile (fs/join expdir "cmd.config")]
     (swap! exp-info
            (fn[m]
              (assoc m eid
-                    (init-exp-data base sample-sheet exp-sample-sheet))))))
+                    (init-exp-data base sample-sheet exp-sample-sheet cfgfile))))))
 
 (defn del-exp [eid]
   (swap! exp-info (fn[m] (dissoc m eid)))
@@ -538,7 +546,9 @@
                        base exp-illumina-xref illumina-sample-xref)
         ifastqs (->> (fs/directory-files (get-exp-info eid :fastq) "fastq.gz")
                      (group-by #(->> % fs/basename
-                                     (re-find #"R[1-2]") keyword)))
+                                     (re-find #"_R[1-2]")
+                                     (str/drop 1)
+                                     keyword)))
         sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
         sample-ifq-xref (reduce (fn[M fq]
                                   (let [samp (->> fq fs/basename
@@ -602,7 +612,7 @@
 
 (defn get-paired-fqs [eid repname repk]
   (->> (get-replicate-fqzs eid repname repk)
-       (group-by (fn[fq] (if (re-find #"R2" fq) :R2 :R1)))
+       (group-by (fn[fq] (if (re-find #"-R2\." fq) :R2 :R1)))
        (map (fn[[k v]] [k (cljstr/join "," v)]))
        (into {})))
 
