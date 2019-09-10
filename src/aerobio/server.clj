@@ -186,11 +186,14 @@
              :callback config-tool
              :options {:recursive true}}])))
 
-(defn get-toolinfo [toolname]
+
+(defn get-toolinfo [toolname eid]
   (assert (@tool-configs toolname)
           (format "No such tool %s" toolname))
-  (merge {:inputOption "" :options "" :args ""}
-         (@tool-configs toolname)))
+  (let [args ((cmn/get-exp-info eid :cmdsargs) toolname {})]
+    (merge {:inputOption "" :options "" :args "" :argcard {}}
+           (@tool-configs toolname)
+           {:args args})))
 
 
 ;;; ------------------------------------------------------------------------;;;
@@ -424,6 +427,7 @@
       (send-end-msg ws {:op :validate :payload vmsg})
       (let [{:keys [cmd eid template]} params
             dt (date-time-stg)
+            get-toolinfo #(get-toolinfo % eid)
             resmap (actions/action cmd eid params get-toolinfo template)
             resfut (resmap :fut)
             jobdb-info (or (get-jdb [user eid action]) [])]
@@ -475,6 +479,7 @@
         (send-end-msg ws {:op :validate :payload vmsg})
         (let [{:keys [cmd eid template]} params
               dt (date-time-stg)
+              get-toolinfo #(get-toolinfo % eid)
               resmap (actions/action cmd eid params get-toolinfo template)
               resfut (resmap :fut)
               jobdb-info (or (get-jdb [user eid phase]) [])]
@@ -698,6 +703,7 @@
                   {:ph0 {:name "rnaseq-phase0", :type "tool", :args []},
                    :prn1 {:type "func", :name "prn"}},
                   :edges {:ph0 [:prn1]}}
+        get-toolinfo #(get-toolinfo % eid)
         ph0 template
         cfg (-> (assoc-in ph0 [:nodes :ph0 :args] [eid recipient])
                 (pg/config-pgm-graph-nodes get-toolinfo nil nil)
