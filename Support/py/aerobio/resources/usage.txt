@@ -1,0 +1,97 @@
+
+Usage aerobio <cmd> <action|compfile | aggrfile> {replicates | combined} <eid>
+
+cmd is one of 'check', 'run', 'status', 'compare', 'xcompare or 'aggregate'
+
+- 'check' is for pre-validation of an experiment configuration. It performs
+  existence, integrity and consistency checks across all sheets.
+
+- 'run' performs a job phase execution (see phase descriptions below)
+
+- 'status' performs a realtime check of the current state of a previously
+  requested job run.
+
+- 'compare' is used for subsequent comparison runs
+
+- 'xcompare' is used for cross experiment comparison
+
+- 'aggregate' is used for Tn-Seq 'super aggregation'
+
+
+The 'status' command has the same form as the command it is checking, with
+'run', 'compare', 'xcompare', or 'aggregate' replaced by 'status'.
+
+For example, the run command:
+
+aerobio run phase-1 181013_NS500751_0092_AH57C5BGX9
+
+can have its progress checked by issuing:
+
+aerobio status phase-1 181013_NS500751_0092_AH57C5BGX9
+
+
+The 'check' command takes just the EID of an associated experiment
+configuration:
+
+aerobio check 181013_NS500751_0092_AH57C5BGX9
+
+It will perform all validation checks associated with the sheets describing
+the experiment run configuration, and report success or any errors found.
+
+
+actions go with 'run'; compfiles go with 'compare' or 'xcompare' and
+aggrfiles go with 'aggregate': THESE ARE ALL MUTUALLY EXCLUSIVE!
+
+An action is one of the standard 'phases':
+  - phase-0
+    1. runs bcl2fastq
+    2. create directory structure, initialize scratch space, and copies fastqs
+    3. collect and save barcode statistics for demultiplexing fastqs
+    4. create experiment database and all records computed from the *Sheets
+    5. QC filter and demultiplex Illumina fastqs into sample condition fastqs
+    6. for tnseq only : runs collapser on split fastqs
+
+  - phase-0b
+    * Everything in phase-0 except bcl2fastq step. Supports manual bcl2fastq
+
+  - phase-0c
+    * Steps 3-5 of phase-0 for RNA-Seq and 3-6 of phase-0 for Tn-Seq
+
+  - phase-0d
+    * Step 5 of phase-0 (only for RNA-Seq)
+
+  - phase-1 or star-phase-1 (for RNA-Seq, Tn-Seq, and Term-Seq)
+    1. runs bowtie2 or STAR alignment streaming to samtools step 2
+    2. samtools conversion from bowtie/STAR sam output to bam output streaming
+       to step 3
+    3. samtools sort of bam streaming to steps 4 and 5
+    4. samtools indexing (bai files)
+    5. write bams
+
+    Additionally for Tn-Seq:
+    1. concurrently runs separate bowtie1 on collapsed fasta files streaming
+       SAM to mapper
+    2. mapper takes streaming SAM converting and writing simplified map output
+       files
+
+  - phase-2 RNA-Seq
+    1. runs featureCounts on comparison sheets
+    2. Runs an initial Dseq2 analysis
+       * Generates a DGE csv with all data for any subsequent work
+       * Generates several 'default' plots from this csv
+
+  - phase-2 Tn-Seq
+    1. runs fitness calculation on pairs of map files
+    2. runs aggregation on the results
+
+  - phase-2 WG-Seq
+    1. Runs a 'streaming fork/join' flow of Bre-Seq on QC filtered
+       demultiplexed fastq.gzs (10 threads)
+
+A 'compfile' is the name of a comparison file detailing comparisons to be made
+
+'replicates' applies only to phase-1/star-phase-1 and indicates replicate
+bam generation. This is the default. To run with combined results, use
+'combined'
+
+'eid' is the experiment id
