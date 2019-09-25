@@ -131,7 +131,10 @@ def get_time():
 
 def appendDictVal (d, k, v):
     if k in d:
-        d[k]['feats'].append(v)
+        if 'feats' in d[k]:
+            d[k]['feats'].append(v)
+        else:
+            d[k] = {'feats': [v]}
     else:
         d[k] = {'feats': [v]}
 
@@ -143,8 +146,17 @@ print "\n" + "Starting: " + str(get_time()) + "\n"
 # values. Then appends those dictionaries to the list associated with
 # the refname for accessing later on.
 
+def genome_length (refname):
+    with open("/Refs/" + refname + ".gbk") as fp:
+        return float(fp.readline().split()[2])
+
+main_strand = "+"
+if (arguments.reversed):
+    main_strand = "-"
+
 featureset = dict(zip(arguments.features,arguments.features))
 gtf_dict = {}
+
 with open(arguments.ref_genome, 'r') as gtf:
     ##with open('NZ_CP1204_1205_522_523.gtf', 'r') as gtf:
     keys = ["kind", "start", "end", "strand", "gene"]
@@ -157,6 +169,7 @@ with open(arguments.ref_genome, 'r') as gtf:
             values.append(rec[2])
             start = float(rec[3])
             end = float(rec[4])
+            strand = rec[6]
 
             # Exclude_first and exclude_last are used here to exclude
             # whatever percentage of the genes you like from
@@ -164,18 +177,25 @@ with open(arguments.ref_genome, 'r') as gtf:
             # exclude the last 10% of all genes!  This can be useful
             # because insertions at the very start or end of genes
             # often don't actually break its function.
-            if (arguments.exclude_first):
-                start += (end - start) * float(arguments.exclude_first)
-            if (arguments.exclude_last):
-                end -= (end - start) * float(arguments.exclude_last)
+            if strand == "+":
+                if (arguments.exclude_first):
+                    start += (end - start) * float(arguments.exclude_first)
+                if (arguments.exclude_last):
+                    end -= (end - start) * float(arguments.exclude_last)
+            else: # reverse strand - end with first and start with last
+                if (arguments.exclude_first):
+                    end -= (end - start) * float(arguments.exclude_first)
+                if (arguments.exclude_last):
+                    start += (end - start) * float(arguments.exclude_last)
 
             values.append(start)
             values.append(end)
-            values.append(rec[6])
+            values.append(strand)
             values.append(loctag)
             d = dict(zip(keys, values))
             appendDictVal(gtf_dict, refname, d)
-            gtf_dict[refname]['size'] = end + 1000 # last end will be 'size'
+            if 'size' not in gtf_dict[refname]:
+                gtf_dict[refname]['size'] = genome_length(refname)
 
 
 outfile = arguments.outfile
@@ -208,10 +228,6 @@ print "Done generating feature lookup: " + str(get_time()) + "\n"
 if (arguments.uncol):
     sys.exit("This script must use collapsed map input!!")
 
-
-main_strand = "+"
-if (arguments.reversed):
-    main_strand = "-"
 
 # When called, goes through each line of the mapfile to find the
 # strand (+/Watson or -/Crick), count, and position of the read. It
