@@ -88,7 +88,8 @@
         sampdir (fs/join sampbase samp)
         R1fqs (fs/glob (fs/join sampdir "*R1.fastq.gz"))
         fastqdir (fs/join expoutdir eid (pams/get-params :fastq-dirname))
-        R2infqs (fs/glob (fs/join fastqdir (str samp "*R2*.fastq.gz")))]
+        fpattern (re-pattern (str "^" samp "*_R2_*.fastq.gz"))
+        R2infqs (fs/re-directory-files fastqdir fpattern)]
     (doseq [R2-infq R2infqs]
       (doseq [R1fq R1fqs]
         (let [R2-otfq (R2fq-name R1fq)]
