@@ -177,12 +177,7 @@ if ($find_missing) {
    my @features = $refseq->get_SeqFeatures;
 
    my $feat_name;
-   if ($find_missing =~ /TVO/) {
-       $feat_name = 'CDS';
-   } else {
-       $feat_name = 'gene';
-   }
-   #print "feat_name: $feat_name\n";
+   $feat_name = 'CDS';
 
    print SUMMARY "locus,mean,var,sd,se,gene,Total,Blank,Not Blank,Blank Removed,M\n";
 
