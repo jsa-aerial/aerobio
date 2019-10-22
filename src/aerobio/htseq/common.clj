@@ -78,7 +78,7 @@
            (fn[v] (#{"tnseq", "rnaseq", "termseq" "wgseq"} (first v)))
            recs)
         recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
-        exp-rec [(coll/takev 3 (first recs))]] ; ensure 3 fields
+        exp-rec [(coll/takev 5 (first recs))]] ; ensure 3 fields
     (loop [S (rest recs)
            I [exp-rec]]
       (if (not (seq S))
@@ -303,6 +303,10 @@
          (assoc m :run-xref
                 (->> (m :exp-sample-info) :run-xref))))
       ((fn[m]
+         (assoc m :single-index
+                (->> (m :exp-sample-info) :exp-rec
+                     first (into #{}) (#(% "single-index"))))))
+      ((fn[m]
          (assoc m :exp (get-exp-type (m :exp-sample-info))
                 :sample-names
                 (->> (m :exp-sample-info)
@@ -489,7 +493,9 @@
                  file-groups)))))
 
 (defn split-barcodes
-  [in-fq sqxform-fn ot-fq-map barcodes-map other-barcodes qc-ctpt sqc%]
+  [in-fq sqxform-fn ot-fq-map
+   no-barcodes? barcodes-map other-barcodes
+   qc-ctpt sqc%]
 
   (letio [bclen (->> ot-fq-map keys first count long)
           inf (io/open-streaming-gzip in-fq :in)
@@ -504,7 +510,8 @@
       (loop [recs (bufiles/read-fqrecs inf rec-chunk-size)]
         (if (not (seq recs))
           :done
-          (let [recs (r/fold
+          (let [no-barcodes-bcs (keys ot-fq-map)
+                recs (r/fold
                       partition
                       (fn([] [])
                         ([V v]
@@ -512,18 +519,28 @@
                                    (conj V rec))
                                  V v)))
                       (fn[V fqrec]
-                        (let [[id sq aux qc] (sqxform-fn fqrec)
-                              bc (get-sq-bc sq bclen
-                                            barcodes-map
-                                            other-barcodes)]
-                          (if bc
+                        (let [[id sq aux qc] (sqxform-fn fqrec)]
+
+                          (if no-barcodes?
+                            ;; typical in vivo no replicates branch
                             (if (pass-qcscore qc qc-ctpt sqc%)
-                              (let [len (count sq)
-                                    sq (str/substring sq bclen len)
-                                    qc (str/substring qc bclen len)]
-                                (conj V [bc [id sq aux qc]]))
+                              (reduce (fn[V bc]
+                                        (conj V [bc [id sq aux qc]]))
+                                      V no-barcodes-bcs)
                               V)
-                            V)))
+
+                            ;; This is the usual branch (in vitro replicate)
+                            (let [bc (get-sq-bc sq bclen
+                                                barcodes-map
+                                                other-barcodes)]
+                              (if bc
+                                (if (pass-qcscore qc qc-ctpt sqc%)
+                                  (let [len (count sq)
+                                        sq (str/substring sq bclen len)
+                                        qc (str/substring qc bclen len)]
+                                    (conj V [bc [id sq aux qc]]))
+                                  V)
+                                V)))))
                       recs)]
             (write-chunk-to-files ot-fd-map recs)
             (recur (bufiles/read-fqrecs inf rec-chunk-size)))))
@@ -533,10 +550,11 @@
 
 
 (defn split-filter-fastqs
-  [eid sqxform-fn & {:keys [baseqc% sqc%]
-                     :or {baseqc% 0.96 sqc% 0.97}}]
+  [eid sqxform-fn & {:keys [baseqc% sqc% no-barcodes?]
+                     :or {baseqc% 0.96 sqc% 0.97 no-barcodes? false}}]
 
-  (let [base (get-exp-info eid :base)
+  (let [no-barcodes? (get-exp-info eid :single-index)
+        base (get-exp-info eid :base)
         exp-illumina-xref (get-exp-info eid :exp-illumina-xref)
         illumina-sample-xref (get-exp-info eid :illumina-sample-xref)
         barcode-maps (get-exp-info eid :barcode-maps)
@@ -567,6 +585,7 @@
           (split-barcodes (sample-ifq-xref samp)
                           sqxform-fn
                           (bc-file-specs ibc)
+                          no-barcodes?
                           (barcode-maps ibc)
                           (red1codes sid)
                           qc-ctpt sqc%))))
