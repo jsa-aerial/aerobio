@@ -120,7 +120,7 @@
   (let [resmap #{"bam.aerobio.io" "vcf.aerobio.io"}
         resdir "resources/"]
     (println "Creating installation(aerobio home) directory")
-    (fs/mkdirs aerobiodir)
+    (fs/mkdirs (fs/fullpath aerobiodir))
     (println "Marking installation directory as aerobio home")
     (spit (fs/join aerobiodir ".aerobio-home-dir") "Home directory of aerobio")
     (println "Installing resources...")
