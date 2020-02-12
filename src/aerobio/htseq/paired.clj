@@ -33,6 +33,7 @@
    [aerial.utils.io :refer [letio] :as io]
    [aerial.bio.utils.files :as bufiles]
 
+   [aerobio.pgmgraph :as pg]
    [aerobio.params :as pams]])
 
 
@@ -88,7 +89,7 @@
         sampdir (fs/join sampbase samp)
         R1fqs (fs/glob (fs/join sampdir "*R1.fastq.gz"))
         fastqdir (fs/join expoutdir eid (pams/get-params :fastq-dirname))
-        fpattern (re-pattern (str "^" samp "*_R2_*.fastq.gz"))
+        fpattern (re-pattern (str "^" samp "_*_R2_*.fastq.gz"))
         R2infqs (fs/re-directory-files fastqdir fpattern)]
     (doseq [R2-infq R2infqs]
       (doseq [R1fq R1fqs]
@@ -96,6 +97,19 @@
           (println (apply format "%s -> %s : %s"
                           (map fs/basename [R2-infq R1fq R2-otfq])))
           (demuxR2 R1fq R2-infq R2-otfq))))))
+
+
+(defn demux-R2-samp-no-replicates [eid samp]
+  (let [expoutdir (pams/get-params :scratch-base)
+        sampbase (fs/join expoutdir eid "Samples")
+        sampdir (fs/join sampbase samp)
+        R1fqs (fs/glob (fs/join sampdir "*R1.fastq.gz"))
+        fastqdir (fs/join expoutdir eid (pams/get-params :fastq-dirname))
+        fpattern (re-pattern (str "^" samp "_*_R2_*.fastq.gz"))
+        R2infq (first (fs/re-directory-files fastqdir fpattern))]
+    (doseq [R2-otfq (mapv R2fq-name R1fqs)]
+      (pg/ln "-s" R2infq R2-otfq))))
+
 
 
 
