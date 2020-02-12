@@ -157,8 +157,11 @@
                 :indices indices :bt1indices bt1indices :starindices starindices
                 :norms norms})))
 
-(defn get-exp-sheet-data [EID k]
-  (get-in @sheet-db [EID k]))
+(defn get-exp-sheet-data
+  ([EID]
+   (get @sheet-db EID))
+  ([EID k]
+   (get-in @sheet-db [EID k])))
 
 
 
