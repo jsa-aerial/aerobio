@@ -99,6 +99,12 @@
                             [(validate-sample-sheet EID)
                              (validate-exp-sample-sheet EID)
                              (validate-phase-1 EID)])
+
+                    (:aggregate "aggregate")
+                    (filter #(not (empty? %))
+                            [(validate-exp-sample-sheet EID)
+                             (validate-comparison-sheet EID)])
+
                     ("all" "phase-2"
                      :compare "compare"
                      :xcompare "xcompare")
