@@ -70,8 +70,13 @@
 
 (p/defphraser sample-name?
   [_ problem]
-  (format "`%s` is not a sample listed in Exp-SampleSheet"
-          (-> problem :val :nm)))
+  (let [xcomp? (-> problem :val :xcomp)]
+    (if xcomp?
+      (format "`%s` is not a sample listed in %s's Exp-SampleSheet"
+              (-> problem :val :nm)
+              (-> problem :val :EID))
+      (format "`%s` is not a sample listed in Exp-SampleSheet"
+              (-> problem :val :nm)))))
 
 (p/defphraser efstg?
   [_ problem]
@@ -132,7 +137,7 @@
        (cljstr/join "\n")))
 
 
-;;; Main - validate general comparison sheet)
+;;; Main - validate general comparison sheet
 
 (defn validate-wgcomparison-sheet
   [EID rows]
@@ -160,16 +165,35 @@
                (mapv #(assoc %1 :efs %2) recs efs))]
     (validate-comp-sheet recs)))
 
+(defn validate-xcomparison-sheet
+  [EID rows]
+  (let [recs (mapv (fn[[c1 c2]]
+                     (let [[eid1 strain cond1] (str/split #"-" c1)
+                           [eid2 strain cond2] (str/split #"-" c2)
+                           strain-cond1 (cljstr/join "-" [strain cond1])
+                           strain-cond2 (cljstr/join "-" [strain cond2])]
+                       (ac/set-exp eid1)
+                       (ac/set-exp eid2)
+                       (set-exp-sheet-data eid1)
+                       (set-exp-sheet-data eid2)
+                       {:sampx {:EID eid1 :nm strain-cond1 :xcomp true}
+                        :sampy {:EID eid2 :nm strain-cond2 :xcomp true}
+                        :EID EID}))
+                   rows)]
+    (validate-comp-sheet recs)))
+
 (defn validate-comparison-sheet
   ([EID compname]
    (let [veol (validate-eols-ok EID compname)]
      (if (not-empty veol)
        veol
        (let [compsheet (make-sheet-fspec EID compname)
-             rows (->> compsheet slurp csv/read-csv rest)
+             [hd & rows] (->> compsheet slurp csv/read-csv)
+             xcomp? (some #(= % "xcompare") hd)
              exp (ac/get-exp-info EID :exp)
              vstg (cond
                     (= exp :wgseq) (validate-wgcomparison-sheet EID rows)
+                    xcomp? (validate-xcomparison-sheet EID rows)
                     :else (validate-rtcomparison-sheet EID rows))]
          (with-out-str
            (when (not (empty? vstg))
