@@ -248,8 +248,10 @@
                                        :func func :src src :repeat repeat
                                        :tool (v :path)}
                                       v
-                                      {:args (merge-arg-sets
-                                              argcard (v :args) args)})])))
+                                      {:args (if (= (name (v :type)) "func")
+                                               (vec (v :args))
+                                               (merge-arg-sets
+                                                argcard (v :args) args))})])))
                    (into {}))
         edges (or (graph :edges) {})
         ins (edges->ins edges)
