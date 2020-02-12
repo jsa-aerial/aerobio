@@ -46,7 +46,7 @@
    [aerial.bio.utils.filters :as fil]
 
    [aerobio.params :as pams]
-   [aerobio.htseq.paired :refer [demux-R2-samp]]
+   [aerobio.htseq.paired :refer [demux-R2-samp demux-R2-samp-no-replicates]]
    [aerobio.pgmgraph :as pg]])
 
 
@@ -549,6 +549,10 @@
           (. fd close))))))
 
 
+(defn link-hack [R1infq R1otfqs]
+  (doseq [R1otfq R1otfqs]
+    (pg/ln "-s" R1infq R1otfq)))
+
 (defn split-filter-fastqs
   [eid sqxform-fn & {:keys [baseqc% sqc% no-barcodes?]
                      :or {baseqc% 0.96 sqc% 0.97 no-barcodes? false}}]
@@ -582,20 +586,27 @@
       (let [ibc (sample-illumina-xref samp)
             sid ibc]
         (when (barcode-maps ibc)
-          (split-barcodes (sample-ifq-xref samp)
-                          sqxform-fn
-                          (bc-file-specs ibc)
-                          no-barcodes?
-                          (barcode-maps ibc)
-                          (red1codes sid)
-                          qc-ctpt sqc%))))
+          (if no-barcodes?
+            (link-hack (sample-ifq-xref samp)
+                       (vals (bc-file-specs ibc)))
+
+            (split-barcodes (sample-ifq-xref samp)
+                            sqxform-fn
+                            (bc-file-specs ibc)
+                            no-barcodes?
+                            (barcode-maps ibc)
+                            (red1codes sid)
+                            qc-ctpt sqc%)))))
 
     ;; If we have paired reads (R2 has data) demultiplex R2s
     ;;
-    (when (ifastqs :R2)
-      (let [futs (mapv #(pg/future+ (demux-R2-samp eid %))
-                       (vals illumina-sample-xref))]
-        (mapv deref futs)))
+    (if no-barcodes?
+      (doseq [samp (vals illumina-sample-xref)]
+        (demux-R2-samp-no-replicates eid samp))
+      (when (ifastqs :R2)
+        (let [futs (mapv #(pg/future+ (demux-R2-samp eid %))
+                         (vals illumina-sample-xref))]
+          (mapv deref futs))))
 
     :success))
 
