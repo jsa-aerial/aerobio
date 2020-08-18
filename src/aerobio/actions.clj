@@ -143,7 +143,7 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        recipient (pams/get-params [:email (keyword user)])]
+        user (get-mail-recipient user)]
     {:status status
      :fut (cmn/launch-action
            eid user
