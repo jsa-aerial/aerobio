@@ -16,6 +16,7 @@
 
 import re
 import csv
+import glob
 import math
 import argparse
 import datetime
@@ -154,8 +155,9 @@ print "\n" + "Starting: " + str(get_time()) + "\n"
 # the refname for accessing later on.
 
 def genome_length (refname):
-    with open("/Refs/" + refname + ".gbk") as fp:
+    with open(glob.glob("/Refs/" + refname + "*.gbk")[0]) as fp:
         return float(fp.readline().split()[2])
+
 
 main_strand = "+"
 if (arguments.reversed):
