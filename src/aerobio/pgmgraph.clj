@@ -96,7 +96,7 @@
             bowtie bowtie2 bowtie-build bowtie2-build
             featureCounts breseq
             Rscript python ruby perl
-            ln
+            ln wc chmod
             bp_load_genbank
             ))
 
