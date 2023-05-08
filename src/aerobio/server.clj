@@ -190,7 +190,9 @@
 (defn get-toolinfo [toolname eid]
   (assert (@tool-configs toolname)
           (format "No such tool %s" toolname))
-  (let [args ((cmn/get-exp-info eid :cmdsargs) toolname {})]
+  (let [args (if (coll/in eid (cmn/exp-ids))
+               ((cmn/get-exp-info eid :cmdsargs) toolname {})
+               {})]
     (merge {:inputOption "" :options "" :args "" :argcard {}}
            (@tool-configs toolname)
            {:args args})))
