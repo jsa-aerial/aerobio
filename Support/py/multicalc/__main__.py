@@ -43,7 +43,6 @@ def print_usage():
     print "-reads2" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 6." + "\n\t\t" + "(default counted from bowtie output)" + "\n"
     print "-cutoff" + "\t\t" + "Discard any positions where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n"
     print "-cutoff2" + "\t\t" + "Discard any positions within the normalization genes where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n"
-    print "-fcutoff" + "\t\t" + "Filter cutoff count for bottleneck calculation. Integer, default 0" + "\n"
     print "-strand" + "\t\t" + "Use only the specified strand (+ or -) when counting transcripts (default: both)" + "\n"
     print "-reversed" + "\t\t" + "Experiment protocol used reversed i5 and i7 indices"
     print "-normalize" + "\t" + "A file that contains a list of genes that should have a fitness of 1" + "\n"
@@ -68,7 +67,6 @@ parser.add_argument("-reads1", action="store", dest="reads1")
 parser.add_argument("-reads2", action="store", dest="reads2")
 parser.add_argument("-cutoff", action="store", dest="cutoff")
 parser.add_argument("-cutoff2", action="store", dest="cutoff2")
-parser.add_argument("-fcutoff", action="store", dest="fcutoff")
 parser.add_argument("-strand", action="store", dest="usestrand")
 parser.add_argument("-reversed", action="store", dest="reversed")
 parser.add_argument("-normalize", action="store", dest="normalize")
@@ -120,11 +118,6 @@ if (not arguments.cutoff):
 if (not arguments.cutoff2):
     arguments.cutoff2 = 10
 
-
-if (not arguments.fcutoff):
-    arguments.fcutoff = 0
-
-
 if (not arguments.usestrand):
     arguments.usestrand = "both"
 
@@ -157,7 +150,6 @@ print "\n" + "Starting: " + str(get_time()) + "\n"
 def genome_length (refname):
     with open(glob.glob("/Refs/" + refname + "*.gbk")[0]) as fp:
         return float(fp.readline().split()[2])
-
 
 main_strand = "+"
 if (arguments.reversed):
@@ -352,31 +344,6 @@ print "2: + " + str(plus_ref_2["sites"]) + " - " + str(minus_ref_2["sites"]) + "
 
 
 
-# Compute a bottleneck value :
-#
-# (/ (->> data (filter #(and (> (% count1) filter_cutoff) (= (% count2 0)))) count)
-#    (->> data (filter #(> (% count1) filter_cutoff) count)))
-#
-def compute_bn(resrows, filter_cutoff):
-    bn = 0
-    header,data = resrows
-    count1_idx = header.index('count_1')
-    count2_idx = header.index('count_2')
-    filtered_cnt = 0
-    zeros = 0
-    for row in data:
-        if row[count1_idx] > filter_cutoff:
-            filtered_cnt += 1
-            if row[count2_idx] == 0:
-                zeros += 1
-    orig_cnt = len(data)
-    num_pos_removed = orig_cnt - filtered_cnt
-    proportion_pos_removed = float(num_pos_removed) / orig_cnt
-    bn = float(zeros) / filtered_cnt
-
-    return [orig_cnt,filtered_cnt,proportion_pos_removed,bn]
-
-
 
 wigp = False
 if (arguments.wig): wigp = True
@@ -425,10 +392,6 @@ for refname, dict in gtf_dict.items():
         writer = csv.writer(csvfile)
         writer.writerows(results)
 
-    # This goes to stdout and acts like a 'return value' so that the
-    # Aerobio service wrapping this script can stream this value and
-    # the bn value to other nodes
-    print(results, float(arguments.fcutoff))
 
 
 
