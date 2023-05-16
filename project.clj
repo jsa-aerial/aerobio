@@ -1,4 +1,4 @@
-(defproject aerial/aerobio "2.3.0"
+(defproject aerial/aerobio "2.3.1"
   :description "A full DAG pgm graph multi tool server for dynamic bio pipeline"
   :url "https://github.com/aerial/aerobio"
   :license {:name "The MIT License (MIT)"
@@ -9,12 +9,14 @@
                 *assert* true}
 
   :dependencies
-  [[org.clojure/clojure       "1.9.0"]
-   [org.clojure/tools.reader  "1.0.0-beta3"]
-   [org.clojure/tools.nrepl   "0.2.13"] ; Explicit nREPL
-   [org.clojure/tools.cli     "0.3.3"]  ; cmd line arg processing
-   [org.clojure/data.json     "0.2.6"]
-   [org.clojure/core.async    "0.4.474"]
+  [[org.clojure/clojure       "1.10.3"]
+   [org.ow2.asm/asm           "7.1"]      ; tech.v3 req???
+   [org.clojure/tools.reader  "1.3.6"]
+   [org.clojure/tools.nrepl   "0.2.13"]   ; Explicit nREPL
+   [org.clojure/tools.cli     "1.0.206"]  ; cmd line arg processing
+   [org.clojure/data.json     "2.4.0"]
+   [org.clojure/core.async    "1.4.627"
+    :exclusions [org.ow2.asm/asm-all]]
 
    [ring/ring-defaults "0.3.1"]
    [bk/ring-gzip "0.2.1"]
@@ -22,11 +24,11 @@
 
    [com.rpl/specter "1.1.1"]
 
-   [aerial.hanasu             "0.2.3"] ; websockets
+   [aerial.hanasu             "0.2.7"] ; websockets
 
    [aerial.fs                 "1.1.5"]
    [aerial.utils              "1.2.0"]
-   [aerial.bio.utils          "2.0.0"]
+   [aerial.bio.utils          "2.1.0"]
    [net.apribase/clj-dns      "0.1.0"] ; reverse-dns-lookup bug
 
    [hiccup                    "1.0.5"] ; Optional, just for HTML
