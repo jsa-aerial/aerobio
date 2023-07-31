@@ -87,6 +87,25 @@
               ks [:exp-rec :ncbi-xref :run-xref :bc-xref]
               ks (if (= exp :termseq) ks (remove #(= % :run-xref) ks))
               secmap (zipmap ks sections)
+              ;; The next bit (V2.4.0) accounts for paired end reads
+              ;; where i7 is not unique.  The old assumption that it
+              ;; was unique is just plain wrong.  However, we don't
+              ;; use nor need the separate indices for any processing
+              ;; - that is already done by bcl2fastq or bcl-convert.
+              ;; We just need a unique "Illumina bc" for xrefing with
+              ;; experiment bc. So, we just concat when there is both
+              ;; i7 and i5.
+              bcxref (secmap :bc-xref)
+              bcxref (->> bcxref
+                          (mapv (fn[v]
+                                  (let [[n orc & bcs] v
+                                        bcs (filter #(not= % "") bcs)]
+                                    (if (= (count bcs) 2)
+                                      bcs
+                                      (coll/concatv
+                                       [(str (first bcs) (second bcs))]
+                                       (drop 2 bcs)))))))
+              secmap (assoc secmap :bc-xref bcxref)
               secmap (if (not= exp :termseq)
                        secmap
                        (term-seq-adjust secmap))]
@@ -97,6 +116,23 @@
               i (if (= 1 (count I)) (mapv #(coll/takev 3 %) i) i)]
           (recur (coll/drop-until (fn[v] (not (str/digits? (first v)))) s)
                  (conj I i)))))))
+
+
+(declare get-exp-info
+         get-exp)
+
+(defn base-singleindex? [eid]
+  (if (get-exp eid)
+    (get-exp-info eid :single-index)
+    (-> (pams/get-params :nextseq-base)
+        (fs/join eid "Exp-SampleSheet.csv")
+        get-exp-sample-info
+        :exp-rec first
+        (->> (into #{}))
+        (#(% "single-index")))))
+
+(def singleindex? (memoize base-singleindex?))
+
 
 (defn get-ncbi-xref
   [exp-samp-info]
@@ -188,43 +224,48 @@
     (mapv (fn[fut] (deref fut)) futvec)))
 
 
-(declare get-exp-info)
 (defn collect-barcode-stats [eid]
-  (let [nextseq-base (pams/get-params :nextseq-base)
-        expdir (fs/join nextseq-base eid)
-        sample-map (->> "SampleSheet.csv"
-                        (fs/join expdir) get-sample-info
-                        (map (fn[[nm _ bckey]] [nm bckey]))
-                        (into {}))
-        expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
-                     get-exp-sample-info)
-        bcsz (->> expinfo :bc-xref first last count)
-        exptype (get-exp-type expinfo)
-        base (pams/get-params :scratch-base)
-        fqbase (get-exp-info  eid :fastq)
-        fqs (fs/re-directory-files fqbase "*.fastq.gz")]
-    (if (= exptype :tnseq)
-      (->> (bcfreqs-tnseq sample-map bcsz fqs) (into {}))
-      (->> fqs
-           (mapv (partial bcfreqs-fold sample-map bcsz))
-           (into {})))))
+  ;; Single index experiment reads are not multiplexed across illumina
+  ;; samples!
+  (when (not (singleindex? eid))
+    (let [nextseq-base (pams/get-params :nextseq-base)
+          expdir (fs/join nextseq-base eid)
+          sample-map (->> "SampleSheet.csv"
+                          (fs/join expdir) get-sample-info
+                          (map (fn[[nm _ bckey]] [nm bckey]))
+                          (into {}))
+          expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
+                       get-exp-sample-info)
+          bcsz (->> expinfo :bc-xref first last count)
+          exptype (get-exp-type expinfo)
+          base (pams/get-params :scratch-base)
+          fqbase (get-exp-info  eid :fastq)
+          fqs (fs/re-directory-files fqbase "*.fastq.gz")]
+      (if (= exptype :tnseq)
+        (->> (bcfreqs-tnseq sample-map bcsz fqs) (into {}))
+        (->> fqs
+             (mapv (partial bcfreqs-fold sample-map bcsz))
+             (into {}))))))
 
 ;;; base "/data1/NextSeq/TVOLab/AHL7L3BGXX/Stats/"
 ;;; (write-bcmaps "160307_NS500751_0013_AHL7L3BGXX/")
 (defn write-bcmaps [eid bcmaps]
-  (let [nextseq-base (pams/get-params :nextseq-base)
-        expdir (fs/join nextseq-base eid)
-        sample-info (get-sample-info (fs/join expdir "SampleSheet.csv"))
-        base (fs/join (pams/get-params :scratch-base) eid "Stats")
-        files (into {} (mapv
-                        (fn[[snm _ bckey]]
-                          [bckey (fs/join base (str snm ".clj"))])
-                        sample-info))]
-    (ensure-dirs base)
-    (doseq [[k v] bcmaps]
-      (let [f (files k)]
-        (io/with-out-writer f
-          (prn {k v}))))))
+  ;; Single index experiment reads are not multiplexed across illumina
+  ;; samples!
+  (when (not (singleindex? eid))
+    (let [nextseq-base (pams/get-params :nextseq-base)
+          expdir (fs/join nextseq-base eid)
+          sample-info (get-sample-info (fs/join expdir "SampleSheet.csv"))
+          base (fs/join (pams/get-params :scratch-base) eid "Stats")
+          files (into {} (mapv
+                          (fn[[snm _ bckey]]
+                            [bckey (fs/join base (str snm ".clj"))])
+                          sample-info))]
+      (ensure-dirs base)
+      (doseq [[k v] bcmaps]
+        (let [f (files k)]
+          (io/with-out-writer f
+            (prn {k v})))))))
 
 (defn read-bcmap [f]
   (clojure.edn/read-string (slurp f)))
@@ -389,8 +430,9 @@
         cfgfile (fs/join expdir "cmd.config")]
     (swap! exp-info
            (fn[m]
-             (assoc m eid
-                    (init-exp-data base sample-sheet exp-sample-sheet cfgfile))))))
+             (assoc
+              m eid
+              (init-exp-data base sample-sheet exp-sample-sheet cfgfile))))))
 
 (defn del-exp [eid]
   (swap! exp-info (fn[m] (dissoc m eid)))
