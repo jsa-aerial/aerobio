@@ -100,11 +100,13 @@
                           (mapv (fn[v]
                                   (let [[n orc & bcs] v
                                         bcs (filter #(not= % "") bcs)]
-                                    (if (= (count bcs) 2)
-                                      bcs
-                                      (coll/concatv
-                                       [(str (first bcs) (second bcs))]
-                                       (drop 2 bcs)))))))
+                                    (concat
+                                     [n orc]
+                                     (if (= (count bcs) 2)
+                                       bcs
+                                       (coll/concatv
+                                        [(str (first bcs) (second bcs))]
+                                        (drop 2 bcs))))))))
               secmap (assoc secmap :bc-xref bcxref)
               secmap (if (not= exp :termseq)
                        secmap
