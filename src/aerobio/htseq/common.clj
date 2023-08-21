@@ -56,7 +56,11 @@
   (->> ssheet
        slurp csv/read-csv
        (coll/drop-until #(= (first %) "Sample_ID"))
-       rest))
+       rest
+       ;; i7 and i5 are treated as single (unique) "Illumina bc" in
+       ;; Aerobio processing.  NOTE this is *downstream* of bcl2fastq
+       ;; or bcl-convert
+       (map (fn[[id nm i7bc i5bc]] [id nm (str i7bc i5bc)]))))
 
 (defn term-seq-adjust
   [secmap]
