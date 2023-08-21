@@ -335,12 +335,15 @@
                                   oargs)))
                          node (add-output-pipes n node edges ins)
                          node (add-input-pipes node invec nodes)
+                         ;;_ (prn :NODE-IN (node :args))
                          node (update-in
                                node [:args]
                                (fn[oargs]
-                                 (replace
-                                  (replacement-map #(vector %1 %2) "#" args)
-                                  oargs)))
+                                 (-> (replace
+                                      (replacement-map #(vector %1 %2) "#" args)
+                                      oargs)
+                                     flatten vec)))
+                         ;;_ (prn :NODE-OUT (node :args))
                          nodes (if inputs-as-args
                                  (apply dissoc nodes invec)
                                  nodes)]
