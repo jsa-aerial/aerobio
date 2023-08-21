@@ -42,9 +42,7 @@ c1reps <- c1c2reps[[3]]
 c2reps <- c1c2reps[[4]]
 prefix <- paste(c1,c2,sep="-")
 
-##(condition <- factor(c(rep(c1, reps), rep(c2, reps))))
-##(condition <- factor(c(rep("Condition1",2),rep("Condition2",4))))
-(condition <- factor(c(rep(c2, c2reps), rep(c1, c1reps))))
+condition <- factor(c(rep(c1, c1reps), rep(c2, c2reps)))
 
 
 ## Analysis phase --------------------------------------------------
@@ -54,7 +52,9 @@ prefix <- paste(c1,c2,sep="-")
 ## ?DESeqDataSetFromMatrix
 ##
 (coldata <- data.frame(row.names=colnames(countdata), condition))
-dds <- DESeqDataSetFromMatrix(countData=countdata, colData=coldata, design=~condition)
+dds <- DESeqDataSetFromMatrix(countData=countdata,
+                              colData=coldata,
+                              design=~condition)
 dds
 
 ## Run the DESeq pipeline
@@ -95,13 +95,16 @@ rld_pca(rld, colors=mycols, intgroup="condition", xlim=c(-75, 35))
 dev.off()
 
 
-## Get differential expression results
-res <- results(dds)
+## Get differential expression results. Explicitly set contrast order
+## to be what experimenter gave in ComparisonSheet so we get log2(c1/c2)
+res <- results(dds, contrast=c('condition', c1, c2))
 table(res$padj<0.05)
 ## Order by adjusted p-value
 res <- res[order(res$padj), ]
 ## Merge with normalized count data
-resdata <- merge(as.data.frame(res), as.data.frame(counts(dds, normalized=TRUE)), by="row.names", sort=FALSE)
+resdata <- merge(as.data.frame(res),
+                 as.data.frame(counts(dds, normalized=TRUE)),
+                 by="row.names", sort=FALSE)
 names(resdata)[1] <- "Gene"
 head(resdata)
 ## Write results
