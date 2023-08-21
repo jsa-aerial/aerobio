@@ -5,7 +5,7 @@
 
  :graph {:bt1 {:type "tool"
               :path "bowtie2"
-              :args ["-p" "16" "--very-sensitive" "-x" "#1" "-U" "#2"]
+              :args ["-p" "16" "--very-sensitive" "-x" "#1" "#2"]
               }
          :st1 {:type :tool
                :path "samtools"
