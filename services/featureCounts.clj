@@ -32,7 +32,7 @@
  ;;
  :argcard {"-a" 1, "-t" 1,
            "-o" 1, "-R" 1
-           "-L" 0}
+           "-p" 0, "-L" 0}
 
  :description "Function wrapping featureCounts taking bams-csv-pair file. gtf is a gene-transfer-format annotation and must be sorted to match the bam files and feature-type is the feature class of the gtf (gene, CDS, exon, ...)"
 }
