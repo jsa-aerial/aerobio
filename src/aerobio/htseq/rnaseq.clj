@@ -165,12 +165,12 @@
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai]))
     (when star (cmn/ensure-dirs (fs/dirname starprefix)))
     (if star
-      (if (and paired R2)
-        [starindex R1 R2 otbam otbai starprefix]
+      (if (and #_paired R2)
+        [starindex  [R1 R2] otbam otbai starprefix]
         [starindex R1 otbam otbai starprefix])
-      (if (and paired R2)
-        [btindex R1 R2 otbam otbai]
-        [btindex R1 otbam otbai]))))
+      (if (and #_paired R2)
+        [btindex ["-1" R1 "-2" R2] otbam otbai]
+        [btindex ["-U" R1] otbam otbai]))))
 
 
 (defn get-phase-2-dirs [eid repk]
