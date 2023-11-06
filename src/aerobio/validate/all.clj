@@ -124,7 +124,7 @@
   (aerobio.htseq.common/set-exp "150708_Nutr_dropout")
 
   (def EID "181013_NS500751_0092_AH57C5BGX9")
-  (print (validate-exp EID "phase-0"))
+  (print (validate-exp EID))
   (def EID "190218_NS500751_0120_AHNK5TBGX9")
   (print (validate-exp EID))
   (def EID "190321_NS500751_0124_AH7JMYBGXB")

@@ -527,6 +527,7 @@
                 :phase phase, :action action :compfile compfile
                 :modifier modifier, :ws ws}]
     (infof "MSG-HANDLER: MSG %s" (msg :data))
+    #_(infof "PARAMS : %s" params)
     (try
       (case op
         (:done "done")

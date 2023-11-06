@@ -335,7 +335,7 @@
                 :maps      (fs/join base "Out/Maps")
                 :fit       (fs/join base "Out/Fitness")
                 :aggrs     (fs/join base "Out/Aggrs")
-                :charts    (fs/join base "Out/Charts")
+                :charts    (fs/join base "Out/DGE")
                 :stats     (fs/join base "Stats")
                 :fastq     (fs/join base "Fastq")
                 :docs      (fs/join base "Docs"))))
