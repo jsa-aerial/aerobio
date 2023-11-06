@@ -1,4 +1,4 @@
-(defproject aerial/aerobio "2.4.1"
+(defproject aerial/aerobio "2.5.0"
   :description "A full DAG pgm graph multi tool server for dynamic bio pipeline"
   :url "https://github.com/aerial/aerobio"
   :license {:name "The MIT License (MIT)"
@@ -28,7 +28,7 @@
 
    [aerial.fs                 "1.1.5"]
    [aerial.utils              "1.2.0"]
-   [aerial.bio.utils          "2.1.0"]
+   [aerial.bio.utils          "2.2.1"]
    [net.apribase/clj-dns      "0.1.0"] ; reverse-dns-lookup bug
 
    [hiccup                    "1.0.5"] ; Optional, just for HTML
