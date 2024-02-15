@@ -1,6 +1,6 @@
 # Aerobio
 
-<a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/resources/public/aero-blue.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
+<a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/blob/master/resources/public/images/aero-blue.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
 
 
 
