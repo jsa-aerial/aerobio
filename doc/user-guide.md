@@ -1,8 +1,9 @@
+
 # Aerobio
 
 <a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/blob/master/resources/public/images/aero-blue.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
 
-
+**Aerobio** is a system for creating _services_ and connecting them together to form _jobs_.  Primary domain is high throughput sequencing.  This guide is primarily intended for those accessing analyzes by the various provided jobs for RNA-Seq, dualRNA-Seq, Tn-Seq, WGSeq, scRNA-Seq, wgscRNA-Seq, and Term-Seq.  There is also a companion guide for those creating new services and jobs.
 
 Table of Contents
 =================
