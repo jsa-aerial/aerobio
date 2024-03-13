@@ -13,6 +13,7 @@ Table of Contents
 * [gcloud](#gcloud)
    * [Installation](#installation)
    * [VM login](#vm-login)
+   * [VM scp](#vm-scp)
    * [SSH tunnels](#ssh-tunnels)
 * [Experiment Types](#experiment-types)
    * [RNA-Seq](#rna-seq)
@@ -31,7 +32,7 @@ Table of Contents
 
 **Aerobio** is a system for creating _services_ and connecting them together to form _jobs_.  A _service_ defines a piece of computation and may be _implemented_ by external tooling or code specific to the computation involved.  A _job_ defines a directed acyclical graph (DAG) composed of service nodes and data stream edges. Nodes may have multiple inputs and multiple outputs. Both services and jobs are specified entirely by data (EDN or JSON). Jobs are _realized_ by instantiating the node processing as (OS level) threads of execution and the streaming connections as aysnchronous channels. A realized job is roughly equivalent to the notion of a 'pipeline'.
 
-While the system is general enough to apply to a range of domains, the intended target is specifically oriented toward high throughput sequencing (HTS) analysis of RNA-Seq, Tn-SEq, WG-Seq, and Term-Seq data sets. This is realized by supporting the specification of experiment data processing by sets of spreadsheets. These spreadsheets are simple in structure and use the terminology of biologists. They are used to automatically construct jobs that will perform all necessary analysis for all samples and all comparisons.
+While the system is general enough to apply to a range of domains, the intended target is specifically oriented toward high throughput sequencing (HTS) analysis of RNA-Seq, dualRNA-Seq, scRNA-Seq, scWG-Seq, Tn-SEq, WG-Seq, and Term-Seq data sets. This is realized by supporting the specification of experiment data processing by sets of spreadsheets. These spreadsheets are simple in structure and use the terminology of biologists. They are used to automatically construct jobs that will perform all necessary analysis for all samples and all comparisons.
 
 
 # Features
@@ -47,6 +48,8 @@ While the system is general enough to apply to a range of domains, the intended 
 ## Installation
 
 ## VM login
+
+## VM scp
 
 ## SSH tunnels
 
@@ -90,7 +93,7 @@ As noted, with respect to abstracting visualizations (ala' something like [Altai
 
 
 
-![Hanami framework layout](resources/public/images/framework-page-structure.png?raw=true)
+![Hanami framework layout](resources/public/images/xform-dag.png?raw=true)
 
 As an example [Saite](https://github.com/jsa-aerial/saite) makes use of the framework aspects of Hanami and here is an example page layout from a session in it.
 
