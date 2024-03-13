@@ -93,7 +93,7 @@ As noted, with respect to abstracting visualizations (ala' something like [Altai
 
 
 
-![Hanami framework layout](resources/public/images/xform-dag.png?raw=true)
+![transformation DAG](../resources/public/images/xform-dag.png?raw=true)
 
 As an example [Saite](https://github.com/jsa-aerial/saite) makes use of the framework aspects of Hanami and here is an example page layout from a session in it.
 
