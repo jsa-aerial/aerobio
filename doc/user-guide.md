@@ -1,3 +1,8 @@
+
+# Aerobio : HTS Analysis User Guide
+
+<a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/blob/master/resources/public/images/aero-blue.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
+
 **Aerobio** is a system for high throughput sequencing.  Create services for individual command line tools (STAR, samtools, scripts, et al), functions (any Clojure function), and compound services as computation graphs composed of other services. Create jobs as program graphs composed of services to provide any pipeline capability.  This guide is primarily intended for those accessing analyzes by the various provided jobs for RNA-Seq, dualRNA-Seq, Tn-Seq, WGSeq, scRNA-Seq, scWG-Seq, and Term-Seq.  There is also a companion guide for those creating new services and jobs.
 
 Table of Contents
