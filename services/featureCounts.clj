@@ -30,9 +30,11 @@
 
  ;; Cardinalities of arguments
  ;;
- :argcard {"-a" 1, "-t" 1,
-           "-o" 1, "-R" 1
-           "-p" 0, "-L" 0}
+ :argcard {"-T" 1, "-a" 1, "-t" 1,
+           "-o" 1, "-F" 1, "-g" 1, "-R" 1
+           "-f" 0, "-O" 0, "-s" 1
+           "-p" 0, "--countReadPairs" 0, "-B" 0, "-P" 0, "-d" 1, "-D" 1, "-C" 0
+           "-L" 0}
 
  :description "Function wrapping featureCounts taking bams-csv-pair file. gtf is a gene-transfer-format annotation and must be sorted to match the bam files and feature-type is the feature class of the gtf (gene, CDS, exon, ...)"
 }
