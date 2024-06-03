@@ -305,6 +305,21 @@
                  (map #(str type-ch %) (range 1 90))
                  coll)))
 
+(defn flatten-vecs [coll accum]
+  (if (not (coll? coll))
+    coll
+    (loop [v coll
+           accum accum
+           cnt 0]
+      (if (or (empty? v) (>= cnt 90))
+        accum
+        (let [x (first v)]
+          (recur (rest v)
+                 (if (vector? x)
+                   (flatten-vecs x accum)
+                   (conj accum x))
+                 (inc cnt)))))))
+
 (defn inputs-as-args? [node]
   (or (node :inputs-as-args)
       (and (node :args)
@@ -335,14 +350,14 @@
                                   oargs)))
                          node (add-output-pipes n node edges ins)
                          node (add-input-pipes node invec nodes)
-                         ;;_ (prn :NODE-IN (node :args))
+                         ;;_ (prn :NODE-IN (node :args) :ARGS args)
                          node (update-in
                                node [:args]
                                (fn[oargs]
                                  (-> (replace
                                       (replacement-map #(vector %1 %2) "#" args)
                                       oargs)
-                                     flatten vec)))
+                                     (flatten-vecs []))))
                          ;;_ (prn :NODE-OUT (node :args))
                          nodes (if inputs-as-args
                                  (apply dissoc nodes invec)
