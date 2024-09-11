@@ -27,8 +27,8 @@ Table of Contents
    * [Copying from the bucket](#copying-from-the-bucket)
 * [Aerobio command](#aerobio-command)
    * [Commands](#commands)
+   * [Parameters](#parameters)
    * [Analysis Phases](#analysis-phases)
-   * [fdsfds](#fdsfds)
 * [Experiment Input Structure](#experiment-input-structure)
    * [Direct Sequencer Output](#direct-sequencer-output)
    * [Fastq Files](#fastq-files)
@@ -44,16 +44,23 @@ Table of Contents
             * [Sequencer samples, experiment multiplexed read linkage](#sequencer-samples-experiment-multiplexed-read-linkage)
             * [Experiment Sheet Examples](#experiment-sheet-examples)
          * [ComparisonSheet.csv](#comparisonsheetcsv)
+         * [AggregationSheet.csv](#aggregationsheetcsv)
       * [Experiment protocols](#experiment-protocols)
       * [Command configuration](#command-configuration)
+* [Experiment Output Structure](#experiment-output-structure)
 * [Experiment Types](#experiment-types)
    * [RNA-Seq](#rna-seq)
+      * [Analysis phases available](#analysis-phases-available)
    * [dualRNA-Seq](#dualrna-seq)
    * [Tn-Seq](#tn-seq)
    * [WG-Seq](#wg-seq)
    * [Term-Seq](#term-seq)
    * [scRNA-Seq](#scrna-seq)
    * [scWG-Seq](#scwg-seq)
+* [Special cases](#special-cases)
+   * [Experiments spanning more than one sequencer run](#experiments-spanning-more-than-one-sequencer-run)
+   * [Single sequencer run with multiple experiments](#single-sequencer-run-with-multiple-experiments)
+   * [Comparisons across different experiments](#comparisons-across-different-experiments)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
@@ -76,10 +83,10 @@ In all cases, the data flow across the processing is done via streaming channels
 
 ## Job Phases
 
-While a single data flow from sequencer output all the way through to an initial analysis (such as DGE or fitness) could be a single job, it turns out that it is more effective to separate this into chunks of processing called _phases_.  There are several advantages ranging from load balancing to mitigating wasted processing due to up stream problems. Generally, each phase of an HTS analysis run corresponds to a chunk of processing that results in direcly usable artifacts. 
+While a single data flow from sequencer output all the way through to an initial analysis (such as DGE or fitness) could be a single job, it turns out that it is more effective to separate this into chunks of processing called _phases_.  There are several advantages ranging from load balancing to mitigating wasted processing due to up stream problems. Generally, each phase of an HTS analysis run corresponds to a chunk of processing that results in direcly usable artifacts.
 
 
-## Supported Experiment Types 
+## Supported Experiment Types
 
 There are several [experiment types](#experiment-types) currently supported and some new ones are in the process of being completed.  The current set of supported experiment types is
 
@@ -97,9 +104,7 @@ New experiment type job flows being completed are
 
 ## Experiment ID
 
-jfkdsl
-
-
+The experiment ID (EID) of an experiment is a unique identifier for that experiment.  This could be the name of the sequencer created directory when the input results are [direct from a sequencer](#direct-sequencer-output) or an informative name that will be used to create a directory that will hold the [experiment input](#experiment-input-structure).  The name should always start with the date of the sequencer run in `YYMMDD`
 
 
 
@@ -262,7 +267,7 @@ gcloud storage cp -r <bucket-path-to-directory> /ExpIn/<path-to-put-data>
 
 # Aerobio command
 
-Currently, the primary means of accessing the aerobio server for running [jobs](#(job-phases) is the `aerobio` command line tool.  To use it you need a terminal shell session (CLI) by [logging into](#vm-login) a VM.  Once on a VM in a terminal session, the command will be directly available at the command line. Issuing the command with no parameters will issue a synopsis of its usage (short help).
+Currently, the primary means of accessing the aerobio server for running [jobs](#job-phases) is the `aerobio` command line tool.  To use it you need a terminal shell session (CLI) by [logging into](#vm-login) a VM.  Once on a VM in a terminal session, the command will be directly available at the command line. Issuing the command with no parameters will issue a synopsis of its usage (short help).
 
 In the following,
 
@@ -281,35 +286,84 @@ aerobio <cmd> <action | compfile | aggrfile> {replicates | combined} <eid>
 
 `cmd` is one of the following values
 
-   * `run` : this is the primary command for Aerobio across all types of jobs, not just the supported HTS analysis jobs.  Here, `run` expects a standard set of jobs for the typical [phases](#analysis-phases) of analysis per experiment. `run` takes a phase designator and the [experiment's ID (EID)](#experiment-id). Example command:
+   * `run` : this is the primary command for Aerobio across all types of jobs, not just the supported HTS analysis jobs.  Here, `run` expects a standard set of jobs for the typical [phases](#analysis-phases) of analysis per experiment. `run` takes a phase designator and the [experiment's ID (EID)](#experiment-id). Example successful command:
 
-```shell
-aerobio run phase-0 240216_Rosch_BHN97
-```
+     ```shell
+     aerobio run phase-0 230627_01_dualRNASeq_KZ
+     
+     Job launch: Successful
+     ```
 
-   * `check` : This command is typically used before initiating any job runs.  It invokes the validator which performs integrity checks on the various aspects of the [experiment structure and definitions](#experiment-input-structure).  It reports  any errors found in detail and in a quite experimenter friendly format. `check` takes only an [experiment id (EID)](#experiment-id). Example command:
 
-```shell
-aerobio check 240216_Rosch_BHN97
-```
+   * `check` : This command is typically used before initiating any job runs.  It invokes the validator which performs integrity checks on the various aspects of the [experiment structure and definitions](#experiment-input-structure).  It reports  any errors found in detail and in a quite experimenter friendly format. `check` takes only an [experiment id (EID)](#experiment-id). Examples:
 
-   * `compare` :
+     - Forgot to move definition sheets to experiment directory
 
-   * `xcompare` :
+     ```shell
+     aerobio check 240216_Rosch_BHN97
 
-   * `aggregate` :
+     Experiment '240216_Rosch_BHN97' -
+      1. is missing required 'SampleSheet.csv'
+      2. is missing required 'Exp-SampleSheet.csv'
+      3. is missing required 'ComparisonSheet.csv'
+     ```
+
+     - Typo (`q` instead of `w`) and repid not digit or character
+
+     ```shell
+     aerobio check 230313_NS500751_0207_AHYGWMBGXH
+
+     230313_NS500751_0207_AHYGWMBGXH/Exp-SampleSheet.csv has errors
+      1. rep id `10` in `BT-wt-10` must be a single upper case or lower case letter or digit
+
+     230313_NS500751_0207_AHYGWMBGXH/ComparisonSheet.csv has errors
+      1. `BT-qt` is not a sample listed in Exp-SampleSheet
+     ```
+
+
+   * `compare` : This command is for subsequent comparisons beyond those specified in the default ComparisonSheet.  It takes a comparison sheet name and the [experiment id (EID)](#experiment-id).  The comparison sheet name will be for a comparison sheet in the [experiment directory](#experiment-input-structure).  It will typically contain new comparisons and will run just the comparisons.
+
+     ```shell
+     aerobio compare ComparisonSheet_pg13_only.csv 230627_01_dualRNASeq_KZ
+     ```
+
+
+   * `xcompare` : This command invokes the job for processing comparisons involving [data from more than one experiment](#comparisons-across-different-experiments).
+
+   * `aggregate` : Invokes Tn-Seq global aggregation job.  Typically used for post aggregation of standard Tn-Seq output for in-vivo analysis using bottleneck numbers.  Takes a global (aka 'super') [aggregation CSV file](#aggregationsheetcsv) and the (EID)](#experiment-id)
+
+
+## Parameters
+
+* `action` : A designator for a job for a specific [analysis phase](#analysis-phases). This is a required parameter of the `run` command in the standard HTS processing.
+
+* `compfile` : This parameter is for the `compare` command and is the name of a comparison sheet (including the `.csv` file type) that denotes a different set of comparisons from the default `ComparisonSheet.csv` for a given experiment (as denoted by its EID).
+
+* `aggrfile` : Is the name of the file containing the specification of the [global aggregation](#aggregationsheetcsv) desired over a completed Tn-Seq run.
+
+* `replicates` : The literal value "replicates".  If given, processing occurs at the [technical replicate](#sequencer-samples-experiment-multiplexed-read-linkage) level.  Each such replicate is processed separately. This is the *default* processing.  **NOTE** : mutually exclusive with `combined`.
+
+* `combined` : The literal value "combined". If given the [technical replicates](#sequencer-samples-experiment-multiplexed-read-linkage) are processed as a combined whole. **NOTE** : mutually exclusive with `replicates`.
+
+* `EID`: The [experiment's ID](#experiment-id)
 
 
 ## Analysis Phases
 
+There are three main phases for the standard HTS processing jobs in Aerobio.  They are collectively known across [experiment types](#supported-experiment-types) as `phase-0`, `phase-1`, and phase-2`.  The basic processing of each phase is generally the same across experiment types, but there are differences, both subtle and large, for each type.  Details of the specific processing of each phase for each experiment type are given in [detail section](#experiment-types) of each experiment type.
 
-## fdsfds
+
+* `phase-0` : This phasae can run conversion processing on [direct sequencer output](#direct-sequencer-output), sets up the experment's [canonical output structure](#experiment-output-structure), runs a quality control step across the input fastqs, and various types of demultiplexing and clustering of the input reads.
+
+* `phase-1` : The major processing in phase-1 is alignment processing. There are various aligners that may be used and the main output are the resulting [BAM files](https://samtools.github.io/hts-specs/SAMv1.pdf).
+
+* `phase-2` : Phase-2 processing encompasses the greatest variability across experimnet types.  This is due to each [experiment type](#supported-experiment-types) having a different focus of investigation. Therefore, the results processing for these will of necessity be different.  Nevertheless, the interface for the experimenter (user) running the analysis is the same, it will still be the `phase-2` job (action) to the [run command](#commands).  Details of the processing involved for each experiment type can be found in the specific type's [detail section](#experiment-types).
 
 
 
 # Experiment Input Structure
 
-The input for an experiment's automated processing starts with the creation of a directory under [ExpIn](#persistent-disks) which will function as the _experiment's home directory_.  This directory is also known as the EID (experiment identifier) of the experiment. The directory will contain the starting input data.  This will be either the direct sequencer output or a set of fastq files that have been "pre-converted" from a direct sequencer output.  Which of these two is available will depend on the deliverables of your sequencing facility.  This directory will also be where you put the [experiment specification](#experiment-specifications) files defining the experiment analysis. 
+The input for an experiment's automated processing starts with the creation of a directory under [ExpIn](#persistent-disks) which will function as the _experiment's home directory_.  This directory is also known as the EID (experiment identifier) of the experiment. The directory will contain the starting input data.  This will be either the direct sequencer output or a set of fastq files that have been "pre-converted" from a direct sequencer output.  Which of these two is available will depend on the deliverables of your sequencing facility.  This directory will also be where you put the [experiment specification](#experiment-specifications) files defining the experiment analysis.
 
 ## Direct Sequencer Output
 
@@ -352,12 +406,12 @@ There are three kinds of specifications for defining the data analysis processin
 
 * Experiment sequence protocol layouts
 
-* Command tool switch/parameter 
+* Command tool switch/parameter
 
 
 ### Experiment definitions
 
-These comprise three tabular specificatins, typically built as spreadsheets (in Excel or similar) and saved as CSV files in DOS or Linux standard line terminatioin format.  The key is to ensure lines have line feed characters (LF) as part of their termination.  Apple standard, Macbook et al., does **not** include an LF as a line terminator.  So, if you are working on Apple devices you need to ensure that you save your spreadsheet defined files in DOS or similar format.  If you do not do this, the Aerobio validator will flat your definition CSV sheets as having an erroneous format.
+These comprise three tabular specificatins, typically built as spreadsheets (in Excel or similar) and saved as CSV files in DOS or Linux standard line terminatioin format.  The key is to ensure lines have line feed characters (LF) as part of their termination.  Apple standard, Macbook et al., does **not** include an LF as a line terminator.  So, if you are working on Apple devices you need to ensure that you save your spreadsheet defined files in DOS or similar format.  If you do not do this, the Aerobio validator will flag your definition CSV sheets as having an erroneous format.
 
 The three definition sheets and their **required** names are:
 
@@ -390,7 +444,7 @@ In the following, `{abcxyz}` indicates that `abcxyz` is *optional*
 
 5. 'index2', if given, is the I5 index of the sample
 
-6. THe barcodes for I7 and I5 _must_ be composed of the uppercase letters 'A', 'T', 'G', 'C.
+6. The barcodes for I7 and I5 _must_ be composed of the uppercase letters 'A', 'T', 'G', 'C.
 
 
 ##### V2 specifics
@@ -517,9 +571,9 @@ First we define some terms that will be used here and in subsequent areas.
 
 * _Sequencer output samples_ : These are the sets of reads defined by the I7 and I5 indices specified in the [sample sheet](#samplesheetcsv). They typically reside in one (if only R1 reads) or two (corresponding R1 and R2) fastq files as generated by a _no lane splitting_ conversion (via bcl2fastq, bcl-convert, et.al.) from direct sequencer [binary basecalls (BCL) fileas](https://www.illumina.com/informatics/sequencing-data-analysis/sequence-file-formats.html).
 
-* _Experiment sub-reads_ : These reads constitute subsets within the sequencer samples. Generally, they are identified with a condition, replicate within a condition, organism, or some other experiment specific _attributes_. They are identified by barcodes attached to the relevant sequences.
+* _Experiment sub-reads_ : These reads constitute subsets within the sequencer samples. Generally, they are identified with a biological source, replicate within a source, organism, or some other experiment specific _attributes_. They are identified by barcodes attached to the relevant sequences.
 
-* _Experiment barcodes_ : These are the barcodes attached to sequences to identify an experiment's various reads within the different sequencer samples. They pick out (or delineate) the various subsets of reads corresponding to conditions, replicates, species, etc.  They may or may not span samples.
+* _Experiment barcodes_ : These are the barcodes attached to sequences to identify an experiment's various reads within the different sequencer samples. They pick out (or delineate) the various subsets of reads corresponding to sources, source replicates, species, etc.  They may or may not span samples.
 
 Given the above, Aerobio needs a means by which it can pull out reads from samples that are specific to a particular experimental attribute and aggregate them into separate fastq files. That's what the read linkage section of the Exp-SampleSheet.csv is for.
 
@@ -533,25 +587,25 @@ There are two formats, depending on whether there is only an I7 index or an I7-I
 
 * I7 only
 
-| n   | organism-condition-replicate | I7 index | ExpBC |
-| --- | ---------------------------- | -------- | ----- |
+| n   | organism-biorep-techrep | I7 index | ExpBC |
+| --- | ----------------------- | -------- | ----- |
 
 * I7-I5 combination
 
-| n   | organism-condition-replicate | I7 index | I5 index | ExpBC |
-| --- | ---------------------------- | -------- | -------- | ----- |
+| n   | organism-biorep-techrep | I7 index | I5 index | ExpBC |
+| --- | ----------------------- | -------- | -------- | ----- |
 
 
 2. _n_ is an integer, the ordinal number of the row in the section (1, 2, ...)
 
 
-3. _organism-condition-replicate_ provides three pieces of information.
+3. _organism-biorep-techrep_ provides three pieces of information.
 
    * The _organism_.  This _must_ be one of the lab IDs provided in the [genome lab id xref](#genome-official-name-lab-id-cross-reference).
 
-   * The _condition_.  This should be a short description of what the associated reads involve.  Some examples, "CIPT0" for ciprofloxacin at time 0 or "T4roth" for tigr4 in broth media. Again, this text must *not* contain spaces or any punctuation. The different 'samples' described are also known as [biological replicates](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4825082/#:~:text=Broadly%20speaking%2C%20biological%20replicates%20are,the%20measuring%20equipment%20and%20protocols).
+   * The _biorep_.  This should be a short description of what the associated reads involve.  Some examples, "CIPT0" for ciprofloxacin at time 0 or "T4Broth" for tigr4 in broth media. Again, this text must *not* contain spaces or any punctuation. In the literature, these different 'samples' described are known as [biological replicates](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4825082/#:~:text=Broadly%20speaking%2C%20biological%20replicates%20are,the%20measuring%20equipment%20and%20protocols).
 
-   * The _replicate_.  This is an indicator of the different measurements of the condition.  These are also known as [technical replicates](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4825082/#:~:text=Broadly%20speaking%2C%20biological%20replicates%20are,the%20measuring%20equipment%20and%20protocols). Currently these indicators _must_ be a single digit [0-9] or single lower case letter [a-z]. Using digits and letters is **mutually exclusive**.  This also means there is currently a limit of a **maximum of  26 replicates** per organism-condition.  These constraints may be lifted in the future.
+   * The _techrep_.  This is an indicator of the different measurements of the biological replicate.  In the literature these are known as [technical replicates](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4825082/#:~:text=Broadly%20speaking%2C%20biological%20replicates%20are,the%20measuring%20equipment%20and%20protocols). Currently these indicators _must_ be a single digit [0-9] or single lower case letter [a-z]. Using digits and letters is **mutually exclusive**.  This also means there is currently a limit of a **maximum of  26 replicates** per organism-condition.  These constraints may be lifted in the future.
 
 
 4. The I7 and I5 indices _must_ be one given for a sample in the [sample sheet](#samplesheetcsv).  When both are given, the I7-I5 combination _must_ be one that occurs on a single line of the sheet, i.e., identifies a _unique_ sample.
@@ -572,7 +626,7 @@ There are two formats, depending on whether there is only an I7 index or an I7-I
 | 1     | NC_003028        | TIGR4     |        |
 | 2     | CP035236         | BHN97     |        |
 |       |                  |           |        |
-| **n** | **org-cond-rep** | **i7**        | **ExpBC**  |
+| **n** | **org-biorep-techrep** | **i7**        | **ExpBC**  |
 | 1     | TIGR4-T1-1       | ATCACG    | ATGGCC |
 | 2     | TIGR4-T1-2       | ATCACG    | CCTAAT |
 | 3     | TIGR4-T1-3       | ATCACG    | TACCGG |
@@ -599,7 +653,7 @@ There are two formats, depending on whether there is only an I7 index or an I7-I
 | 3           | GRCm38_mm10       | mouse                   |              |
 | 4           | GRCh38_hsapienP14 | A549                    |              |
 |             |                   |                         |              |
-| **n** | **org-cond-rep** | **i7**  | **I5**      | **ExpBC**  |
+| **n** | **org-biorep-tecrep** | **i7**  | **I5**      | **ExpBC**  |
 | 1           | PG13-5E7-a | CGGCTATG | CTTCGCCT | AAAAAA |
 | 2           | PG13-5E7-b | TCCGCGAA | CTTCGCCT | AAAAAT |
 | 3           | PG13-5E7-c | TCTCGCGC | CTTCGCCT | AAAAAG |
@@ -645,6 +699,8 @@ This sheet is specific to Aerobio. It details the information describing a desir
 
 The default name for this sheet is `ComparisonSheet.csv`.  This default name is used when looking for the sheet during a standard [phase 2](#)
 
+#### AggregationSheet.csv
+
 
 ### Experiment protocols
 
@@ -654,34 +710,120 @@ The default name for this sheet is `ComparisonSheet.csv`.  This default name is 
 
 
 
+# Experiment Output Structure
+
+The output from an experiment's Aerobio processing is placed into a _canonical_ directory structure under [ExpOut](#(persistent-disks). The canonical aspect is important as _all_ output data for _all_ experiments of _all_ experiment types is uses the same naming conventions and locations.
+
+
+
 # Experiment Types
+
+This section provides details of the processing for each supported experiment type.  This includes the specific phase designators available for the [run command](#commands) of the experiment type, descriptions of the specifics of the processing done in each [analysis phase](#analysis-phases) as well as the various output artifacts produced in each phase.
 
 ## RNA-Seq
 
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `rnaseq`.
+
+### Analysis phases available
+
+Phase-0 : `phase-0`, `phase-0b`, `phase-0c`, and `phase-0d`
+
+* `phase-0`
+    
+1. runs conversion software (bcl2fastq or bcl-convert). This takes [direct sequencer output](#direct-sequencer-output) and produces the starting set of fastq files that will be the primary input for subsequent processing.
+
+2. creates and initializes the [output structure](#experiment-output-structure) for the experiment.  Creates the descriptive database of the experiment.  Moves fastqs to their processing area in the output structure.
+
+3. runs a streaming quality control (QC) filter on input fastqs
+
+4. concurrently reads the streaming QC data, collecting and saving [experiment barcodes (ExpBCs)](#sequencer-samples-experiment-multiplexed-read-linkage) statistics.
+
+5. concurrently reads the streaming QC data plus the ExpBCstatistics to demultiplex the various biorep-techrep reads into their own fastqs.
+
+* `phase-0b`
+
+  Excludes first step of running conversion software.  Runs 2-5 of `phase-0`.  Supports manual conversion or facility delivered [fastq files](#fastq-files)
+
+* `phase-0c`
+
+  Runs 3-5 of `phase-0`.  Assumes output structure, database, and fastqs are setup and ready to process.
+
+
+Phase-1 : `phase-1`
+
+1. runs alignment over the `biorep-techrep` output fastqs from `phase-0`.  Different aligners may be used including bowtie, bowtie2, STAR, bwa, et.al. The alignment data is streamed to samtools step 2
+
+2. samtools conversion from aligner SAM (text) output to BAM (compressed binary) output.  This data is continually streamed to step 3 and step 5.
+
+3. samtools sort of streaming BAM streamed to step 4
+
+4. samtools indexing run on sorted BAM data creating canonically named and located BAI index files
+
+5. Output the BAM data to canonically named and located BAM files (colocated with the BAI files)
+
+
+Phase-2 : `phase-2`
+
+1. Using directions in [comparison sheet](#comparisonsheetcsv) runs sets of differential gene expression analyses.  The default job/analysis uses a combination of `featureCounts` to create count matrices of reads per annotation and DESeq2 taking these count matrices and running a negative binomial model on them to get log <sub>2</sub> expression changes.
+
+  * `featureCounts : reads the BAMs of phase-1 plus gff/gtf annotation data files for the genome(s) and counts the number of reads occuring in 'genes'.  'Genes' here are [CDS sequences](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC403693/#:~:text=An%20important%20step%20in%20the%20analysis%20of%20genome%20information%20is,ends%20with%20a%20stop%20codon.).  Outputs count matrices as CSV files.
+
+  * `DESeq2` : 
+
+
 ## dualRNA-Seq
+
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `dual-rnaseq`.
+
+dualRNA-Seq incorporates multiple species per [sequencer output sample](#sequencer-samples-experiment-multiplexed-read-linkage) for the same condition aspects of the biological replicates involved.  The primary use of this is when 
+
 
 ## Tn-Seq
 
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tnseq`.
+
+
 ## WG-Seq
+
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `wgseq`.
+
 
 ## Term-Seq
 
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `termseq`.
+
+
 ## scRNA-Seq
+
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `scrnaseq`.
+
 
 ## scWG-Seq
 
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `scwgseq`.
 
 
 
+
+# Special cases
+
+
+## Experiments spanning more than one sequencer run
+
+
+## Single sequencer run with multiple experiments
+
+
+## Comparisons across different experiments
 
 
 
 ![transformation DAG](../resources/public/images/xform-dag.png?raw=true)
 
-As an example [Saite](https://github.com/jsa-aerial/saite) makes use of the framework aspects of Hanami and here is an example page layout from a session in it.
 
 
 
-As described in the section on [sessions](#sessions) and session groups, the client may change the group its session belongs to (named by the `idefn` function of [start-server](#server-start)) as described in the section on [connections](#connection). This is achieved by sending the server a `:set-session-name` message, which has the form:
+
+
 
 
