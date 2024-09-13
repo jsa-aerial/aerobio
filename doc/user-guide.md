@@ -440,11 +440,13 @@ In the following, `{abcxyz}` indicates that `abcxyz` is *optional*
 
 3. `Sample_ID` values **must** equal corresponding `Sample_Name` values
 
-4. 'index' is the I7 index for the sample
+4. `Sample_ID` and `Sample_Name` **must not** have underscores `_` in them.  They can have dashes `-`.
 
-5. 'index2', if given, is the I5 index of the sample
+5. 'index' is the I7 index for the sample
 
-6. The barcodes for I7 and I5 _must_ be composed of the uppercase letters 'A', 'T', 'G', 'C.
+6. 'index2', if given, is the I5 index of the sample
+
+7. The barcodes for I7 and I5 _must_ be composed of the uppercase letters 'A', 'T', 'G', 'C.
 
 
 ##### V2 specifics
