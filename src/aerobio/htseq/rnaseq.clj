@@ -83,6 +83,12 @@
   [_ & args]
   (apply get-comparison-files- args))
 
+(defmethod cmn/get-comparison-files :dual-rnaseq
+  [_ & args]
+  (apply get-comparison-files- args))
+
+
+
 
 (defn ensure-exp-set [eid]
   (when (not (cmn/get-exp eid)) (cmn/set-exp eid)))
@@ -129,6 +135,10 @@
   [_ & args]
   (apply get-xcomparison-files- args))
 
+(defmethod cmn/get-xcomparison-files :dual-rnaseq
+  [_ & args]
+  (apply get-xcomparison-files- args))
+
 
 
 
@@ -172,6 +182,10 @@
         [btindex ["-1" R1 "-2" R2] otbam otbai]
         [btindex ["-U" R1] otbam otbai]))))
 
+(defmethod cmn/get-phase-1-args :dual-rnaseq
+  [& args]
+  (apply cmn/get-phase-1-args :rnaseq (rest args)))
+
 
 (defn get-phase-2-dirs [eid repk]
   (let [fcnts  (fs/join (cmn/get-exp-info eid repk :fcnts))
@@ -197,17 +211,23 @@
     (@status-atom :done)))
 
 
-#_(defmethod cmn/run-xcomparison :rnaseq
-  [_ eid recipient compfile get-toolinfo template]
-  (run-rnaseq-comparison
-   eid recipient compfile get-toolinfo template))
-
 (defmethod cmn/run-comparison :rnaseq
   [_ eid recipient compfile get-toolinfo template status-atom]
   (run-rnaseq-comparison
    eid recipient compfile get-toolinfo template status-atom))
 
 (defmethod cmn/run-phase-2 :rnaseq
+  [_ eid recipient get-toolinfo template status-atom]
+  (run-rnaseq-comparison
+   eid recipient "ComparisonSheet.csv" get-toolinfo template status-atom))
+
+
+(defmethod cmn/run-comparison :dual-rnaseq
+  [_ eid recipient compfile get-toolinfo template status-atom]
+  (run-rnaseq-comparison
+   eid recipient compfile get-toolinfo template status-atom))
+
+(defmethod cmn/run-phase-2 :dual-rnaseq
   [_ eid recipient get-toolinfo template status-atom]
   (run-rnaseq-comparison
    eid recipient "ComparisonSheet.csv" get-toolinfo template status-atom))
