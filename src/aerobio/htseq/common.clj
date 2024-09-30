@@ -79,7 +79,8 @@
 (defn get-exp-sample-info [csv]
   (let [recs (->> csv slurp csv/read-csv)
         x (coll/dropv-until
-           (fn[v] (#{"tnseq", "rnaseq", "termseq" "wgseq"} (first v)))
+           (fn[v] (#{"tnseq", "rnaseq", "dual-rnaseq"
+                    "termseq" "wgseq"} (first v)))
            recs)
         recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
         exp-rec [(coll/takev 5 (first recs))]] ; ensure 3 fields
@@ -179,7 +180,7 @@
   "Fold over barcode and base frequency computations"
   [smap sz fq]
   (letio [kw (->> fq fs/basename
-                  (str/split #".fastq") first (str/split #"_S")
+                  (str/split #".fastq") first (str/split #"_")
                   first smap) ; kw is associated illumina barcode
           inf (io/open-streaming-gzip fq :in)
           rec-chunk-size 40000
