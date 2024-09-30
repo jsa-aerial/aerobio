@@ -1,4 +1,4 @@
-(defproject aerial/aerobio "2.5.0"
+(defproject aerial/aerobio "2.6.0"
   :description "A full DAG pgm graph multi tool server for dynamic bio pipeline"
   :url "https://github.com/aerial/aerobio"
   :license {:name "The MIT License (MIT)"
