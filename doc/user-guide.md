@@ -24,7 +24,7 @@ Table of Contents
    * [VM login](#vm-login)
    * [VM scp](#vm-scp)
    * [SSH tunnels](#ssh-tunnels)
-   * [Copying from the bucket](#copying-from-the-bucket)
+   * [Copying to and from the bucket when <em>on</em> the VM](#copying-to-and-from-the-bucket-when-on-the-vm)
 * [Aerobio command](#aerobio-command)
    * [Commands](#commands)
    * [Parameters](#parameters)
@@ -52,6 +52,8 @@ Table of Contents
    * [RNA-Seq](#rna-seq)
       * [Analysis phases available](#analysis-phases-available)
    * [dualRNA-Seq](#dualrna-seq)
+      * [Manual steps](#manual-steps)
+      * [Analysis phases available](#analysis-phases-available-1)
    * [Tn-Seq](#tn-seq)
    * [WG-Seq](#wg-seq)
    * [Term-Seq](#term-seq)
@@ -66,7 +68,7 @@ Table of Contents
 
 # Overview
 
-**Aerobio** is a system for creating _services_ and connecting them together to form _jobs_.  A _service_ defines a piece of computation and may be _implemented_ by external tooling or functions (code specific to the computation involved). Services can also be _compound_ (a computation graph of other services).  A _job_ defines a program as a directed acyclical graph (DAG) composed of service nodes and data flow edges. Nodes may have multiple inputs and multiple outputs. Both services and jobs are specified entirely by data (EDN or JSON). Jobs are _realized_ by instantiating the node processing as (OS level) threads of execution and the data flow connections as streaming aysnchronous channels. A realized job is roughly equivalent to the notion of a 'pipeline'.
+**Aerobio** is a system for creating _services_ and connecting them together to form _jobs_.  A _service_ defines a piece of computation and may be _implemented_ by external tooling (commands like bowtie, gzip, etc) or functions (code specific to the computation involved). Services can also be _compound_ (a computation graph of other services).  A _job_ defines a program as a directed acyclical graph (DAG) composed of service nodes and data flow edges. Nodes may have multiple inputs and multiple outputs. Both services and jobs are specified entirely by data (EDN or JSON). Jobs are _realized_ by instantiating the node processing as (OS level) threads of execution and the data flow connections as streaming aysnchronous channels. A realized job is roughly equivalent to the notion of a 'pipeline'.
 
 While the system is general enough to apply to a range of domains, the intended target is specifically oriented toward high throughput sequencing (HTS) analysis of RNA-Seq, dualRNA-Seq, scRNA-Seq, scWG-Seq, Tn-SEq, WG-Seq, and Term-Seq data sets. This is realized by supporting the specification of experiment data processing by sets of spreadsheets. These spreadsheets are simple in structure and use the terminology of biologists. They are used to automatically construct jobs that will perform all necessary analysis for all samples and all comparisons.
 
@@ -208,13 +210,17 @@ gcloud compute ssh --zone us-central1-c aerobio-1 --project aerobio-at-broad --t
 
 ## VM scp
 
-It is also possible to copy things to and from your local machine to the storage on the VM. If you do copy something _to_ the VM *never* copy to your home directory!  You should only copy to a directory under `/Scratch`.
+It is also possible to copy things to and from your local machine to the storage on the VM. If you do copy something _to_ the VM *never* copy to your home directory!  You should only copy to a directory on the [persistent disks](#persistent-disks). The most typical starting locations for this on these disks are `/Scratch`, `/ExpIn`, and `/ExpOut`.
+
+**NOTE**: you must be on your *local* machine (laptop) when using these commands. *They do not work if you are on the VM!*
 
 To copy, the gcloud command is again used as follows:
 
 * Copying from your local machine to the VM:
 
 ```shell
+# Copying to a location starting under /Scratch.
+# /ExpIn and /ExpOut would look the same except for the 'Scratch'
 gcloud compute scp <path-to-local-file> <your account>@aerobio-1:/Scratch/<path-to-VM-file>
 
 # Directories can also be copied by using the recurse option
@@ -222,15 +228,19 @@ gcloud compute scp <path-to-local-file> <your account>@aerobio-1:/Scratch/<path-
 gcloud compute scp --recurse <path-to-local-dir> <your account>@aerobio-1:/Scratch/<path-to-VM-dir>
 ```
 
-* Copy from VM to your local machine:
+* Copying from VM to your local machine:
 
 To copy a file or directory from the VM to your local machine, you use the same commands but put the path to the VM resource first and then your local path second:
 
 ```shell
 gcloud compute scp  <your account>@aerobio-1:<path-to-VM-file> <path-to-local-file>
+
+# And directories once again need the recurse option
+#
+gcloud compute scp --recurse <your account>@aerobio-1:<path-to-VM-dir> <path-to-local-location>
 ```
 
-_NOTE_: you can copy any file/directory you have permissions to on the VM to your local machine; not just those in `/Scratch`
+_NOTE_: you can copy any file/directory you have permissions to on the VM to your local machine; not just those on the [persistent disks](#persistent-disks).
 
 
 ## SSH tunnels
@@ -247,20 +257,44 @@ gcloud compute start-iap-tunnel aerobio-1 vmport --local-host-port=localhost:lcl
 This will start a daemon that runs in the background listening for any connection request.  Such a connection request would be done by opening a browser tab/window and putting `localhost:lclport` in as the web address to visit.
 
 
-## Copying from the bucket
+## Copying to and from the bucket when *on* the VM
 
-You can also use the gcloud command to copy data from [bucket](#gcp-storage-bucket) to `/ExpIn` as part of [setting up](#experiment-input-structure) an experiment's home directory. The command will make use of `gisutil URL` of the bucket plus and subdirectory path to the data.  You can always get a copy of the full path to the data (including the gis bucket prefix) from the browser cloud console for the bucket.  The command will then be of the form:
+You can also use the gcloud command to copy data to and from the [bucket](#gcp-storage-bucket) from or from an area on the [persistent disks](#persistent-disks).  For example a location under `/ExpIn` as part of [setting up](#experiment-input-structure) an experiment's home directory. The commands will make use of the `gisutil URL` of the bucket plus a subdirectory path to the data.  You can always get a copy of the full path to the data (including the gis bucket prefix) from the browser cloud console for the bucket.  The command will then be of the form:
+
+* Copying from the bucket to the VM
 
 ```shell
-# For files
+# For files.  ExpIn is for illustration, other roots are possible
 #
-gcloud storage cp <bucket-path-to-file> /ExpIn/<path-to-put-data>
+gcloud storage cp gs://<bucket-path-to-file> /ExpIn/<path-to-put-data>
 
-# For directories
+# For directories. ExpIn is for illustration, other roots are possible
 #
-gcloud storage cp -r <bucket-path-to-directory> /ExpIn/<path-to-put-data>
+gcloud storage cp -r gs://<bucket-path-to-directory> /ExpIn/<path-to-put-data>
 
 ```
+
+* Copying to the bucket from the VM
+
+```shell
+# For files.  ExpOut is for illustration, other roots are possible
+#
+gcloud storage cp /ExpOut/<path-to-file> gs://<bucket-path-to-file>
+
+# For directories. ExpOut is for illustration, other roots are possible
+#
+gcloud storage cp -r  /ExpOut/<path-to-dir> gs://<bucket-path-to-directory>
+
+```
+
+* Copying analysis output to the bucket
+
+For the specific case of copying [analysis output](#experiment-output-structure), to the bucket, there is a specific location and a general set of steps to use.  The location is the folder `ExpResults` in the top level of the bucket.  All analysis results (data under the `/ExpOut/<expid>/Out` directory) that you want in the bucket should be placed in this bucket folder.  The suggested best procedure for this is as follows:
+
+1. First create a folder under `ExpResults` with the name ([expid](#experiment-id)) of the run. A good way to do this is to use the [bucket's console](https://console.cloud.google.com/storage/browser/aerobio1-expcache).  In the console, click on `ExpResults`. On the right the contents will show with an action bar above.  In this bar is `CREATE FOLDER`.  Click this, fill in the name as your `expid` and create.
+2. Once created, go back to `ExpResults` and click on the new folder.
+3. The path to the folder is just above its action bar and has a 'copy path to clipboard' icon on the right.  Click on this to get the path copied.
+4. Now on the VM we can use one of the 'copy to bucket from VM' commands, where `<bucket-path-to-directory>` is the paste of the copied output path from 3.
 
 
 
@@ -709,6 +743,43 @@ The default name for this sheet is `ComparisonSheet.csv`.  This default name is 
 
 ### Command configuration
 
+For all the [tools](#overview) used in Aerobio services a set of defaults for their possible switch values is used when they are run as part of a [service](#overview) during a [job](#overview).  These values work well in most cases.  However, there are situations and experimental setup and conditions that may require adfjustments to the default switches and values and/or additional switches.  We can change or add switches and values for tools by means of the `cmd.config` file.
+
+* Format
+
+The format of the file is [EDN](https://github.com/edn-format/edn) which is a simpler yet  more capable data notation than [JSON](https://www.json.org/json-en.html). Here, this is restricted to simple maps (aka dictionaries) where a top level key is the name of a tool and its value is a map of its switches and their corresponding values.
+
+*NOTE* in contrast to JSON, EDN does *not* have a colon (:) between key and value.  Also, commas are *optional* - you can use them or not.
+
+Keys are quoted strings - characters enclosed between double quotes (").  The values of top level keys (tool names) are  again maps.  The keys of these maps are quoted strings, naming a switch of the command, and the value of a switch can be quoted strings, numbers, or keywords (a colon (:) followed by alphanumerics like `:na`).
+
+```clojure
+{"tool1name" {"switch1" "string value"
+              "switch2" 1
+              "switch-that-has-no-value" :na}
+ "tool2name" {"switch" "some string value"}
+ ...
+ "toolNname" {...}
+}
+```
+
+* Examples
+
+  - Your experiment has paired end reads.  You need to tell `featureCounts` that this is the case by supplying the "-p" switch (which takes no value).  You would put the following into your `cmd.config` file:
+
+  ```clojure
+  {"featureCounts" {"-p" :na}}
+  ```
+
+  - Your experiment has mouse (eukaryote) reads and you are using the [STAR](https://github.com/alexdobin/STAR) aligner and want to decrease the minimum percent overlap (normalized to read length) of a match to genome from 0.66 to 0.33.  This will increase the amount of reads mapping to the genome.  Additionally, you have paired end reads and want to indicate stranded read countingb in `featureCounts`.  Your `cmd.config` would look like this:
+  
+  ```clojure
+  {"STAR" {"--outFilterScoreMinOverLread"  "0.33"
+           "--outFilterMatchNminOverLread"  "0.33"}
+   "featureCounts" {"-p" :na
+                    "-s" 1}
+  }
+  ```
 
 
 
@@ -777,7 +848,154 @@ Phase-2 : `phase-2`
 
 The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `dual-rnaseq`.
 
-dualRNA-Seq incorporates multiple species per [sequencer output sample](#sequencer-samples-experiment-multiplexed-read-linkage) for the same condition aspects of the biological replicates involved.  The primary use of this is when 
+[dualRNA-Seq](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5313147/) involves the simultaneous RNA-Seq analysis of a bacterial pathogen and its infected host. It incorporates both eukaryote and bacterial reads per [sequencer output sample](#sequencer-samples-experiment-multiplexed-read-linkage) for the same condition aspects of the biological replicates involved.  This complicates processing in a number of ways that need to be accommodated.  Some of this is handled automatically by Aerobio, but currently there are a couple of things that need some manual intervention.
+
+### Manual steps
+
+* **No experiment barcodes:** Typically dualRNA-Seq reads do not have [experiment barcodes](#sequencer-samples-experiment-multiplexed-read-linkage) for separating a sample's [sub-reads](#sequencer-samples-experiment-multiplexed-read-linkage).  This is because dualRNA-Seq samples are separated by the host and bacteria organisms involved. To accommodate this, two things need to be done.
+  1. First the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information) line needs to be set to the value `single-index` to indicate there are no actual barcodes on the reads.
+  2. Second, a unique *artificial* barcode for each unique combination of i7 and i5 indices in the [sample linkage section](#experiment-type-information) of the Exp-SampleSheet.csv.
+Both of these are shown in the dualRNA-Seq [example](#experiment-sheet-examples) for Exp-SampleSheets.
+
+* **Paired end reads:** dualRNA-Seq typically has paired end reads. So, you need to account for this by telling `featureCounts` that the BAM files have paired end reads.  You need to use the [cmd.config](#command-configuration) file to do this and examples in that section specifically show this case.
+
+* **Different aligners for organisms:** This impacts only phase-1 of the [analysis phases](#analysis-phases). Best practice indicates that eukaryote and prokaryote organisms should use different aligners.  To handle this you currently need to have different [Exp-SampleSheets](#exp-samplesheetcsv) for the organism sets involved.  Typically, this involves three such sheets: one for eukaryotes, one for prokaryotes, and one that has all organsims specified.  The latter is used for the phase-0 and phase-2 jobs of the analysis run.
+
+  To make this work, you need to use a few Linux command line tools. In addition to the usual change directory `cd`, list directory `ls`, copy file `cp`, and remove file `rm`, you also need the link command `ln`.  The link command is used to make a "pointer file" (symbolic/soft link file) from the name `Exp-SampleSheet.csv` to one of the previously described three experiment sheets.  The suggsted steps to do this whole process are the following:
+
+  1. Create three Exp-SampleSheets and them each a relevant name.  For example, for a run with PG13 and mouse data, `PG13-Exp-SampleSheet.csv`, `mouse-Exp-SampleSheet.csv` and `all-Exp-SampleSheet.csv` would be good names for the three different sheets.
+
+  1. Use the `ln` command to link each of these **in turn** to the name `Exp-SampleSheet.csv`. While in the [experiment's home directory](#experiment-input-structure), this is done as in this example: `ln -s ./PG13-Exp-SampleSheet.csv ./Exp-SampleSheet.csv`.  You **must** use the `-s` switch for this!  **NOTE:** if `Exp-SampleSheet.csv` is currently pointing to something, you *must* first remove it with the `rm` command.
+
+  1. With the `Exp-SampleSheet.csv` set to `all-Exp-SampleSheet.csv` run appropriate phase-0 (see below).
+
+  1. Next set `Exp-SampleSheet.csv` to either the PG13 or mouse file. If you first set it to the PG13 file, you would then run `phase-1` (see below).  Next, you would `rm Exp-SampleSheet.csv` and then set it to `mouse-Exp-SampleSheet.csv: `ln -s ./mouse-Exp-SampleSheet.csv`.  You would then run `star-phase-1` (see below).
+
+  1. At this point, you have BAM files for PG13 and mouse using the proper aligner for each.  Now you want to run phase-2 analysis (DGE, fitness, etc).  So, you remove the current link for `Exp-SampleSheet.csv` and set it back to `all-Exp-SampleSheet.csv.
+
+  Here is a command line terminal session showing all this for the example of PG13 and mouse data.  This assumes you have made the three sheets and have already [copied them](#vm-scp) to the [experiment's home directory](#experiment-input-structure)
+
+  ```shell
+  # First, change directory to the experiment's home directory
+  #
+  $ cd /ExpIn/dualRNA-example
+
+  # List current Exp sheets
+  #
+  $ ls -l *Exp*.csv
+  all-Exp-SampleSheet.csv
+  mouse-Exp-SampleSheet.csv
+  PG13-Exp-SampleSheet.csv
+
+  # For phase-0, link to all file
+  #
+  $ ln -s ./all-Exp-SampleSheet.csv ./Exp-SampleSheet.csv
+
+  # list to see if we have what we want
+  #
+  $ ls -l *Exp*.csv
+  all-Exp-SampleSheet.csv
+  Exp-SampleSheet.csv -> all-Exp-SampleSheet.csv
+  mouse-Exp-SampleSheet.csv
+  PG13-Exp-SampleSheet.csv
+  
+  # Run phase-0
+  $ aerobio run phase-0 dualRNA-example
+
+  # Once phase-0 finishes, run bowtie2 on PG13 data
+ 
+  # First, set the link to PG13
+  #
+  $ rm Exp-SampleSheet.csv
+  $ ln -s ./PG13-Exp-SampleSheet.csv ./Exp-SampleSheet.csv
+  $ ls -l *Exp*.csv
+  all-Exp-SampleSheet.csv
+  Exp-SampleSheet.csv -> PG13-Exp-SampleSheet.csv
+  mouse-Exp-SampleSheet.csv
+  PG13-Exp-SampleSheet.csv
+
+  # Run phase-1 (bowtie2)
+  $ aerobio run phase-1 dualRNA-example
+
+  # Once phase-1 finishes, run STAR on mouse
+
+  # First, set the link to mouse
+  #
+  $ rm Exp-SampleSheet.csv
+  $ ln -s ./mouse-Exp-SampleSheet.csv ./Exp-SampleSheet.csv
+  $ ls -l *Exp*.csv
+  all-Exp-SampleSheet.csv
+  Exp-SampleSheet.csv -> mouse-Exp-SampleSheet.csv
+  mouse-Exp-SampleSheet.csv
+  PG13-Exp-SampleSheet.csv
+
+  # Run star-phase-1 (STAR aligner)
+  $ aerobio run star-phase-1 dualRNA-example
+
+  # Once star-phase-1 finishes, reset to all for phase 2
+
+  # Reset the link to all file
+  #
+  $ rm Exp-SampleSheet.csv
+  $ ln -s ./all-Exp-SampleSheet.csv ./Exp-SampleSheet.csv
+  $ ls -l *Exp*.csv
+  all-Exp-SampleSheet.csv
+  Exp-SampleSheet.csv -> all-Exp-SampleSheet.csv
+  mouse-Exp-SampleSheet.csv
+  PG13-Exp-SampleSheet.csv
+
+  # Run phase-2
+  $ aerobio run phase-2 dualRNA-example
+
+  ```
+
+
+
+### Analysis phases available
+
+Phase-0 : `phase-0`, `phase-0b`, `phase-0c`, and `phase-0d`
+
+* `phase-0`
+    
+1. runs conversion software (bcl2fastq or bcl-convert). This takes [direct sequencer output](#direct-sequencer-output) and produces the starting set of fastq files that will be the primary input for subsequent processing.
+
+2. creates and initializes the [output structure](#experiment-output-structure) for the experiment.  Creates the descriptive database of the experiment.  Moves fastqs to their processing area in the output structure.
+
+3. runs a streaming quality control (QC) filter on input fastqs
+
+4. concurrently reads the streaming QC data, collecting and saving [experiment barcodes (ExpBCs)](#sequencer-samples-experiment-multiplexed-read-linkage) statistics.
+
+5. concurrently reads the streaming QC data plus the ExpBCstatistics to demultiplex the various biorep-techrep reads into their own fastqs.
+
+* `phase-0b`
+
+  Excludes first step of running conversion software.  Runs 2-5 of `phase-0`.  Supports manual conversion or facility delivered [fastq files](#fastq-files)
+
+* `phase-0c`
+
+  Runs 3-5 of `phase-0`.  Assumes output structure, database, and fastqs are setup and ready to process.
+
+
+Phase-1 : `phase-1`, `star-phase-1`
+
+1. runs alignment over the `biorep-techrep` output fastqs from `phase-0`.  Use `phase-1` to run [bowtie2](https://bowtie-bio.sourceforge.net/bowtie2/manual.shtml) aligner (prokaryote alignment). Use `star-phase-1` to run the [STAR](https://github.com/alexdobin/STAR) aligner (eukaryote alignment). The alignment data is streamed to samtools step 2
+
+2. samtools conversion from aligner SAM (text) output to BAM (compressed binary) output.  This data is continually streamed to step 3 and step 5.
+
+3. samtools sort of streaming BAM streamed to step 4
+
+4. samtools indexing run on sorted BAM data creating canonically named and located BAI index files
+
+5. Output the BAM data to canonically named and located BAM files (colocated with the BAI files)
+
+
+Phase-2 : `phase-2`
+
+1. Using directions in [comparison sheet](#comparisonsheetcsv) runs sets of differential gene expression analyses.  The default job/analysis uses a combination of `featureCounts` to create count matrices of reads per annotation and DESeq2 taking these count matrices and running a negative binomial model on them to get log <sub>2</sub> expression changes.
+
+  * `featureCounts : reads the BAMs of phase-1 plus gff/gtf annotation data files for the genome(s) and counts the number of reads occuring in 'genes'.  'Genes' here are [CDS sequences](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC403693/#:~:text=An%20important%20step%20in%20the%20analysis%20of%20genome%20information%20is,ends%20with%20a%20stop%20codon.).  Outputs count matrices as CSV files.
+
+  * `DESeq2` : 
 
 
 ## Tn-Seq
