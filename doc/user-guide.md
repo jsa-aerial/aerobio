@@ -869,9 +869,9 @@ Both of these are shown in the dualRNA-Seq [example](#experiment-sheet-examples)
 
   1. With the `Exp-SampleSheet.csv` set to `all-Exp-SampleSheet.csv` run appropriate phase-0 (see below).
 
-  1. Next set `Exp-SampleSheet.csv` to either the PG13 or mouse file. If you first set it to the PG13 file, you would then run `phase-1` (see below).  Next, you would `rm Exp-SampleSheet.csv` and then set it to `mouse-Exp-SampleSheet.csv: `ln -s ./mouse-Exp-SampleSheet.csv`.  You would then run `star-phase-1` (see below).
+  1. Next set `Exp-SampleSheet.csv` to either the PG13 or mouse file. If you first set it to the PG13 file, you would then run `phase-1` (see below).  Next, you would `rm Exp-SampleSheet.csv` and then set it to `mouse-Exp-SampleSheet.csv`: `ln -s ./mouse-Exp-SampleSheet.csv ./Exp-SampleSheet.csv`.  You would then run `star-phase-1` (see below).
 
-  1. At this point, you have BAM files for PG13 and mouse using the proper aligner for each.  Now you want to run phase-2 analysis (DGE, fitness, etc).  So, you remove the current link for `Exp-SampleSheet.csv` and set it back to `all-Exp-SampleSheet.csv.
+  1. At this point, you have BAM files for PG13 and mouse using the proper aligner for each.  Now you want to run `phase-2` analysis (DGE, fitness, etc).  So, you remove the current link for `Exp-SampleSheet.csv` and set it back to `all-Exp-SampleSheet.csv`.
 
   Here is a command line terminal session showing all this for the example of PG13 and mouse data.  This assumes you have made the three sheets and have already [copied them](#vm-scp) to the [experiment's home directory](#experiment-input-structure)
 
