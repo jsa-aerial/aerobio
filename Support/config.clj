@@ -1,8 +1,11 @@
 {:scratch-base "/ExpOut"
  :fastq-dirname "Fastq"
  :refdir "/Refs"
- :nextseq-base "/NextSeq2"
+ :nextseq-base "/ExpIn"
+ :exp-base "/ExpIn"
  :nextseq-fqdir "Data/Intensities/BaseCalls"
+ :illum-fqdir "Data/Intensities/BaseCalls"
+ :elembio-fqdir "Data/Samples"
 
  :ports
  {:server 7070
@@ -43,4 +46,14 @@
            :sender   "donotreply.iobio@bc.edu"
            :user     "your-aerobio-email-acct@something.something"
            :pass     "the-pw-for-acct"}
+
+ :zulip {:apiurl "https://myorganization.zulipchat.com/api/v1/messages"
+         ;;; :content-type "application/x-www-form-urlencoded"
+         :form-params {:type "stream"
+                       :to "Job Results"
+                       :topic "" ; Topic for results
+                       :content "" ; Result msg info
+                       }
+         :basic-auth ["mybot@myorganization.zulipchat.com"
+                      "mybot's API key"]}
 }
