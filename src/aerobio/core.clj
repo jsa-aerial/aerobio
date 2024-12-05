@@ -49,9 +49,7 @@
             [clojure.tools.cli :refer [parse-opts]]
 
             ;; Tunneling Cider nREPL support
-            [clojure.tools.nrepl.server :as nrs]
-            ;;[cider.nrepl :refer [cider-middleware]] cider.nrepl f*k up
-            [refactor-nrepl.middleware :refer [wrap-refactor]]
+            [nrepl.server :as nrs]
 
             [cpath-clj.core :as cp] ; Extract Jar resources
 
@@ -225,7 +223,7 @@
 
 (defn nrepl-handler-hack []
   (require 'cider.nrepl)
-  (let [cm (var-get (ns-resolve 'cider.nrepl 'cider-middleware))
+  (let [cm (var-get (ns-resolve 'cider.nrepl.middleware 'cider-middleware))
         ;;cm (filter #(not= % 'cider.nrepl/wrap-pprint-fn) cm)
         resolve-or-fail (fn[sym] (println :sym sym)
                           (or (ns-resolve 'cider.nrepl sym)
@@ -233,11 +231,8 @@
                                       (format "Cannot resolve %s" sym)))))]
     (clojure.pprint/pprint cm)
     (apply nrs/default-handler
-           (concat (mapv resolve-or-fail cm)
-                   [#'wrap-refactor]))))
-#_(apply nrs/default-handler
-       (concat (map resolve cider-middleware)
-               [#'wrap-refactor]))
+           (mapv resolve-or-fail cm)) ))
+
 
 (defn -main
   "Self installation and web server"
@@ -269,7 +264,9 @@
           (do
             (println :http-port http-port :rpl-port rpl-port)
             (write-port-file http-port rpl-port)
-            (nrs/start-server :port rpl-port :handler nrepl-handler)
+            ;;(nrs/start-server :port rpl-port :handler nrepl-handler)
+            (clojure.pprint/pprint
+             (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port))
             (run-server http-port))
           (do (println "aerobio server must run in home directory")
               (System/exit 1)))
