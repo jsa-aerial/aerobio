@@ -32,6 +32,9 @@
    [clojure.data.csv :as csv]
    [clojure.string :as cljstr]
 
+   [tech.v3.dataset :as ds]
+   [tablecloth.api :as tc]
+
    [aerial.fs :as fs]
 
    [aerial.utils.coll :refer [vfold] :as coll]
@@ -52,15 +55,90 @@
 
 
 
-(defn get-sample-info [ssheet]
-  (->> ssheet
-       slurp csv/read-csv
-       (coll/drop-until #(= (first %) "Sample_ID"))
-       rest
-       ;; i7 and i5 are treated as single (unique) "Illumina bc" in
-       ;; Aerobio processing.  NOTE this is *downstream* of bcl2fastq
-       ;; or bcl-convert
-       (map (fn[[id nm i7bc i5bc]] [id nm (str i7bc i5bc)]))))
+(defn instrument-make [eid]
+  (let [base (pams/get-params :exp-base)
+        expdir (fs/join base eid)
+        elembio? (-> expdir (fs/join "RunManifest.csv") fs/exists?)
+        illum?   (-> expdir (fs/join "SampleSheet.csv") fs/exists?)]
+    (cond elembio? :elembio
+          illum?   :illum
+          :else    :NA)))
+
+
+(declare get-exp-info
+         get-exp)
+
+
+(defn get-instrument-make [eid]
+  (or (get-exp-info eid :instrument-make)
+      (instrument-make eid)))
+
+
+;;; (ns-unmap 'aerobio.htseq.common 'get-sample-data)
+(defmulti get-sample-data
+  "Get base sample data, as determined by instrument make `instrument-make`"
+  {:arglists '([eid])}
+  (fn [eid] (get-instrument-make eid)))
+
+
+(defn read-sample-data [eid marker filename]
+  (let [sheet (fs/join (pams/get-params :exp-base) eid filename)]
+    (-> sheet
+        (tc/dataset {:header-row? false})
+        (tc/rows)
+        (->> (coll/dropv-until #(= marker (first %)))))))
+
+(defmethod get-sample-data :illum
+  [eid]
+  (let [filename "SampleSheet.csv"
+        marker "Sample_ID"]
+    (read-sample-data eid marker filename)))
+
+(defmethod get-sample-data :elembio
+  [eid]
+  (let [filename "RunManifest.csv"
+        marker "SampleName"]
+    (read-sample-data eid marker filename)))
+
+
+;;; (ns-unmap 'aerobio.htseq.common 'get-sample-info)
+(defmulti get-sample-info
+  "Get sample information, as determined by instrument make `instrument-make`"
+  {:arglists '([eid])}
+  (fn [eid] (get-instrument-make eid)))
+
+(defmethod get-sample-info :illum
+  [eid]
+  (->> eid get-sample-data  rest
+      ;; i7 and i5 are treated as single (unique) "Illumina bc" in
+      ;; Aerobio processing.  NOTE this is *downstream* of bcl2fastq
+      ;; or bcl-convert
+      (map (fn[[id nm i7bc i5bc]] [id nm (str i7bc i5bc)]))))
+
+(defmethod get-sample-info :elembio
+  [eid]
+  (->> eid get-sample-data rest
+      ;; i7 and i5 are treated as single (unique) "BC" in Aerobio
+      ;; processing.  Additionally, in ElemBio land, the sequencer can
+      ;; be configured so that a given sample will be contained in
+      ;; only one lane.  In this case, the combined i7&i5 are not
+      ;; enough to give a unique "BC" and an extra 'fake base' needs
+      ;; to be appended.  Also for ElemBio, the PhiX 'samples' are
+      ;; explicitly listed in Sample data section.  These need to be
+      ;; removed. NOTE this is *downstream* of bases2fastq
+      (map (fn[[nm i7bc i5bc lane]]
+             (let [fakebase (case lane
+                              "1" "A"
+                              "2" "G"
+                              nil)]
+               [nm (str i7bc i5bc fakebase)])))
+      (remove (fn[x] (-> x first (= "PhiX"))))))
+
+
+(defn get-sample-info-colkws [eid]
+  (let [make (get-exp-info eid :instrument-make)]
+    (if (= make :illum) [:sid :snm :index] [:snm :index])))
+
 
 (defn term-seq-adjust
   [secmap]
@@ -125,13 +203,10 @@
                  (conj I i)))))))
 
 
-(declare get-exp-info
-         get-exp)
-
 (defn base-singleindex? [eid]
   (if (get-exp eid)
     (get-exp-info eid :single-index)
-    (-> (pams/get-params :nextseq-base)
+    (-> (pams/get-params :exp-base)
         (fs/join eid "Exp-SampleSheet.csv")
         get-exp-sample-info
         :exp-rec first
@@ -161,11 +236,35 @@
             (and Res (if (fs/directory? dir) true (fs/mkdirs dir))))
           true dirs))
 
+
+(defmulti get-fqs
+  "Get fastq filespecs to move to output area"
+  {:arglists '([eid])}
+  (fn [eid] (get-instrument-make eid)))
+
+(defmethod get-fqs :illum
+  [eid]
+  (let [exp-base (pams/get-params :exp-base)
+        expdir (fs/join exp-base eid)
+        exp-fqdir (fs/join expdir (pams/get-params :nextseq-fqdir))]
+    (filter #(not (str/substring? "Undetermined" %))
+            (fs/re-directory-files exp-fqdir "fastq.gz"))))
+
+(defmethod get-fqs :elembio
+  [eid]
+  (let [exp-base (pams/get-params :exp-base)
+        expdir (fs/join exp-base eid)
+        exp-fqdir (fs/join expdir (pams/get-params :elembio-fqdir))]
+    (filter #(not (or (str/substring? "Undetermined" %)
+                      (str/substring? "PhiX")))
+            (fs/re-directory-files exp-fqdir "fastq.gz"))))
+
+
 (defn start-scratch-space [eid]
   (let [base (pams/get-params :scratch-base)
         scratch-dir (fs/join base eid)
-        nextseq-base (pams/get-params :nextseq-base)
-        expdir (fs/join nextseq-base eid)
+        exp-base (pams/get-params :exp-base)
+        expdir (fs/join exp-base eid)
         exp-fqdir (fs/join expdir (pams/get-params :nextseq-fqdir))
         fqs (filter #(not (str/substring? "Undetermined" %))
                     (fs/re-directory-files exp-fqdir "fastq.gz"))
@@ -212,7 +311,7 @@
   [smap bcsz fq]
   (pg/future+
     (letio [kw (->> fq fs/basename
-                    (str/split #".fastq") first (str/split #"_S")
+                    (str/split #".fastq") first (str/split #"_")
                     first smap) ; kw is associated illumina barcode
             in (io/open-file fq :in)]
       (loop [fqrec (bufiles/read-fqrec in)
@@ -235,12 +334,9 @@
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
   (when (not (singleindex? eid))
-    (let [nextseq-base (pams/get-params :nextseq-base)
-          expdir (fs/join nextseq-base eid)
-          sample-map (->> "SampleSheet.csv"
-                          (fs/join expdir) get-sample-info
-                          (map (fn[[nm _ bckey]] [nm bckey]))
-                          (into {}))
+    (let [exp-base (pams/get-params :exp-base)
+          expdir (fs/join exp-base eid)
+          sample-map (->> eid  get-sample-info (into {}))
           expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
                        get-exp-sample-info)
           bcsz (->> expinfo :bc-xref first last count)
@@ -260,14 +356,12 @@
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
   (when (not (singleindex? eid))
-    (let [nextseq-base (pams/get-params :nextseq-base)
-          expdir (fs/join nextseq-base eid)
-          sample-info (get-sample-info (fs/join expdir "SampleSheet.csv"))
+    (let [sample-info (get-sample-info eid)
           base (fs/join (pams/get-params :scratch-base) eid "Stats")
-          files (into {} (mapv
-                          (fn[[snm _ bckey]]
-                            [bckey (fs/join base (str snm ".clj"))])
-                          sample-info))]
+          files (->> sample-info
+                     (mapv (fn[[snm bckey]]
+                             [bckey (fs/join base (str snm ".clj"))]))
+                     (into {}))]
       (ensure-dirs base)
       (doseq [[k v] bcmaps]
         (let [f (files k)]
@@ -313,133 +407,127 @@
 
 
 (def exp-info (atom {}))
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX"
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
-(defn init-exp-data [base ssheet exp-ssheet cfgfile]
-  (-> {}
-      (assoc :sample-sheet
-             (get-sample-info ssheet))
-      ((fn[m]
-         (assoc m :base base
-                :cmdsargs  (get-cmds-args cfgfile)
-                :refs      (pams/get-params :refdir)
-                :index     (fs/join (pams/get-params :refdir) "Index")
-                :bt1index  (fs/join (pams/get-params :refdir) "BT1Index")
-                :starindex (fs/join (pams/get-params :refdir) "STARindex")
-                :samples   (fs/join base "Samples")
-                :collapsed (fs/join base "Samples/Collapsed")
-                :out       (fs/join base "Out")
-                :bams      (fs/join base "Out/Bams")
-                :star      (fs/join base "Out/STAR")
-                :fcnts     (fs/join base "Out/Fcnts")
-                :maps      (fs/join base "Out/Maps")
-                :fit       (fs/join base "Out/Fitness")
-                :aggrs     (fs/join base "Out/Aggrs")
-                :charts    (fs/join base "Out/DGE")
-                :stats     (fs/join base "Stats")
-                :fastq     (fs/join base "Fastq")
-                :docs      (fs/join base "Docs"))))
-      ((fn[m]
-         (assoc m :illumina-sample-xref
-                (into {} (mapv (fn[[_ nm ibc]] [ibc nm])
-                               (m :sample-sheet))))))
-      ((fn[m]
-         (assoc m :exp-sample-info
-                (get-exp-sample-info exp-ssheet))))
-      ((fn[m]
-         (assoc m :run-xref
-                (->> (m :exp-sample-info) :run-xref))))
-      ((fn[m]
-         (assoc m :single-index
-                (->> (m :exp-sample-info) :exp-rec
-                     first (into #{}) (#(% "single-index"))))))
-      ((fn[m]
-         (assoc m :exp (get-exp-type (m :exp-sample-info))
-                :sample-names
-                (->> (m :exp-sample-info)
-                     :bc-xref
-                     (map second)
-                     (map #(->> % (str/split #"-")
-                                (take 2) (cljstr/join "-")))
-                     set))))
-      ((fn[m]
-         (assoc m :replicate-names
-                (->> (m :exp-sample-info)
-                     :bc-xref
-                     (map second)
-                     (group-by (fn[rnm]
-                                 (->> rnm (str/split #"-")
-                                      (take 2) (cljstr/join "-"))))))))
-      ((fn[m]
-         (assoc m :strains
-                (->> (m :sample-names)
-                     (mapv #(->> % (str/split #"-") first))
-                     set))))
-      ((fn[m]
-         (assoc m :ncbi-sample-xref
-                (->> (m :exp-sample-info)
-                     :ncbi-xref
-                     (mapcat (fn[x] [(-> x rest vec) (-> x rest reverse vec)]))
-                     (into {})))))
-      ((fn[m]
-         (assoc m :exp-illumina-xref
-                (->> (m :exp-sample-info)
-                     :bc-xref
-                     (group-by (fn[[_ _ ibc]] ibc))))))
-      ((fn[m]
-         (assoc m :barcodes
-                (->> (m :exp-illumina-xref) vals (apply concat)
-                     (reduce (fn[BC v] (conj BC (last v))) #{})
-                     sort vec))))
-      ((fn[m]
-         (assoc m :barcode-maps
-                (->> (m :exp-illumina-xref)
-                     (map #(vector (first %)
-                                   (->> % second (map last)
-                                        (map (fn[bc] (vector bc bc)))
-                                        (into {}))))
-                     (into {})))))
-      ((fn[m]
-         (assoc m :bcmaps
-                (apply merge
-                       (map read-bcmap
-                            (fs/directory-files (m :stats) ".clj"))))))
-      ((fn[m]
-         (assoc m :ed1codes
-                (let [bcmaps (m :bcmaps)
-                      barcode-maps (m :barcode-maps)]
-                  (into {} (map #(vector % (barcodes-edist-1-seqs
-                                            (bcM bcmaps %)
-                                            (keys (barcode-maps %))))
-                                (keys bcmaps)))))))
-      ((fn[m]
-         (assoc m :red1codes
-                (into {}
-                      (mapv
-                       (fn[samp-key]
-                         [samp-key
-                          (reduce (fn[M [k l]]
-                                    (merge M (reduce (fn[m x] (assoc m x k))
-                                                     {} l)))
-                                  {} ((m :ed1codes) samp-key))])
-                       (keys (m :bcmaps)))))))
-      ))
 
-
+(defn init-exp-data [eid]
+  (let [instrmake (instrument-make eid)
+        base (fs/join (pams/get-params :scratch-base) eid)
+        exp-base (pams/get-params :exp-base)
+        expdir (fs/join exp-base eid)
+        exp-ssheet (fs/join expdir "Exp-SampleSheet.csv")
+        cfgfile (fs/join expdir "cmd.config")]
+    (-> {}
+        (assoc :sample-sheet (get-sample-info eid))
+        ((fn[m]
+           (assoc m :base base
+                  :instrument-make instrmake
+                  :cmdsargs  (get-cmds-args cfgfile)
+                  :refs      (pams/get-params :refdir)
+                  :index     (fs/join (pams/get-params :refdir) "Index")
+                  :bt1index  (fs/join (pams/get-params :refdir) "BT1Index")
+                  :starindex (fs/join (pams/get-params :refdir) "STARindex")
+                  :samples   (fs/join base "Samples")
+                  :collapsed (fs/join base "Samples/Collapsed")
+                  :out       (fs/join base "Out")
+                  :bams      (fs/join base "Out/Bams")
+                  :star      (fs/join base "Out/STAR")
+                  :fcnts     (fs/join base "Out/Fcnts")
+                  :maps      (fs/join base "Out/Maps")
+                  :fit       (fs/join base "Out/Fitness")
+                  :aggrs     (fs/join base "Out/Aggrs")
+                  :charts    (fs/join base "Out/DGE")
+                  :stats     (fs/join base "Stats")
+                  :fastq     (fs/join base "Fastq")
+                  :docs      (fs/join base "Docs"))))
+        ((fn[m]
+           (assoc m :illumina-sample-xref
+                  (into {} (mapv (fn[[_ nm ibc]] [ibc nm])
+                                 (m :sample-sheet))))))
+        ((fn[m]
+           (assoc m :exp-sample-info
+                  (get-exp-sample-info exp-ssheet))))
+        ((fn[m]
+           (assoc m :run-xref
+                  (->> (m :exp-sample-info) :run-xref))))
+        ((fn[m]
+           (assoc m :single-index
+                  (->> (m :exp-sample-info) :exp-rec
+                       first (into #{}) (#(% "single-index"))))))
+        ((fn[m]
+           (assoc m :exp (get-exp-type (m :exp-sample-info))
+                  :sample-names
+                  (->> (m :exp-sample-info)
+                       :bc-xref
+                       (map second)
+                       (map #(->> % (str/split #"-")
+                                  (take 2) (cljstr/join "-")))
+                       set))))
+        ((fn[m]
+           (assoc m :replicate-names
+                  (->> (m :exp-sample-info)
+                       :bc-xref
+                       (map second)
+                       (group-by (fn[rnm]
+                                   (->> rnm (str/split #"-")
+                                        (take 2) (cljstr/join "-"))))))))
+        ((fn[m]
+           (assoc m :strains
+                  (->> (m :sample-names)
+                       (mapv #(->> % (str/split #"-") first))
+                       set))))
+        ((fn[m]
+           (assoc m :ncbi-sample-xref
+                  (->> (m :exp-sample-info)
+                       :ncbi-xref
+                       (mapcat (fn[x] [(-> x rest vec) (-> x rest reverse vec)]))
+                       (into {})))))
+        ((fn[m]
+           (assoc m :exp-illumina-xref
+                  (->> (m :exp-sample-info)
+                       :bc-xref
+                       (group-by (fn[[_ _ ibc]] ibc))))))
+        ((fn[m]
+           (assoc m :barcodes
+                  (->> (m :exp-illumina-xref) vals (apply concat)
+                       (reduce (fn[BC v] (conj BC (last v))) #{})
+                       sort vec))))
+        ((fn[m]
+           (assoc m :barcode-maps
+                  (->> (m :exp-illumina-xref)
+                       (map #(vector (first %)
+                                     (->> % second (map last)
+                                          (map (fn[bc] (vector bc bc)))
+                                          (into {}))))
+                       (into {})))))
+        ((fn[m]
+           (assoc m :bcmaps
+                  (apply merge
+                         (map read-bcmap
+                              (fs/directory-files (m :stats) ".clj"))))))
+        ((fn[m]
+           (assoc m :ed1codes
+                  (let [bcmaps (m :bcmaps)
+                        barcode-maps (m :barcode-maps)]
+                    (into {} (map #(vector % (barcodes-edist-1-seqs
+                                              (bcM bcmaps %)
+                                              (keys (barcode-maps %))))
+                                  (keys bcmaps)))))))
+        ((fn[m]
+           (assoc m :red1codes
+                  (into {}
+                        (mapv
+                         (fn[samp-key]
+                           [samp-key
+                            (reduce (fn[M [k l]]
+                                      (merge M (reduce (fn[m x] (assoc m x k))
+                                                       {} l)))
+                                    {} ((m :ed1codes) samp-key))])
+                         (keys (m :bcmaps)))))))
+        )))
 
 (defn set-exp [eid]
-  (let [base (fs/join (pams/get-params :scratch-base) eid)
-        nextseq-base (pams/get-params :nextseq-base)
-        expdir (fs/join nextseq-base eid)
-        sample-sheet (fs/join expdir "SampleSheet.csv")
-        exp-sample-sheet (fs/join expdir "Exp-SampleSheet.csv")
-        cfgfile (fs/join expdir "cmd.config")]
-    (swap! exp-info
-           (fn[m]
-             (assoc
-              m eid
-              (init-exp-data base sample-sheet exp-sample-sheet cfgfile))))))
+  (swap! exp-info
+         (fn[m]
+           (assoc m eid (init-exp-data eid)))))
 
 (defn del-exp [eid]
   (swap! exp-info (fn[m] (dissoc m eid)))
@@ -452,21 +540,22 @@
 (defn info-ks [] (-> @exp-info first second keys))
 
 (defn get-exp-info [eid & ks]
-  (let [otks #{:bams :star :fcnts :maps :fit :aggrs :charts}
-        rep? (coll/in :rep ks)
-        ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
-        info (get-exp eid)
-        xfn  (fn [k]
-               (let [item (info k)]
-                 (if (and rep? (otks k))
-                   (let [dirs  (fs/split item)
-                         ldir (last dirs)
-                         dirs (-> dirs butlast vec)]
-                     (apply fs/join (conj dirs "Rep" ldir)))
-                   item)))]
-    (if (= 1 (count ks))
-      (xfn (first ks))
-      (mapv #(xfn %) ks))))
+  (when (contains? @exp-info eid)
+    (let [otks #{:bams :star :fcnts :maps :fit :aggrs :charts}
+          rep? (coll/in :rep ks)
+          ks (remove #{:rep} (filter identity ks)) ; remove any :rep or nil
+          info (get-exp eid)
+          xfn  (fn [k]
+                 (let [item (info k)]
+                   (if (and rep? (otks k))
+                     (let [dirs  (fs/split item)
+                           ldir (last dirs)
+                           dirs (-> dirs butlast vec)]
+                       (apply fs/join (conj dirs "Rep" ldir)))
+                     item)))]
+      (if (= 1 (count ks))
+        (xfn (first ks))
+        (mapv #(xfn %) ks)))))
 
 (defn get-exp-files [exp-id d]
   (->> [:refs :index :samples
