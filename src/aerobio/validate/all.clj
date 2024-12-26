@@ -24,7 +24,8 @@
 
 
 (defn check-for-sampsheet [EID]
-  (fs/file? (make-sheet-fspec EID "SampleSheet.csv")))
+  (or (fs/file? (make-sheet-fspec EID "RunManifest.csv"))
+      (fs/file? (make-sheet-fspec EID "SampleSheet.csv"))))
 
 (defn check-for-expsheet [EID]
   (fs/file? (make-sheet-fspec EID "Exp-SampleSheet.csv")))
@@ -42,7 +43,9 @@
 
 (p/defphraser check-for-sampsheet
   [_ problem]
-  "is missing required 'SampleSheet.csv'")
+  (format "is missing required %s or %s"
+          "'RunManifest.csv' (ElemBio)"
+          "'SampleSheet.csv' (Illumina)"))
 
 (p/defphraser check-for-expsheet
   [_ problem]

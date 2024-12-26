@@ -53,7 +53,10 @@
 
 ;;; Content checks
 ;;;
-(defn id-eq-nm? [m] (= (m :sid) (m :snm)))
+(defn id-eq-nm? [m]
+  (or (nil? (m :sid))
+      (= (m :sid) (m :snm))))
+
 (defn nodup? [x] (= 0 (x :dupcnt)))
 
 (s/def ::sid string?)
@@ -66,7 +69,7 @@
 ;;; NOTE!!! need to use s/merge as s/and (for some idiotic reason)
 ;;; uses short circuit semantics!! WTF!!!
 (s/def ::samp-sheet-rec
-  (s/merge (s/keys :req-un [::sid ::snm ::index] :opt-un [::index2])
+  (s/merge (s/keys :req-un [::snm ::index] :opt-un [::sid ::index2])
            ::id-eq-nm? ::nodup?))
 
 (s/def ::samp-sheet (s/coll-of ::samp-sheet-rec))
@@ -123,13 +126,11 @@
     (if (not-empty veol)
       veol
       (let [sampsheet (make-sheet-fspec EID "SampleSheet.csv")
-            rows (->> sampsheet ac/get-sample-info
-                      (reduce (fn[M r] (assoc M (first r) r)) {})
-                      vals vec)
+            rows (->> EID ac/get-sample-info vec)
             dups (vc/get-exp-sheet-data EID :Isampdups)
-            cols [:sid, :snm, :index]
+            cols (ac/get-sample-info-colkws EID)
             recs (->> rows (cols->maps cols)
-                      (mapv (fn[m] (assoc m :dupcnt (dups (m :sid) 0)))))
+                      (mapv (fn[m] (assoc m :dupcnt (dups (m :snm) 0)))))
             valid (validate-samp-sheet recs)]
         #_(pprint recs)
         (with-out-str
