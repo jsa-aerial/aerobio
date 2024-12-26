@@ -40,7 +40,9 @@
    [me.raynes.conch :refer [programs with-programs let-programs] :as sh]
    [me.raynes.conch.low-level :as shl]
 
+   ;; Messaging services for jobs
    [postal.core :as postal]
+   [org.httpkit.client :as http]
 
    ;; For pgm graph data shape validation
    [schema.core :as sch]
@@ -92,13 +94,36 @@
   "Setup external 'canned' programs as standard functions. This makes
   user function nodes much simpler in many cases."
   []
-  (programs bcl2fastq samtools
+  (programs bases2fastq bcl2fastq bcl-convert samtools
             bowtie bowtie2 bowtie-build bowtie2-build
             featureCounts breseq
             Rscript python ruby perl
             ln wc chmod
             bp_load_genbank
             ))
+
+
+;;; (ns-unmap 'aerobio.pgmgraph 'bc2fq)
+(defmulti bc2fq
+  "Call the appropriate binary image files to fastq conversion tool. This is based on the make of the sequencer"
+  {:arglists '([make argmap])}
+  (fn [make argmap] make))
+
+(defmethod bc2fq :illum
+  [_ argmap]
+  (let [params (get-in argmap :illum :params)
+        converter (get-in argmap :illum :converter)]
+    (if (= converter :bcl2fastq)
+      (apply bcl2fastq params)
+      (apply bcl-convert params))))
+
+(defmethod bc2fq :elembio
+  [_ argmap]
+  (let [params (get-in argmap :elembio :params)]
+    (apply bases2fastq params)))
+
+
+
 
 (defn send-msg [recipients subject body]
   (let [{:keys [smtphost sender user pass]} (pams/get-params :mailcfg)]
