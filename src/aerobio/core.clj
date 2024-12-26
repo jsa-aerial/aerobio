@@ -223,15 +223,8 @@
 
 (defn nrepl-handler-hack []
   (require 'cider.nrepl)
-  (let [cm (var-get (ns-resolve 'cider.nrepl.middleware 'cider-middleware))
-        ;;cm (filter #(not= % 'cider.nrepl/wrap-pprint-fn) cm)
-        resolve-or-fail (fn[sym] (println :sym sym)
-                          (or (ns-resolve 'cider.nrepl sym)
-                              (throw (IllegalArgumentException.
-                                      (format "Cannot resolve %s" sym)))))]
-    (clojure.pprint/pprint cm)
-    (apply nrs/default-handler
-           (mapv resolve-or-fail cm)) ))
+  (let [cm (var-get (ns-resolve 'cider.nrepl.middleware 'cider-middleware))]
+    (apply nrs/default-handler cm)))
 
 
 (defn -main
@@ -266,7 +259,8 @@
             (write-port-file http-port rpl-port)
             ;;(nrs/start-server :port rpl-port :handler nrepl-handler)
             (clojure.pprint/pprint
-             (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port))
+             (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port
+                               :handler nrepl-handler))
             (run-server http-port))
           (do (println "aerobio server must run in home directory")
               (System/exit 1)))
