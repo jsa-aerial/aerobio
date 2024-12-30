@@ -3,6 +3,7 @@
  :name "tnseq-global-aggregate",
  :path "",
  :func (fn [eid aggrfile data]
+         (infof "Tn-Seq global aggr, data : %s" data)
          (when (and (pg/eoi? data) (pg/done? data))
            (infof "Tn-Seq aggregate starting... %s" data)
            (let [script (fs/join (fs/pwd) "Scripts" "aggregate.pl")
