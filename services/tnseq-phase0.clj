@@ -3,7 +3,7 @@
  :path "",
 
  :graph {:bc2fq {:type "func"
-                 :name "bcl2fastq"
+                 :name "bc2fq"
                  :args ["#1"]}
          :strtscratch {:type "func"
                        :name "start-scratch-space"}
