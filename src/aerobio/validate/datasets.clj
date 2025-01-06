@@ -19,15 +19,29 @@
 ;;; phase-0 checks. Need to ensure 'experiment' directory exists and
 ;;; has the path holding the bcl files
 
+(defmulti basecall-directory
+  "Get basecall directory by instrument type"
+  {:arglists '([eid])}
+  (fn[eid] (ac/get-instrument-make eid)))
+
+(defmethod basecall-directory :illum
+  [eid]
+  "Data/Intensities/BaseCalls")
+
+(defmethod basecall-directory :elembio
+  [eid]
+  "BaseCalls")
+
+
 (defn expexists? [EID]
   (fs/directory?
    (fs/join (pams/get-params :nextseq-base) EID)))
 
 (defn bclfiles? [EID]
   (fs/directory?
-   (fs/join (pams/get-params :nextseq-base)
+   (fs/join (pams/get-params :exp-base)
             EID
-            (pams/get-params :nextseq-fqdir))))
+            (basecall-directory EID))))
 
 (s/def ::expexists? expexists?)
 (s/def ::bclfiles? bclfiles?)
