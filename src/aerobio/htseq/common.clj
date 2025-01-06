@@ -155,7 +155,10 @@
     (assoc secmap :run-xref run-xref :bc-xref bc-xref)))
 
 (defn get-exp-sample-info [csv]
-  (let [recs (->> csv slurp csv/read-csv)
+  (let [recs #_(->> csv slurp csv/read-csv)
+        (-> csv (tc/dataset {:header-row? false :parser-fn :string})
+            (tc/replace-missing :all :value "")
+            (tc/rows) vec)
         x (coll/dropv-until
            (fn[v] (#{"tnseq", "rnaseq", "dual-rnaseq"
                     "termseq" "wgseq"} (first v)))
@@ -255,19 +258,15 @@
   (let [exp-base (pams/get-params :exp-base)
         expdir (fs/join exp-base eid)
         exp-fqdir (fs/join expdir (pams/get-params :elembio-fqdir))]
-    (filter #(not (or (str/substring? "Undetermined" %)
-                      (str/substring? "PhiX")))
+    (filter #(not (or (str/substring? "Unassigned" %)
+                      (str/substring? "PhiX" %)))
             (fs/re-directory-files exp-fqdir "fastq.gz"))))
 
 
 (defn start-scratch-space [eid]
   (let [base (pams/get-params :scratch-base)
         scratch-dir (fs/join base eid)
-        exp-base (pams/get-params :exp-base)
-        expdir (fs/join exp-base eid)
-        exp-fqdir (fs/join expdir (pams/get-params :nextseq-fqdir))
-        fqs (filter #(not (str/substring? "Undetermined" %))
-                    (fs/re-directory-files exp-fqdir "fastq.gz"))
+        fqs (get-fqs eid)
         fq-otdir (fs/join scratch-dir (pams/get-params :fastq-dirname))]
     (ensure-dirs scratch-dir fq-otdir)
     (doseq [fq fqs]
@@ -440,7 +439,7 @@
                   :docs      (fs/join base "Docs"))))
         ((fn[m]
            (assoc m :illumina-sample-xref
-                  (into {} (mapv (fn[[_ nm ibc]] [ibc nm])
+                  (into {} (mapv (fn[[nm ibc]] [ibc nm])
                                  (m :sample-sheet))))))
         ((fn[m]
            (assoc m :exp-sample-info
