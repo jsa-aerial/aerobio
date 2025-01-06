@@ -111,15 +111,15 @@
 
 (defmethod bc2fq :illum
   [_ argmap]
-  (let [params (get-in argmap :illum :params)
-        converter (get-in argmap :illum :converter)]
+  (let [params (get-in argmap [:illum :params])
+        converter (get-in argmap [:illum :converter])]
     (if (= converter :bcl2fastq)
       (apply bcl2fastq params)
       (apply bcl-convert params))))
 
 (defmethod bc2fq :elembio
   [_ argmap]
-  (let [params (get-in argmap :elembio :params)]
+  (let [params (get-in argmap [:elembio :params])]
     (apply bases2fastq params)))
 
 
