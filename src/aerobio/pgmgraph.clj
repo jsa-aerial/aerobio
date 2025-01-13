@@ -125,19 +125,57 @@
 
 
 
-(defn send-msg [recipients subject body]
-  (let [{:keys [smtphost sender user pass]} (pams/get-params :mailcfg)]
-    (postal/send-message
-     {:host smtphost
-      :user user
-      :pass pass
-      ;;:tls true
-      ;;:port 587
-      :ssl true}
-     {:from sender
-      :to recipients
-      :subject subject
-      :body body})))
+(defmulti send-msg* (fn[& args] (first args)))
+
+(defmethod send-msg* :email
+  [& args] args
+  (let [[eid recipients subject body] (rest args)
+        econfig (pams/get-params [:comcfg :email])
+        {:keys [smtphost sender user pass]} (econfig :mailcfg)
+        accnts (econfig :accnts)
+        recipients (->> recipients
+                        (mapv (fn[r] (accnts r (accnts :default)))))]
+      (postal/send-message
+       {:host smtphost
+        :user user
+        :pass pass
+        ;;:tls true
+        ;;:port 587
+        :ssl true}
+       {:from sender
+        :to recipients
+        :subject subject
+        :body body})))
+
+(defmethod send-msg* :zulip
+  [& args] args
+  (let [[eid recipients subject body] (rest args)
+        zconfig (pams/get-params [:comcfg :zulip])
+        accnts (zconfig :accnts)
+        user (-> recipients first (accnts (accnts :default)))
+        job-name subject
+        result body
+        content (format "@**%s** Results for %s %s" user job-name result)
+        apiurl (zconfig :apiurl)
+        options (-> zconfig :options
+                    (assoc-in [:form-params :content] content)
+                    (assoc-in [:form-params :topic] eid))
+        {:keys [status error]} @(http/post apiurl options)]
+    (if error
+      (print-str "Failed, exception is " error)
+      (print-str "Async HTTP POST: " status))))
+
+(defmethod send-msg* :default
+  [& args]
+  (str "Unknown communication mode"
+       (pams/get-params :comcfg)))
+
+
+(defn send-msg [eid recipients subject body]
+  (let [modes (pams/get-params [:comcfg :mode])
+        modes (if (seq? modes) modes [modes])]
+    (for [mode modes]
+      (send-msg* mode eid recipients subject body))))
 
 
 

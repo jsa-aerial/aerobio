@@ -52,12 +52,13 @@
   (fn[cmd & args] (keyword cmd)))
 
 
-(defn get-mail-recipient
-  [user]
-  (let [recipient (pams/get-params [:email (keyword user)])]
-    (if recipient
-      recipient
-      (pams/get-params [:email :default]))))
+
+;;; V 2.7+ we no longer directly use OS accounts, for msg recipients.
+;;; We now force experimenters to correctly use the 'experimenter'
+;;; field in the experiment record of the Exp-SampleSheet.
+(defn get-msg-recipient
+  [eid]
+  (cmn/get-exp-info eid :experimenter))
 
 
 (defmethod action :run
@@ -66,7 +67,7 @@
         {:keys [user cmd phase modifier compfile]} params
         rep (if (= modifier "replicates") :rep nil)
         exp (cmn/get-exp-info eid :exp)
-        user (get-mail-recipient user)]
+        user (get-msg-recipient eid)]
     {:status status
      :fut  (cmn/launch-action
             eid user
@@ -94,7 +95,7 @@
         rep (if (= modifier "replicates") :rep nil)
         outdir (cmn/get-exp-info eid :out)
         exp (cmn/get-exp-info eid :exp)
-        user (get-mail-recipient user)]
+        user (get-msg-recipient eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
@@ -110,32 +111,28 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        recipient (pams/get-params [:email (keyword user)])]
+        user (get-msg-recipient eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
            get-toolinfo template
            :action (name cmd)
            :compfile compfile
-           :status status)
-     #_(cmn/run-comparison
-           exp eid recipient compfile get-toolinfo template status)}))
+           :status status)}))
 
 (defmethod action :xcompare
   [_ eid params get-toolinfo template]
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        user (get-mail-recipient user)]
+        user (get-msg-recipient eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
            get-toolinfo template
            :action (name cmd)
            :compfile compfile
-           :status status)
-     #_(cmn/run-comparison
-      exp eid user compfile get-toolinfo template status)}))
+           :status status)}))
 
 
 (defmethod action :aggregate
@@ -143,16 +140,14 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        user (get-mail-recipient user)]
+        user (get-msg-recipient user)]
     {:status status
      :fut (cmn/launch-action
            eid user
            get-toolinfo template
            :action (name cmd)
            :compfile compfile
-           :status status)
-     #_(htts/run-aggregation
-        eid recipient compfile get-toolinfo template status)}))
+           :status status)}))
 
 
 (comment
