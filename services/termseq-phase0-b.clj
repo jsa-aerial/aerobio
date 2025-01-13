@@ -4,7 +4,7 @@
 
  :graph {:strtscratch {:type "func"
                        :name "start-scratch-space"
-                       :args ["#1"]}
+                       :args ["#1"]} ; eid
          :bcstats {:type "func"
                    :name "collect-barcode-stats"}
          :wrtstats {:type "func"
@@ -15,7 +15,8 @@
                         :name "split-filter-fastqs"}
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: termseq phase-0b"
                        "Finished"]} ; subject, body intro
 

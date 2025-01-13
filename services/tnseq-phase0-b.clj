@@ -17,7 +17,8 @@
                 :name "collapser"}
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: tnseq phase-0b"
                        "Finished"]} ; subject, body intro
 

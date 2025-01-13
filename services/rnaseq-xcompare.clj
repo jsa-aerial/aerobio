@@ -11,14 +11,15 @@
                 :args ["#1", "#4", "#5"]} ; eid, feature-type, :NA
          :dseq {:type "func"
                 :name "deseq2-rnaseq"
-                :args ["#1"]}
+                :args ["#1"]}             ; eid
          :aggr {:type "func"
                 :name "aggregate"}
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#6"        ; recipient
+                :args ["#1"               ; eid
+                       "#6"               ; recipient
                        "Aerobio job status: rnaseq X experiment compare"
-                       "Finished"]}      ; subject, body intro
+                       "Finished"]}       ; subject, body intro
          :edges {:dir [:fcnt] :fcnt [:dseq]
                  :dseq [:aggr] :aggr [:mail]}}
 

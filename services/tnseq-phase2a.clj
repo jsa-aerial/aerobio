@@ -5,12 +5,13 @@
 
  :graph {:fit {:type "func"
                :name "tnseq-fitness"
-               :args ["#1" "#2"]} ; eid, compfile
+               :args ["#1" "#2"]}   ; eid, compfile
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#3"        ; recipient
+                :args ["#1"         ; eid
+                       "#3"         ; recipient
                        "Aerobio job status: tnseq phase-2a Fitness"
-                       "Finished"]}      ; subject, body intro
+                       "Finished"]} ; subject, body intro
          :edges {:fit [:mail]}}
 
  ;; instructional data used in /help

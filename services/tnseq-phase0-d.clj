@@ -4,10 +4,11 @@
 
  :graph {:coll {:type "func"
                 :name "collapser"
-                :args ["#1"]}
+                :args ["#1"]}       ; eid
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: tnseq phase-0d"
                        "Finished"]} ; subject, body intro
 

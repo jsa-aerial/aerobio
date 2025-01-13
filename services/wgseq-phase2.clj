@@ -10,7 +10,8 @@
                 :name "sfj-breseq-runs"}
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#4"        ; recipient
+                :args ["#1"              ; eid
+                       "#4"              ; recipient
                        "Aerobio job status: wgseq phase-2"
                        "Finished"]}      ; subject, body intro
          :edges {:dir  [:bseq]

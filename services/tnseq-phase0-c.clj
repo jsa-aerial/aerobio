@@ -4,7 +4,7 @@
 
  :graph {:bcstats {:type "func"
                :name "collect-barcode-stats"
-               :args ["#1"]}      ; EID
+               :args ["#1"]}        ; eid
          :wrtstats {:type "func"
                     :name "write-bcmaps"}
          :setexp {:type "func"
@@ -15,7 +15,8 @@
                 :name "collapser"}
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: tnseq phase-0c"
                        "Finished"]} ; subject, body intro
 

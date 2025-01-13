@@ -3,8 +3,8 @@
  :path "",
 
  :graph {:bc2fq {:type "func"
-                 :name "bcl2fastq"
-                 :args ["#1"]}
+                 :name "bc2fq"
+                 :args ["#1"]}      ; eid
          :strtscratch {:type "func"
                        :name "start-scratch-space"}
          :setexp {:type "func"
@@ -13,7 +13,8 @@
                         :name "split-filter-fastqs"}
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: rnaseq phase-0"
                        "Finished"]} ; subject, body intro
 

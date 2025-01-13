@@ -12,7 +12,8 @@
                 :name "aggregate"}
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#6"         ; recipient
+                :args ["#1"         ; eid
+                       "#6"         ; recipient
                        "Aerobio job status: featureCounts"
                        "Finished"]} ; subject, body intro
          :edges {:dir [:fcnt] :fcnt [:aggr] :aggr [:mail]}}

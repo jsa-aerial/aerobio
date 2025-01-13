@@ -5,20 +5,22 @@
 
  :graph {:fit  {:type "func"
                 :name "tnseq-fitness"
-                :args ["#1" "#2"]} ; eid, compfile
+                :args ["#1" "#2"]}   ; eid, compfile
          :mail1 {:type "func"
                  :name "mailp2"
-                 :args ["#3"              ; recipient
+                 :args ["#1"         ;eid
+                        "#3"         ; recipient
                         "Aerobio job status: tnseq phase-2a fitness"
-                        "Finished"]}      ; subject, body intro
+                        "Finished"]} ; subject, body intro
          :tnag  {:type "func"
                  :name "tnseq-aggregate"
-                 :args ["#1" "#2"]} ; eid, compfile
+                 :args ["#1" "#2"]}  ; eid, compfile
          :mail2 {:type "func"
                  :name "mailp2"
-                 :args ["#3"        ; recipient
+                 :args ["#1"         ; eid
+                        "#3"         ; recipient
                         "Aerobio job status: tnseq phase-2b aggregation"
-                        "Finished"]}      ; subject, body intro
+                        "Finished"]} ; subject, body intro
 
          :edges {:fit    [:mail1]
                  :mail1  [:tnag]

@@ -8,9 +8,10 @@
                  :args ["#1" "#2" (pg/done)]} ; eid, compfile, Done indicator
          :mail {:type "func"
                 :name "mailp2"
-                :args ["#3"        ; recipient
+                :args ["#1"         ; eid
+                       "#3"         ; recipient
                        "Aerobio job status: tnseq phase-2b Aggregation"
-                       "Finished"]}      ; subject, body intro
+                       "Finished"]} ; subject, body intro
          :edges {:tnag [:mail]}}
 
  ;; instructional data used in /help

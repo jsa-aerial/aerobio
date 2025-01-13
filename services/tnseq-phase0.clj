@@ -4,7 +4,7 @@
 
  :graph {:bc2fq {:type "func"
                  :name "bc2fq"
-                 :args ["#1"]}
+                 :args ["#1"]}      ; eid
          :strtscratch {:type "func"
                        :name "start-scratch-space"}
          :bcstats {:type "func"
@@ -19,7 +19,8 @@
                 :name "collapser"}
          :mail {:type "func"
                 :name "mailit"
-                :args ["#2"         ; recipient
+                :args ["#1"         ; eid
+                       "#2"         ; recipient
                        "Aerobio job status: tnseq phase-0"
                        "Finished"]} ; subject, body intro
 
