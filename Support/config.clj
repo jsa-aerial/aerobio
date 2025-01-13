@@ -36,24 +36,29 @@
    :refseq77-bact "RefSeq77/Bacteria/refseq77_bacteria_complete"
    :default :refseq77}}
 
- :email {:default      "the-default-acct@yourorg.orgtype"
-         ;; All your other users
-         ;; keyword version of user acct name as key,
-         ;; string of full email address as value
-         }
 
- :mailcfg {:smtphost "smtp.gmail.com"
-           :sender   "donotreply.iobio@bc.edu"
-           :user     "your-aerobio-email-acct@something.something"
-           :pass     "the-pw-for-acct"}
+ :comcfg {:mode :zulip ; or :email or [:zulip :email]
+          :email {:accnts {:default "the-default-acct@yourorg.orgtype"
+                           ;; All your other users
+                           ;; keyword version of user acct name as key,
+                           ;; string of full email address as value
+                           }
 
- :zulip {:apiurl "https://myorganization.zulipchat.com/api/v1/messages"
-         ;;; :content-type "application/x-www-form-urlencoded"
-         :form-params {:type "stream"
-                       :to "Job Results"
-                       :topic "" ; Topic for results
-                       :content "" ; Result msg info
-                       }
-         :basic-auth ["mybot@myorganization.zulipchat.com"
-                      "mybot's API key"]}
+                  :mailcfg {:smtphost "smtp.gmail.com"
+                            :sender   "donotreply.aerobio@yourorg.orgtype"
+                            :user     "aerobio@yourorg.orgtype"
+                            :pass     "the-pw-for-acct"}}
+
+          :zulip {:apiurl "https://myorganization.zulipchat.com/api/v1/messages"
+                  ;; :content-type "application/x-www-form-urlencoded"
+                  :accnts {:default "default scientist accnt name"
+                           ; 
+                           }
+                  :options {:form-params {:type "stream"
+                                          :to "Job Results"
+                                          :topic "" ; Topic for results
+                                          :content "" ; Result msg info
+                                          }
+                            :basic-auth ["mybot@myorganization.zulipchat.com"
+                                         "mybot's API key"]}}}
 }
