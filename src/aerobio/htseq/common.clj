@@ -233,6 +233,10 @@
   [exp-samp-info]
   (-> exp-samp-info :exp-rec ffirst keyword))
 
+(defn get-experimenter
+  [exp-samp-info]
+  (-> exp-samp-info :exp-rec first second))
+
 
 (defn ensure-dirs [& dirs]
   (reduce (fn[Res dir]
@@ -453,6 +457,7 @@
                        first (into #{}) (#(% "single-index"))))))
         ((fn[m]
            (assoc m :exp (get-exp-type (m :exp-sample-info))
+                  :experimenter (get-experimenter (m :exp-sample-info))
                   :sample-names
                   (->> (m :exp-sample-info)
                        :bc-xref
@@ -899,6 +904,7 @@
                   (fn ([] false) ([x y] #_(println x y) (or x y)))
                   :|| tuple futs-vecs)))))
     (pg/send-msg
+     eid
      [recipient]
      (str "Aerobio job status: " exp " phase-1  " eid)
      (str "Finished " (if repk "replicates" "merged") " for " eid ))))
