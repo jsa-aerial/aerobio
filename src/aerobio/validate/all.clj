@@ -76,9 +76,11 @@
 (defn norm-action [action]
   (if (not (string? action))
     action
-    (if-let [x (re-find #"phase-[0-9]" action)]
+    (if-let [x (re-find #"phase-0[bcd]" action)]
       x
-      action)))
+      (if-let [x (re-find #"phase-[0-9]" action)]
+        x
+        action))))
 
 (defn validate-exp [EID action]
   (let [action (norm-action action)
@@ -95,6 +97,11 @@
                     "phase-0"
                     (filter #(not (empty? %))
                             [(validate-phase-0 EID)
+                             (validate-sample-sheet EID)
+                             (validate-exp-sample-sheet EID)])
+                    ("phase-0b" "phase-0c" "phase-0d")
+                    (filter #(not (empty? %))
+                            [(validate-expexists EID)
                              (validate-sample-sheet EID)
                              (validate-exp-sample-sheet EID)])
                     "phase-1"
