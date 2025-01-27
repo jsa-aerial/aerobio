@@ -30,7 +30,10 @@
   [:require
    [clojure.core.reducers :as r]
    [clojure.data.csv :as csv]
+   [clojure.data.json :as json]
+   [clojure.xml :as xml]
    [clojure.string :as cljstr]
+   [clojure.set :as set]
 
    [tech.v3.dataset :as ds]
    [tablecloth.api :as tc]
@@ -72,6 +75,72 @@
 (defn get-instrument-make [eid]
   (or (get-exp-info eid :instrument-make)
       (instrument-make eid)))
+
+
+;;; (ns-unmap 'aerobio.htseq.common 'get-seqrun-params)
+(defmulti get-seqrun-params
+  "Get a basic commmon set of sequencer run parameters"
+  {:arglists '([eid])}
+  (fn[eid] (get-instrument-make eid)))
+
+(defmethod get-seqrun-params :illum
+  [eid]
+  (let [expbase (pams/get-params :exp-base)
+        cycle-tags #{:PlannedRead1Cycles
+                     :PlannedRead2Cycles
+                     :PlannedIndex1ReadCycles
+                     :PlannedIndex2ReadCycles}
+        cycle-xref {:PlannedRead1Cycles :R1
+                    :PlannedRead2Cycles :R2
+                    :PlannedIndex1ReadCycles :i7
+                    :PlannedIndex2ReadCycles :i5}
+        all-tags (set/union cycle-tags
+                            #{:ExperimentName
+                              :RTAVersion
+                              :RunStartDate
+                              :ComputerName})
+        tag-xref {:RTAVersion :inst-version
+                  :ExperimentName :run-name
+                  :RunStartDate :run-date
+                  :ComputerName :inst-name}
+        runmanifest (fs/join expbase eid "RunParameters.xml")]
+    (-> runmanifest
+        (xml/parse) :content
+        (->>
+         (keep (fn[rec]
+                 (when (all-tags (rec :tag)) rec))) ;)))
+         (reduce (fn[M m]
+                   (let [k (m :tag)
+                         v (-> :content m first)]
+                     (if (cycle-tags k)
+                       (assoc-in M [:cycles (cycle-xref k)] v)
+                       (assoc M (tag-xref k) v))))
+                 {})))))
+
+(defmethod get-seqrun-params :elembio
+  [eid]
+  (let [expbase (pams/get-params :exp-base)
+        cycle-xref {:R1 :R1
+                    :R2 :R2
+                    :I1 :i7
+                    :I2 :i5}
+        ks [:Cycles :InstrumentName :RunName
+            :PlatformVersion :Date]
+        k-xref {:Cycles :cycles
+                :PlatformVersion :inst-version
+                :RunName :run-name
+                :Date :run-date
+                :InstrumentName :inst-name}
+        runmanifest (fs/join expbase eid "RunParameters.json")]
+    (-> runmanifest slurp (json/read-str :key-fn keyword)
+        (#(mapv (fn[k] [k (% k)]) ks))
+        (->> (reduce (fn [M [k v]]
+                       (if (= k :Cycles)
+                         (assoc M :cycles
+                                (->> v (mapv (fn[[k v]] [(cycle-xref k) v]))
+                                     (into {})))
+                         (assoc M (k-xref k) v)))
+                     {})))))
 
 
 ;;; (ns-unmap 'aerobio.htseq.common 'get-sample-data)
@@ -267,14 +336,32 @@
             (fs/re-directory-files exp-fqdir "fastq.gz"))))
 
 
+(defn move-fqs [eid fqs fq-otdir]
+  (if (or (not= :tnseq (get-exp-info eid :exp))
+          (= 51 (-> eid get-exp (get-in [:run-params :cycles :R1]))))
+    (doseq [fq fqs]
+      (fs/copy fq (fs/join fq-otdir (fs/basename fq))))
+    ;; Tn-Seq, but part of a multi exp run with more cycles.
+    (doseq [fq fqs]
+      (letio [otfile (fs/join fq-otdir (fs/basename fq))
+              in (io/open-file fq :in)
+              ot (io/open-file otfile :out)]
+        (loop [fqrec (bufiles/read-fqrec in)]
+          (if (nil? (fqrec 0))
+            :done
+            (let [[hd sq _ qc] fqrec
+                  nsq (subs sq 0 51)
+                  nqc (subs qc 0 51)]
+              (bufiles/write-fqrec ot [hd nsq _ nqc])
+              (recur (bufiles/read-fqrec in)))))))))
+
 (defn start-scratch-space [eid]
   (let [base (pams/get-params :scratch-base)
         scratch-dir (fs/join base eid)
         fqs (get-fqs eid)
         fq-otdir (fs/join scratch-dir (pams/get-params :fastq-dirname))]
     (ensure-dirs scratch-dir fq-otdir)
-    (doseq [fq fqs]
-      (fs/copy fq (fs/join fq-otdir (fs/basename fq))))
+    (move-fqs eid fqs fq-otdir)
     eid))
 
 
@@ -420,6 +507,7 @@
         cfgfile (fs/join expdir "cmd.config")]
     (-> {}
         (assoc :sample-sheet (get-sample-info eid))
+        (assoc :run-params (get-seqrun-params eid))
         ((fn[m]
            (assoc m :base base
                   :instrument-make instrmake
