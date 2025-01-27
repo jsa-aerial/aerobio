@@ -60,3 +60,6 @@
 --skip-qc-report SELECTION      Do not generate HTML QC report.
 --split-lanes                   Split FASTQ files by lane
 --strict                        any invalid or missing input file will terminate execution"
+
+ }
+
