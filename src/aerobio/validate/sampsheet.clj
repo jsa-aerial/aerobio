@@ -23,7 +23,11 @@
 ;;; EOL check
 ;;;
 (defn samp-eolok [EID]
-  (eolOK? (make-sheet-fspec EID "SampleSheet.csv")))
+  (let [name (case (ac/get-instrument-make EID)
+               :illum "SampleSheet.csv"
+               :elembio "RunManifest.csv"
+               "Unknown-instrument-make.csv")]
+    (eolOK? (make-sheet-fspec EID name))))
 
 (s/def ::samp-eol samp-eolok)
 
