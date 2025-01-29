@@ -991,11 +991,21 @@
                       abort?))
                   (fn ([] false) ([x y] #_(println x y) (or x y)))
                   :|| tuple futs-vecs)))))
-    (pg/send-msg
-     eid
-     [recipient]
-     (str "Aerobio job status: " exp " phase-1  " eid)
-     (str "Finished " (if repk "replicates" "merged") " for " eid ))))
+    (prn
+     (pg/send-msg
+      eid
+      [recipient]
+      (str "Aerobio job: " exp " phase-1  " eid)
+      (str "\nFinished\n "
+           (with-out-str (clojure.pprint/pprint (@status-atom :DONE []))))))
+
+    (reduce (fn[res sampres]
+              (cond (= res (second sampres) :success)
+                    :success
+                    (= (second sampres) :success)
+                    [:mixed-results "Not all samples finished successfully"]
+                    :else :FAILED))
+            :success (@status-atom :DONE))))
 
 #_(let [a (atom [])]
   [(coll/reducem
