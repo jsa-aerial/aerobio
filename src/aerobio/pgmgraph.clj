@@ -128,7 +128,8 @@
 (defmulti send-msg* (fn[& args] (first args)))
 
 (defmethod send-msg* :email
-  [& args] args
+  [& args]
+  (infof "Send Email msg - args %s" (rest args))
   (let [[eid recipients subject body] (rest args)
         econfig (pams/get-params [:comcfg :email])
         {:keys [smtphost sender user pass]} (econfig :mailcfg)
@@ -148,7 +149,8 @@
         :body body})))
 
 (defmethod send-msg* :zulip
-  [& args] args
+  [& args]
+  (infof "Send Zulip msg - args %s" (rest args))
   (let [[eid recipients subject body] (rest args)
         zconfig (pams/get-params [:comcfg :zulip])
         accnts (zconfig :accnts)
@@ -163,7 +165,7 @@
         {:keys [status error]} @(http/post apiurl options)]
     (if error
       (print-str "Failed, exception is " error)
-      (print-str "Async HTTP POST: " status))))
+      (print-str "Post success. Msg sent: " content))))
 
 (defmethod send-msg* :default
   [& args]
