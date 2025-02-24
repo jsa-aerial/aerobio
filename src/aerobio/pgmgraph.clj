@@ -106,21 +106,24 @@
 ;;; (ns-unmap 'aerobio.pgmgraph 'bc2fq)
 (defmulti bc2fq
   "Call the appropriate binary image files to fastq conversion tool. This is based on the make of the sequencer"
-  {:arglists '([make argmap])}
-  (fn [make argmap] make))
+  {:arglists '([make & args])}
+  (fn [make & args] make))
 
 (defmethod bc2fq :illum
-  [_ argmap]
-  (let [params (get-in argmap [:illum :params])
-        converter (get-in argmap [:illum :converter])]
-    (if (= converter :bcl2fastq)
-      (apply bcl2fastq params)
-      (apply bcl-convert params))))
+  ([_ argmap]
+   (let [params (get-in argmap [:illum :params])
+         converter (get-in argmap [:illum :converter])]
+     (if (= converter :bcl2fastq)
+       (apply bcl2fastq params)
+       (apply bcl-convert params))))
+  ([_ indir outdir & args]))
 
 (defmethod bc2fq :elembio
-  [_ argmap]
-  (let [params (get-in argmap [:elembio :params])]
-    (apply bases2fastq params)))
+  ([_ argmap]
+   (let [params (get-in argmap [:elembio :params])]
+     (apply bases2fastq params)))
+  ([_ expdir datadir & switches]
+   (apply bases2fastq expdir datadir switches)))
 
 
 
@@ -461,6 +464,7 @@
                (sch/optional-key :inputs) [sch/Str]
                (sch/optional-key :args)   [sch/Any]
                sch/Keyword sch/Any}}
+      (sch/optional-key :root) sch/Keyword
       (sch/optional-key :edges) {sch/Keyword [sch/Keyword]}})
 
 (defn xform-node-graph [G get-toolinfo inputs]
