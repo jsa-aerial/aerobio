@@ -89,6 +89,7 @@ kwcmd = cli.keyword("cmd")
 kwuser = cli.keyword("user")
 kwphase = cli.keyword("phase")
 kwaction = cli.keyword("action")
+kwargs = cli.keyword("args")
 kwmodifier = cli.keyword("modifier")
 kweid = cli.keyword("eid")
 kwcompfile = cli.keyword("compfile")
@@ -112,7 +113,7 @@ def args2map ():
     (cmd,arglist) = getarg(arglist)
     argmap[kwcmd] = cli.keyword(cmd)
 
-    if (cmd != 'check') and (len(arglist) < 2):
+    if (len(arglist) < 1):
         print(pkg_resources.resource_string(
             __name__, "resources/usage.txt").decode("utf-8").strip())
         sys.exit()
@@ -149,10 +150,8 @@ def args2map ():
         (eid,arglist) = getarg(arglist)
         argmap[kweid] = eid
     else:
-        (action,arglist) = getarg(arglist)
-        argmap[kwaction] = action
-        (eid,arglist) = getarg(arglist)
-        argmap[kweid] = eid
+        argmap[kwargs] = arglist
+        argmap[kweid] = "fake-eid"
     return argmap
 
 
