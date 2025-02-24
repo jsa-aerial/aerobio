@@ -34,6 +34,7 @@
   {:author "Jon Anthony"}
 
   (:require
+   [clojure.tools.cli :refer [parse-opts]]
 
    ;; Our parameter db
    [aerobio.params :as pams]
@@ -43,6 +44,13 @@
    [aerobio.htseq.tnseq :as htts]
    ))
 
+
+(def cli-options
+  ;; An option with a required argument
+  [["-u" "--user USER" "user to receive msgs"
+    :parse-fn #(-> % str)
+    :default "tvolab"]
+   ])
 
 
 (defmulti
@@ -56,9 +64,20 @@
 ;;; V 2.7+ we no longer directly use OS accounts, for msg recipients.
 ;;; We now force experimenters to correctly use the 'experimenter'
 ;;; field in the experiment record of the Exp-SampleSheet.
-(defn get-msg-recipient
-  [eid]
+
+;;; 2.8+ we need a dispatch on type of run - std HTS or generic
+;;; JOB. There may be more types as we go on, but for now at least
+;;; these two.
+(ns-unmap 'aerobio.actions 'get-msg-recipient)
+(defmulti get-msg-recipient (fn[kind & args] kind))
+
+(defmethod get-msg-recipient :hts
+  [_ eid]
   (cmn/get-exp-info eid :experimenter))
+
+(defmethod get-msg-recipient :job
+  [_ & args]
+  (-> args (parse-opts cli-options) :options :user))
 
 
 (defmethod action :run
@@ -67,7 +86,7 @@
         {:keys [user cmd phase modifier compfile]} params
         rep (if (= modifier "replicates") :rep nil)
         exp (cmn/get-exp-info eid :exp)
-        user (get-msg-recipient eid)]
+        user (get-msg-recipient :hts eid)]
     {:status status
      :fut  (cmn/launch-action
             eid user
@@ -76,6 +95,15 @@
             :rep rep
             :compfile compfile
             :status status)}))
+
+
+(defmethod action :job
+  [_ arglist get-toolinfo template]
+  (let [status (atom {:done []})
+        user (apply get-msg-recipient :job arglist)]
+    {:status status
+     :fut (cmn/launch-job
+           user arglist get-toolinfo template)}))
 
 
 ;;; phase-0b remove Fastqs, Out, Samples, Stats
@@ -95,7 +123,7 @@
         rep (if (= modifier "replicates") :rep nil)
         outdir (cmn/get-exp-info eid :out)
         exp (cmn/get-exp-info eid :exp)
-        user (get-msg-recipient eid)]
+        user (get-msg-recipient :hts eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
@@ -111,7 +139,7 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        user (get-msg-recipient eid)]
+        user (get-msg-recipient :hts eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
@@ -125,7 +153,7 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        user (get-msg-recipient eid)]
+        user (get-msg-recipient :hts eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
@@ -140,7 +168,7 @@
   (let [status (atom {:done []})
         exp (cmn/get-exp-info eid :exp)
         {:keys [user cmd phase modifier compfile]} params
-        user (get-msg-recipient eid)]
+        user (get-msg-recipient :hts eid)]
     {:status status
      :fut (cmn/launch-action
            eid user
