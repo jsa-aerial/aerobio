@@ -65,6 +65,8 @@
    [aerial.hanasu.server :as srv]
    [aerial.hanasu.common :as hc]
 
+   [tablecloth.api :as tc]
+
    [aerial.fs :as fs]
    [aerial.utils.misc :as aum]
    [aerial.utils.io :as aio]
@@ -158,18 +160,21 @@
 
 (defmethod config-tool :create
   [_ f]
+  (infof "Service Create %s" f)
   (swap! tool-configs
          assoc (-> f fs/basename (str/split #"\.") first)
          (read-tool-config f)))
 
 (defmethod config-tool :modify
   [_ f]
+  (infof "Service Modify %s" f)
   (swap! tool-configs
          assoc (-> f fs/basename (str/split #"\.") first)
          (read-tool-config f)))
 
 (defmethod config-tool :delete
   [_ f]
+  (infof "Service Delete %s" f)
   (swap! tool-configs
          dissoc  (-> f fs/basename (str/split #"\.") first)))
 
@@ -240,18 +245,21 @@
 
 (defmethod config-job :create
   [_ f]
+  (infof "Job Create %s" f)
   (swap! job-configs
          assoc (-> f fs/basename (str/split #"\.") first)
          (read-job-config f)))
 
 (defmethod config-job :modify
   [_ f]
+  (infof "Job Modify %s" f)
   (swap! job-configs
          assoc (-> f fs/basename (str/split #"\.") first)
          (read-job-config f)))
 
 (defmethod config-job :delete
   [_ f]
+  (infof "Job Delete %s" f)
   (swap! job-configs
          dissoc  (-> f fs/basename (str/split #"\.") first)))
 
@@ -517,6 +525,17 @@
             (send-end-msg ws {:op :validate :payload "All checks pass!"})))))))
 
 
+(defmethod user-msg :job [msg]
+  (let [{:keys [ws jobname args]} (msg :params)
+        get-toolinfo #(get-toolinfo % "DummY")
+        template (get-jobinfo jobname)]
+    ;(actions/action :job  args get-toolinfo template)
+    (send-end-msg
+     ws {:op :error
+         :payload (format "Generic Job NYI: '%s', '%s' %s"
+                          jobname args template)})))
+
+
 (defn msg-handler [msg]
   (let [{:keys [ws data]} msg
         {:keys [op data]} data
@@ -529,15 +548,15 @@
     (infof "MSG-HANDLER: MSG %s" (msg :data))
     #_(infof "PARAMS : %s" params)
     (try
-      (case op
-        (:done "done")
+      (cond
+        (#{:done "done"} op)
         (do (infof "WS: %s, sending stop msg" ws)
             (srv/send-msg ws {:op :stop :payload {}} :noenvelope true))
 
-        (:status :check)
+        (#{:status :check} op)
         (user-msg {:op op :params params})
 
-        (:run :compare :xcompare :aggregate)
+        (#{:run :compare :xcompare :aggregate} op)
         (let [vmsg (vds/validate-expexists eid)
               vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
           (if (not-empty vmsg)
@@ -552,8 +571,16 @@
                       params (assoc params :template template)]
                   (user-msg {:op op :params params}))))))
 
+        (job-exists? (name op))
+        (user-msg {:op :job
+                   :params {:ws ws :jobname (name op) :args (data :args)}})
+        
+
+        :else
         (send-end-msg
-         ws {:op :error :payload (format "No such cmd '%s'" (name op))}))
+         ws {:op :error
+             :payload (format "No such cmd/job '%s', args: '%s'"
+                              (name op) (data :args))}))
       (catch Error e
         (errorf "ERROR %s: %s, %s" eid op (or (.getMessage e) e))
         (send-end-msg ws {:op :validate :payload (.getMessage e)}))
