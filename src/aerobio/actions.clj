@@ -68,7 +68,7 @@
 ;;; 2.8+ we need a dispatch on type of run - std HTS or generic
 ;;; JOB. There may be more types as we go on, but for now at least
 ;;; these two.
-(ns-unmap 'aerobio.actions 'get-msg-recipient)
+;;; (ns-unmap 'aerobio.actions 'get-msg-recipient)
 (defmulti get-msg-recipient (fn[kind & args] kind))
 
 (defmethod get-msg-recipient :hts
