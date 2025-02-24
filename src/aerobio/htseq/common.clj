@@ -201,7 +201,7 @@
                               "2" "G"
                               nil)]
                [nm (str i7bc i5bc fakebase)])))
-      (remove (fn[x] (-> x first (= "PhiX"))))))
+      (remove (fn[x] (->> x first (re-find #"PhiX"))))))
 
 
 (defn get-sample-info-colkws [eid]
@@ -919,6 +919,14 @@
                 true
                 false)))
           false futs-vec))
+
+
+(defn launch-job
+  "Generic job runner.  Construct and instantiate the program graph.  Launch as a future and return final status."
+  [arglist get-toolinfo template]
+  (let [job template
+        root (job :root)
+        cfg (-> (assoc-in job [:nodes root :args] arglist))]))
 
 
 (defn run-phase-0
