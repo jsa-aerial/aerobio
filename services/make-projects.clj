@@ -27,7 +27,7 @@
                            (tc/rows)
                            (->> (coll/dropv-until #(= "SampleName" (first %)))
                                 (drop 1)
-                                (drop-while #(re-matches #"PhiX" (first %)))
+                                (drop-while #(re-find #"PhiX" (first %)))
                                 (group-by last)))
                projfqs (->> projmap keys sort
                             (map #(fs/join expbase eid fqpath % "*.fastq.gz")))
