@@ -4,18 +4,19 @@
 
  :graph {:bc2fq {:type "func"
                  :name "bc2fq"
-                 :args ["#1"   ; EID
-                        "#2"   ; expdir
-                        "#3"   ; data dir
+                 :args ["#2"   ; EID
+                        "#3"   ; expdir
+                        "#4"   ; data dir
                         "--group-fastq" "--num-threads" "32"]}
          :mkprojs {:type "func"
                    :name "make-projects"}
          :endmsg {:type "func"
                   :name "mailit"
-                  :args ["#1"
-                         "#4"
-                         "Splitting output"
-                         "Finished"]}
+                  :args ["#2"  ; EID
+                         "#1"  ; user to send to
+                         "Split-Output" ; subject/job
+                         "Finished:"    ; Intro
+                         ]}
          :edges {:bc2fq [:mkprojs]
                  :mkprojs [:endmsg]}}
  :description "Job for splitting multi experiment sequencer runs"}
