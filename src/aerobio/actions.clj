@@ -50,15 +50,10 @@
   [["-u" "--user USER" "user to receive msgs"
     :parse-fn #(-> % str)
     :default "tvolab"]
+   ["-e" "--eid EID" "Experiment ID for job"
+    :parse-fn #(-> % str)
+    :default nil]
    ])
-
-
-(defmulti
-  ^{:doc "Dispatch to server REST action cmd. Among the various actions available are 'run', 'compare' and 'sample'. args is the set of cmd specific parameter values."
-    :arglists '([cmd & args])}
-  action
-  (fn[cmd & args] (keyword cmd)))
-
 
 
 ;;; V 2.7+ we no longer directly use OS accounts, for msg recipients.
@@ -75,9 +70,24 @@
   [_ eid]
   (cmn/get-exp-info eid :experimenter))
 
+
+(defn get-arguments [arglist])
+
 (defmethod get-msg-recipient :job
   [_ & args]
-  (-> args (parse-opts cli-options) :options :user))
+  (let [argmap (parse-opts args cli-options :in-order true)
+        {:keys [user eid]} (argmap :options)
+        arglist (argmap :arguments)]
+    (-> [user eid] (concat arglist) vec)))
+
+
+
+
+(defmulti
+  ^{:doc "Dispatch to server REST action cmd. Among the various actions available are 'run', 'compare' and 'sample'. args is the set of cmd specific parameter values."
+    :arglists '([cmd & args])}
+  action
+  (fn[cmd & args] (keyword cmd)))
 
 
 (defmethod action :run
@@ -100,10 +110,10 @@
 (defmethod action :job
   [_ arglist get-toolinfo template]
   (let [status (atom {:done []})
-        user (apply get-msg-recipient :job arglist)]
+        arglist (apply get-msg-recipient :job arglist)]
     {:status status
      :fut (cmn/launch-job
-           user arglist get-toolinfo template)}))
+           arglist get-toolinfo template status)}))
 
 
 ;;; phase-0b remove Fastqs, Out, Samples, Stats
