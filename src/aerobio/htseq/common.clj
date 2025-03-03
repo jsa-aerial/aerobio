@@ -886,7 +886,8 @@
   ""
   [cfg get-toolinfo & {:keys [run prn]}]
   (assert (not (and run prn)) "FLOW-PROGRAM, run and prn mutually exclusive")
-  (let [cfg (-> cfg (pg/config-pgm-graph-nodes get-toolinfo nil nil)
+  (let [cfg (-> cfg
+                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                 pg/config-pgm-graph)]
     (cond
       run (->> cfg pg/make-flow-graph pg/run-flow-program)
@@ -921,12 +922,22 @@
           false futs-vec))
 
 
-(defn launch-job
-  "Generic job runner.  Construct and instantiate the program graph.  Launch as a future and return final status."
-  [arglist get-toolinfo template]
+(defn run-job
+  "Generic job runner.  Construct and instantiate the program graph.
+  Launch as a future and return final status."
+  [arglist get-toolinfo template status]
   (let [job template
         root (job :root)
-        cfg (-> (assoc-in job [:nodes root :args] arglist))]))
+        cfg (-> (assoc-in job [:nodes root :args] arglist))
+        futs-vec (flow-program cfg get-toolinfo :run true)
+        ]
+    (job-flow-node-results futs-vec status)
+    (@status :done)))
+
+(defn launch-job
+  [arglist get-toolinfo template status]
+  (pg/future+
+   (run-job arglist get-toolinfo template status)))
 
 
 (defn run-phase-0

@@ -528,12 +528,11 @@
 (defmethod user-msg :job [msg]
   (let [{:keys [ws jobname args]} (msg :params)
         get-toolinfo #(get-toolinfo % "DummY")
-        template (get-jobinfo jobname)]
-    ;(actions/action :job  args get-toolinfo template)
-    (send-end-msg
-     ws {:op :error
-         :payload (format "Generic Job NYI: '%s', '%s' %s"
-                          jobname args template)})))
+        template (get-jobinfo jobname)
+        {:keys [status fut]} (actions/action :job  args get-toolinfo template)]
+    (aerial.utils.misc/sleep 250)
+    (swap! dbg (fn[m] (assoc m :job fut)))
+    (send-end-msg ws {:op :launch :payload (str jobname "\n" args "\n" fut)})))
 
 
 (defn msg-handler [msg]
@@ -545,7 +544,7 @@
         params {:user user, :cmd op, :eid eid
                 :phase phase, :action action :compfile compfile
                 :modifier modifier, :ws ws}]
-    (infof "MSG-HANDLER: MSG %s" (msg :data))
+    (infof "MSG-HANDLER (%s): MSG %s" *ns* (msg :data))
     #_(infof "PARAMS : %s" params)
     (try
       (cond
