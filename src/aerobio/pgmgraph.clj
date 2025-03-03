@@ -160,7 +160,7 @@
         user (-> recipients first (accnts (accnts :default)))
         job-name subject
         result body
-        content (format "@**%s** Results for %s %s" user job-name result)
+        content (format "@**%s** Results for %s\n %s" user job-name result)
         apiurl (zconfig :apiurl)
         options (-> zconfig :options
                     (assoc-in [:form-params :content] content)
@@ -238,6 +238,15 @@
 (defn func? [x]
   (and (map? x) (:func x)
        (fn? (:func x))))
+
+(defn node-type [x]
+  (cond (stream? x)  :stream
+        (jstream? x) :jstream
+        (bsurl? x)   :bsurl
+        (url? x)     :url
+        (tool? x)    :tool
+        (func? x)    :func
+        (proc? x)    :proc))
 
 (defn destroy-procs [procs]
   (map shl/destroy (filter proc? procs)))
@@ -587,10 +596,20 @@
       proc)))
 
 (defn make-func-core [x]
-  (assoc x :func (eval (x :src))))
+  (debugf "MAKE-FUNC-CORE %s" (x :id))
+  ;; We no longer want to compile here - maybe never made sense.
+  ;; Function nodes have their src compiled upon loading/updating in
+  ;; Server. At one point, the path from the server to here had the
+  ;; current name space (*ns*) as aerobio.server, but this is now
+  ;; clojure.core.  That makes compilation fail. We could use binding
+  ;; of *ns*, but it makes little to no sense (at least **now**) to
+  ;; compile per job run anyway. This issue only prevented the new
+  ;; generic jobs from working.  Which is another mystery - how did
+  ;; HTS runs work with per job compilation of func nodes??
+  x)
 
 (defn make-node-core [x]
-  (debugf "MAKE-NODE-CORE: %s, %s" (:id x) (type x))
+  (debugf "MAKE-NODE-CORE: %s, %s" (:id x) (node-type x))
   (let [ncore
         (cond (stream? x) x
               (bsurl? x)  x
@@ -896,7 +915,7 @@
         (let [goch (go<!chans
                     chs ch data
                     (try
-                      #_(infof "%s: Data %s" (funcm :id) (type data))
+                      (infof "%s: Data %s" (funcm :id) (type data))
                       (cond
 
                         repeat?
