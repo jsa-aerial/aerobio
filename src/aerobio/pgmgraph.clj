@@ -596,17 +596,13 @@
       proc)))
 
 (defn make-func-core [x]
-  (debugf "MAKE-FUNC-CORE %s" (x :id))
-  ;; We no longer want to compile here - maybe never made sense.
-  ;; Function nodes have their src compiled upon loading/updating in
-  ;; Server. At one point, the path from the server to here had the
-  ;; current name space (*ns*) as aerobio.server, but this is now
-  ;; clojure.core.  That makes compilation fail. We could use binding
-  ;; of *ns*, but it makes little to no sense (at least **now**) to
-  ;; compile per job run anyway. This issue only prevented the new
-  ;; generic jobs from working.  Which is another mystery - how did
-  ;; HTS runs work with per job compilation of func nodes??
-  x)
+  (debugf "MAKE-FUNC-CORE %s, NS: %s" (x :id) *ns*)
+  ;;; Well, turns out we *do* want to still compile and it *did*
+  ;;; always make sense - forgot about functions that close over
+  ;;; environments.  So, we will use binding of *ns* to
+  ;;; 'aerobio.server afterall.
+  (binding [*ns* (find-ns 'aerobio.server)]
+    (assoc x :func (eval (x :src)))))
 
 (defn make-node-core [x]
   (debugf "MAKE-NODE-CORE: %s, %s" (:id x) (node-type x))
@@ -915,7 +911,7 @@
         (let [goch (go<!chans
                     chs ch data
                     (try
-                      (infof "%s: Data %s" (funcm :id) (type data))
+                      #_(infof "%s: Data %s" (funcm :id) (type data))
                       (cond
 
                         repeat?
