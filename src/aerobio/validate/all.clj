@@ -57,18 +57,21 @@
 
 (def validate-files-exist (make-validator ::sheets? :sep "\n"))
 
-(defn validate-sheets-exist [EID]
-  (let [vstg (->> (mapv #(vector % EID) [:sampsheet :expsheet :compsheet])
-                  (into {})
-                  validate-files-exist
-                  (str/split #"\n")
-                  (filter #(not (empty? %)))
-                  (map #(format " %s. %s" %1 %2) (iterate inc 1))
-                  (cljstr/join "\n"))]
-    (with-out-str
-      (when (not (empty? vstg))
-        (print (format "Experiment '%s' - \n" EID)))
-      (print vstg))))
+(defn validate-sheets-exist [EID action]
+  ;; *** HACK, this needs to be fixed properly!
+  (if (#{:xcompare "xcompare"} action)
+    ""
+    (let [vstg (->> (mapv #(vector % EID) [:sampsheet :expsheet :compsheet])
+                    (into {})
+                    validate-files-exist
+                    (str/split #"\n")
+                    (filter #(not (empty? %)))
+                    (map #(format " %s. %s" %1 %2) (iterate inc 1))
+                    (cljstr/join "\n"))]
+      (with-out-str
+        (when (not (empty? vstg))
+          (print (format "Experiment '%s' - \n" EID)))
+        (print vstg)))))
 
 
 
@@ -85,12 +88,13 @@
 (defn validate-exp [EID action]
   (let [action (norm-action action)
         vse (validate-expexists EID)
-        vse (if (empty? vse) (validate-sheets-exist EID) vse)]
+        vse (if (empty? vse) (validate-sheets-exist EID action) vse)]
     (with-out-str
       (if (not (empty? vse))
         (print vse)
         (do
-          (set-exp-sheet-data EID)
+          (when (not (#{:xcompare "xcompare"} action)) ; **** HACK ****
+            (set-exp-sheet-data EID))
           (print (cljstr/join
                   "\n\n"
                   (case action
@@ -115,9 +119,12 @@
                             [(validate-exp-sample-sheet EID)
                              (validate-comparison-sheet EID)])
 
+                    (:xcompare "xcompare")
+                    ;; (validate-xcompare EID) NYI!!
+                    "" ; **** HACK ****
+                    
                     ("all" "phase-2"
-                     :compare "compare"
-                     :xcompare "xcompare")
+                     :compare "compare")
                     (filter #(not (empty? %))
                             [(validate-sample-sheet EID)
                              (validate-exp-sample-sheet EID)

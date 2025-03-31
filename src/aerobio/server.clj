@@ -555,7 +555,7 @@
         (#{:status :check} op)
         (user-msg {:op op :params params})
 
-        (#{:run :compare :xcompare :aggregate} op)
+        (#{:run :compare :aggregate} op)
         (let [vmsg (vds/validate-expexists eid)
               vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
           (if (not-empty vmsg)
@@ -569,6 +569,15 @@
                       template (get-jobinfo tempnm)
                       params (assoc params :template template)]
                   (user-msg {:op op :params params}))))))
+
+        (#{:xcompare} op)
+        (let [vmsg (vds/validate-expexists eid)]
+          (if (not-empty vmsg)
+            (send-end-msg ws {:op :validate :payload vmsg})
+            (let [tempnm (get-job-name :rnaseq op (or phase compfile))
+                  template (get-jobinfo tempnm)
+                  params (assoc params :template template)]
+              (user-msg {:op op :params params}))))
 
         (job-exists? (name op))
         (user-msg {:op :job
