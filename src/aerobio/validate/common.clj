@@ -171,7 +171,7 @@
   (def EID "181013_NS500751_0092_AH57C5BGX9")
 
   (print (validate-files-exist {:sampsheet EID :expsheet EID}))
-  (print (validate-sheets-exist EID))
+  (print (validate-sheets-exist EID "check"))
 
 
   (let [recs (ac/get-exp-sample-info

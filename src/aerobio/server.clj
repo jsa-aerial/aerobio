@@ -515,7 +515,7 @@
         {:keys [ws user eid]} params]
     (infof "CHECK: %s" params)
     (let [vmsg (vds/validate-expexists eid)
-          vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
+          vmsg (if (empty? vmsg) (va/validate-sheets-exist eid "check") vmsg)]
       (if (not-empty vmsg)
         (send-end-msg ws {:op :validate :payload vmsg})
         (let [_ (cmn/set-exp eid)
@@ -557,7 +557,7 @@
 
         (#{:run :compare :aggregate} op)
         (let [vmsg (vds/validate-expexists eid)
-              vmsg (if (empty? vmsg) (va/validate-sheets-exist eid) vmsg)]
+              vmsg (if (empty? vmsg) (va/validate-sheets-exist eid op) vmsg)]
           (if (not-empty vmsg)
             (send-end-msg ws {:op :validate :payload vmsg})
             (let [_ (cmn/set-exp eid)
