@@ -616,10 +616,17 @@
                          (keys (m :bcmaps)))))))
         )))
 
-(defn set-exp [eid]
-  (swap! exp-info
-         (fn[m]
-           (assoc m eid (init-exp-data eid)))))
+(defn set-exp
+  ([eid]
+   (swap! exp-info
+          (fn[m]
+            (assoc m eid (init-exp-data eid)))))
+  ([eid k v & kvs]
+   (let [infomap (->> (conj kvs v k) (partition-all 2) (mapv vec) (into {}))]
+     infomap
+     (swap! exp-info
+            (fn[m]
+              (assoc m eid infomap))))))
 
 (defn del-exp [eid]
   (swap! exp-info (fn[m] (dissoc m eid)))

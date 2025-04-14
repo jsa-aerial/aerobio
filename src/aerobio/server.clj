@@ -469,6 +469,7 @@
   (let [params (msg :params)
         {:keys [ws user eid compfile]} params]
     (infof "XCOMPARE: %s" params)
+    (cmn/set-exp eid :exp :rnaseq)
     (user-msg-body ws user eid (params :cmd) params)
     #_(send-end-msg ws {:op :status :payload "Xcomparing"})))
 
