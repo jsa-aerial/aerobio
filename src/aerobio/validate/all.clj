@@ -120,8 +120,7 @@
                              (validate-comparison-sheet EID)])
 
                     (:xcompare "xcompare")
-                    ;; (validate-xcompare EID) NYI!!
-                    "" ; **** HACK ****
+                    (validate-comparison-sheet EID)
                     
                     ("all" "phase-2"
                      :compare "compare")

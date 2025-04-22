@@ -37,6 +37,7 @@
    [clojure.string :as str]
    [clojure.pprint :refer [pprint]]
    [clojure.set :as set]
+   [clojure.data.csv :as csv]
    [clojure.data.json :as json]
    [clojure.java.io :as io]
    [clojure.tools.reader.edn :as edn]
@@ -467,9 +468,10 @@
 
 (defmethod user-msg :xcompare [msg]
   (let [params (msg :params)
-        {:keys [ws user eid compfile]} params]
+        {:keys [ws user eid compfile]} params
+        base (fs/join (pams/get-params :scratch-base) eid)]
     (infof "XCOMPARE: %s" params)
-    (cmn/set-exp eid :exp :rnaseq)
+    (cmn/init-xcompare-exp eid compfile)
     (user-msg-body ws user eid (params :cmd) params)
     #_(send-end-msg ws {:op :status :payload "Xcomparing"})))
 

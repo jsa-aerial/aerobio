@@ -616,6 +616,24 @@
                          (keys (m :bcmaps)))))))
         )))
 
+
+(defn init-xcompare-exp [eid comp-filename]
+  (let [base (fs/join (pams/get-params :scratch-base) eid)
+        expdir (fs/join base eid)
+        cfgfile (fs/join expdir "cmd.config")
+        newkvs [[:fcnts (fs/join base "Out/Fcnts")]
+                [:charts (fs/join base "Out/DGE")]
+                [:cmdsargs (get-cmds-args cfgfile)]]
+        a (->> comp-filename
+                   (fs/join (pams/get-params :nextseq-base) eid)
+                   slurp csv/read-csv rest ffirst)
+        aeid (-> a (cljstr/split #"-") first)
+        aexp (get-exp aeid)
+        akvs (mapv #(vector % (aexp %))
+                   [:exp :refs :experimenter :ncbi-sample-xref])]
+    (->> newkvs (concat akvs) flatten (apply set-exp eid))))
+
+
 (defn set-exp
   ([eid]
    (swap! exp-info
