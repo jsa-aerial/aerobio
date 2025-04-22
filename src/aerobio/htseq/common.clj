@@ -617,6 +617,7 @@
         )))
 
 
+(declare set-exp)
 (defn init-xcompare-exp [eid comp-filename]
   (let [base (fs/join (pams/get-params :scratch-base) eid)
         expdir (fs/join base eid)
