@@ -338,7 +338,7 @@
 
 (defn move-fqs [eid fqs fq-otdir]
   (if (or (not= :tnseq (get-exp-info eid :exp))
-          (= 51 (-> eid get-exp (get-in [:run-params :cycles :R1]))))
+          (>= 51 (-> eid get-exp (get-in [:run-params :cycles :R1]))))
     (doseq [fq fqs]
       (fs/copy fq (fs/join fq-otdir (fs/basename fq))))
     ;; Tn-Seq, but part of a multi exp run with more cycles.
@@ -856,10 +856,10 @@
 
     ;; If we have paired reads (R2 has data) demultiplex R2s
     ;;
-    (if no-barcodes?
-      (doseq [samp (vals illumina-sample-xref)]
-        (demux-R2-samp-no-replicates eid samp))
-      (when (ifastqs :R2)
+    (when (ifastqs :R2)
+      (if no-barcodes?
+        (doseq [samp (vals illumina-sample-xref)]
+          (demux-R2-samp-no-replicates eid samp))
         (let [futs (mapv #(pg/future+ (demux-R2-samp eid %))
                          (vals illumina-sample-xref))]
           (mapv deref futs))))
