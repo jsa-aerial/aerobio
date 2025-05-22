@@ -27,7 +27,10 @@ def appmsg (ws, data):
         print(payload)
     elif op == cli.keyword("error"):
         print("")
-        print("Error :", payload)
+        if ("Error" == payload[0:5]):
+            print(payload)
+        else:
+            print("Error :", payload)
     elif op == cli.keyword("launch"):
         print("")
         print("Job launch: ", payload)
@@ -105,18 +108,13 @@ def args2map ():
     fullArgs = sys.argv
     arglist = fullArgs[1:]
 
-    if (len(arglist) < 2):
+    if (len(arglist) < 1):
         print(pkg_resources.resource_string(
             __name__, "resources/usage.txt").decode("utf-8").strip())
         sys.exit()
 
     (cmd,arglist) = getarg(arglist)
     argmap[kwcmd] = cli.keyword(cmd)
-
-    if (len(arglist) < 1):
-        print(pkg_resources.resource_string(
-            __name__, "resources/usage.txt").decode("utf-8").strip())
-        sys.exit()
 
     if cmd == 'run':
         (phase,arglist) = getarg(arglist)
