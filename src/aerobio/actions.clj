@@ -46,15 +46,6 @@
    ))
 
 
-(def cli-options
-  ;; An option with a required argument
-  [["-u" "--user USER" "user to receive msgs"
-    :parse-fn #(-> % str)
-    :default "tvolab"]
-   ["-e" "--eid EID" "Experiment ID for job"
-    :parse-fn #(-> % str)
-    :default nil]
-   ])
 
 
 ;;; V 2.7+ we no longer directly use OS accounts, for msg recipients.
