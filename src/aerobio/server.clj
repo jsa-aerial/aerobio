@@ -532,10 +532,15 @@
   (let [{:keys [ws jobname args]} (msg :params)
         get-toolinfo #(get-toolinfo % "DummY")
         template (get-jobinfo jobname)
-        {:keys [status fut]} (actions/action :job  args get-toolinfo template)]
+        {:keys [error status fut]} (actions/action
+                                    :job  args get-toolinfo template)]
     (aerial.utils.misc/sleep 250)
     (swap! dbg (fn[m] (assoc m :job fut)))
-    (send-end-msg ws {:op :launch :payload (str jobname "\n" args "\n" fut)})))
+    (if error
+      (send-end-msg ws {:op :error
+                        :payload error})
+      (send-end-msg ws {:op :launch
+                        :payload (str jobname "\n" args "\n" fut)}))))
 
 
 (defn msg-handler [msg]

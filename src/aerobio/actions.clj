@@ -35,6 +35,7 @@
 
   (:require
    [clojure.tools.cli :refer [parse-opts]]
+   [clojure.string :as cljstr]
 
    ;; Our parameter db
    [aerobio.params :as pams]
@@ -71,14 +72,26 @@
   (cmn/get-exp-info eid :experimenter))
 
 
-(defn get-arguments [arglist])
-
-(defmethod get-msg-recipient :job
-  [_ & args]
-  (let [argmap (parse-opts args cli-options :in-order true)
-        {:keys [user eid]} (argmap :options)
-        arglist (argmap :arguments)]
-    (-> [user eid] (concat arglist) vec)))
+(defn get-job-cli-args [cliargs job-template]
+  (if (or (not (job-template :cli))
+          (not (get-in job-template [:cli :options]))
+          (not (get-in job-template [:cli :order])))
+    (let [name (get-in job-template [:nodes (job-template :root) :name])]
+      [[(format "No, or incorrect, Cli field in Job definition '%s'" name)]
+       (format
+        "%s\nrequires a :cli field {:options [[...]...[...]], :order [...]}"
+        (with-out-str (clojure.pprint/pprint job-template)))])
+    (let [cli (job-template :cli)
+          options (cli :options)
+          order (cli :order)
+          argmap (parse-opts cliargs options :in-order true)
+          summary (argmap :summary)
+          errors (argmap :errors)
+          options (argmap :options)
+          arguments (argmap :arguments)
+          params (mapv (fn[a] (options a)) order)
+          arglist (-> params (concat arguments) vec)]
+      [errors summary arglist])))
 
 
 
@@ -108,12 +121,21 @@
 
 
 (defmethod action :job
-  [_ arglist get-toolinfo template]
+  [_ cliargs get-toolinfo template]
   (let [status (atom {:done []})
-        arglist (apply get-msg-recipient :job arglist)]
-    {:status status
-     :fut (cmn/launch-job
-           arglist get-toolinfo template status)}))
+        [errors summary arglist] (get-job-cli-args cliargs template)]
+    (if errors
+      {:error
+       (with-out-str
+         (let [errmsg (->> errors
+                           (mapv (fn[i msg]
+                                   (format "%s. %s" (inc i) msg))
+                                 (range))
+                           (cljstr/join "\n"))]
+           (println (format "Error(s):\n%s\n\nUsage:\n%s" errmsg summary))))}
+      {:status status
+       :fut (cmn/launch-job
+             arglist get-toolinfo template status)})))
 
 
 ;;; phase-0b remove Fastqs, Out, Samples, Stats
