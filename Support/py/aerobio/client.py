@@ -31,7 +31,7 @@ def default(obj):
 def ext_hook(code, data):
     #print("CODE: ", code, "DATA: ", data, " TYPE: ", type(data))
     if code == 3:
-        x = keyword(msgpack.unpackb(data, raw=False))
+        x = keyword(msgpack.unpackb(data, raw=False, strict_map_key=False))
         return x
     return msgpack.ExtType(code, data)
 
@@ -168,7 +168,7 @@ async def receive (ws, msg):
 async def read_line (ws):
     try:
         msg = await ws.get_message()
-        msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False)
+        msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False, strict_map_key=False)
         update_db(cli_db, ['msg'], msg)
     except tws.ConnectionClosed as e:
         await rmtclose(ws,e)
@@ -243,12 +243,12 @@ async def main():
     try:
         async with open_websocket_url('ws://localhost:8765/ws') as ws:
             msg = await ws.get_message()
-            msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False)
+            msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False, strict_map_key=False)
             print('Received message: %s', msg)
             await send_msg(ws, {"op": "msg",
                                 "payload": {op: "msg", "data": 'hello world!'}})
             msg = await ws.get_message()
-            msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False)
+            msg = msgpack.unpackb(msg, ext_hook=ext_hook, raw=False, strict_map_key=False)
             print('Received message: %s', msg)
     except OSError as ose:
         print('Connection attempt failed: %s', ose)
