@@ -64,25 +64,26 @@
 
 
 (defn get-job-cli-args [cliargs job-template]
-  (if (or (not (job-template :cli))
-          (not (get-in job-template [:cli :options]))
-          (not (get-in job-template [:cli :order])))
-    (let [name (get-in job-template [:nodes (job-template :root) :name])]
+  (let [name (get-in job-template [:nodes (job-template :root) :name])]
+    (if (or (not (job-template :cli))
+            (not (get-in job-template [:cli :options]))
+            (not (get-in job-template [:cli :order])))
       [[(format "No, or incorrect, Cli field in Job definition '%s'" name)]
        (format
         "%s\nrequires a :cli field {:options [[...]...[...]], :order [...]}"
-        (with-out-str (clojure.pprint/pprint job-template)))])
-    (let [cli (job-template :cli)
-          options (cli :options)
-          order (cli :order)
-          argmap (parse-opts cliargs options :in-order true)
-          summary (argmap :summary)
-          errors (argmap :errors)
-          options (argmap :options)
-          arguments (argmap :arguments)
-          params (mapv (fn[a] (options a)) order)
-          arglist (-> params (concat arguments) vec)]
-      [errors summary arglist])))
+        (with-out-str (clojure.pprint/pprint job-template)))]
+      (let [cli (job-template :cli)
+            options (cli :options)
+            order (cli :order)
+            usage (cli :usage (format "%s <options>" name))
+            argmap (parse-opts cliargs options :in-order true)
+            summary (format "%s\n%s" usage (argmap :summary))
+            errors (argmap :errors)
+            options (argmap :options)
+            arguments (argmap :arguments)
+            params (mapv (fn[a] (options a)) order)
+            arglist (-> params (concat arguments) vec)]
+        [errors summary arglist]))))
 
 
 
