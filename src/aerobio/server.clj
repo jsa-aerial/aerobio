@@ -110,6 +110,85 @@
     (str (dt :date) "-"
          (str/join ":" [(-> dt :time-bits :hour) (-> dt :time-bits :min)]))))
 
+
+
+
+;;; ------------------------------------------------------------------------;;;
+;;;                     NS Config and  Watcher                             ;;;
+;;; ------------------------------------------------------------------------;;;
+
+(def ns-srcs (atom nil))
+
+(defn load-ns-src [f]
+  (infof "NS update: %s" f)
+  (try
+    (let [[ns as] (load-file f)]
+      (require [ns :as (symbol as)]))
+    (catch Error e
+      (errorf "Load ns: ERROR %f: %s"  (or (.getMessage e) e)))
+    (catch Exception e
+      (errorf "Load ns: EXCEPTION %s: %s" f (or (.getMessage e) e)))))
+
+(defn load-ns-srcs
+  []
+  (let [wd (fs/pwd)
+        nsdir (fs/join wd "NS")
+        _ (assert (fs/directory? nsdir)
+                  (format "NS dir %s missing!!" nsdir))
+        configs (fs/re-directory-files nsdir #"\.(clj|js)")
+        nsinfo (reduce
+                  (fn[M f]
+                    (assoc M (-> f fs/basename (str/split #"\.") first)
+                           (load-ns-src f)))
+                  {} configs)]
+    nsinfo))
+
+
+(def _ns-watcher (atom nil))
+
+(defmulti
+  ^{:doc "Dispatch dynamic NS src load based on NS file event"
+    :arglists '([event filename])}
+  src-ns
+  (fn [event filename] event))
+
+
+(defmethod src-ns :create
+  [_ f]
+  (infof "NS Create %s" f)
+  (swap! ns-srcs
+         assoc (-> f fs/basename (str/split #"\.") first)
+         (load-ns-src f)))
+
+(defmethod src-ns :modify
+  [_ f]
+  (infof "NS Modify %s" f)
+  (swap! ns-srcs
+         assoc (-> f fs/basename (str/split #"\.") first)
+         (load-ns-src f)))
+
+(defmethod src-ns :delete
+  [_ f]
+  (infof "NS Delete %s" f)
+  (swap! ns-srcs
+         dissoc  (-> f fs/basename (str/split #"\.") first)))
+
+(defn stop-ns-watcher []
+  (when-let [stopw @_ns-watcher] (stopw)))
+
+(defn start-ns-watcher []
+  (stop-ns-watcher)
+  (reset! _ns-watcher
+          (start-watch
+           [{:path (fs/join (fs/pwd) "NS")
+             :event-types [:create :modify :delete]
+             :bootstrap (fn[_](swap! ns-srcs (fn[_] (load-ns-srcs))))
+             :callback src-ns
+             :options {:recursive true}}])))
+
+
+
+
 ;;; ------------------------------------------------------------------------;;;
 ;;;                    Tool Config and  Watcher                             ;;;
 ;;; ------------------------------------------------------------------------;;;
@@ -202,6 +281,8 @@
     (merge {:inputOption "" :options "" :args "" :argcard {}}
            (@tool-configs toolname)
            {:args args})))
+
+
 
 
 ;;; ------------------------------------------------------------------------;;;
