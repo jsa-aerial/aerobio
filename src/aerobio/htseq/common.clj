@@ -224,16 +224,10 @@
     (assoc secmap :run-xref run-xref :bc-xref bc-xref)))
 
 (defn get-exp-sample-info [csv]
-  (let [recs #_(->> csv slurp csv/read-csv)
-        (-> csv (tc/dataset {:header-row? false :parser-fn :string})
-            (tc/replace-missing :all :value "")
-            (tc/rows) vec)
-        x (coll/dropv-until
-           (fn[v] (#{"tnseq", "rnaseq", "dual-rnaseq"
-                    "termseq" "wgseq"} (first v)))
-           recs)
-        recs (if (seq x) x (cons ["rnaseq" "noexp" "noexp"] recs))
-        exp-rec [(coll/takev 5 (first recs))]] ; ensure 3 fields
+  (let [recs (-> csv (tc/dataset {:header-row? false :parser-fn :string})
+                 (tc/replace-missing :all :value "")
+                 (tc/rows) vec)
+        exp-rec (vec (first recs))] ; ensure 3 fields
     (loop [S (rest recs)
            I [exp-rec]]
       (if (not (seq S))
@@ -275,36 +269,29 @@
                  (conj I i)))))))
 
 
-(defn base-singleindex? [eid]
-  (if (get-exp eid)
-    (get-exp-info eid :single-index)
-    (-> (pams/get-params :exp-base)
-        (fs/join eid "Exp-SampleSheet.csv")
-        get-exp-sample-info
-        :exp-rec first
-        (->> (into #{}))
-        (#(% "single-index")))))
-
-(def singleindex? (memoize base-singleindex?))
-
-
-(defn get-ncbi-xref
-  [exp-samp-info]
-  (->> exp-samp-info rest
-       (take-while #(= 3 (count %)))))
-
-(defn drop-ncbi-xref
-  [exp-samp-info]
-  (->> exp-samp-info rest
-       (drop-while #(= 3 (count %)))))
-
 (defn get-exp-type
   [exp-samp-info]
-  (-> exp-samp-info :exp-rec ffirst keyword))
+  (-> exp-samp-info :exp-rec first keyword))
 
 (defn get-experimenter
   [exp-samp-info]
-  (-> exp-samp-info :exp-rec first second))
+  (-> exp-samp-info :exp-rec second))
+
+(defn get-phase-args
+  [exp-sample-info]
+  (loop [v (exp-sample-info :exp-rec)
+         phmap {}]
+    (if (empty? v)
+      (dissoc phmap nil)
+      (let [phv (coll/drop-until #(when % (re-find #"phase" %)) v)
+            ph (first phv)
+            args (->> phv rest (coll/take-until #(re-find #"phase" %))
+                      (mapv #(-> % (cljstr/split #"=") vec))
+                      (into {}))]
+        (recur (rest phv)
+               (assoc phmap (keyword ph) args))))))
+
+
 
 
 (defn ensure-dirs [& dirs]
@@ -540,12 +527,9 @@
            (assoc m :run-xref
                   (->> (m :exp-sample-info) :run-xref))))
         ((fn[m]
-           (assoc m :single-index
-                  (->> (m :exp-sample-info) :exp-rec
-                       first (into #{}) (#(% "single-index"))))))
-        ((fn[m]
            (assoc m :exp (get-exp-type (m :exp-sample-info))
                   :experimenter (get-experimenter (m :exp-sample-info))
+                  :phase-args (get-phase-args (m :exp-sample-info))
                   :sample-names
                   (->> (m :exp-sample-info)
                        :bc-xref
@@ -553,6 +537,10 @@
                        (map #(->> % (str/split #"-")
                                   (take 2) (cljstr/join "-")))
                        set))))
+        ((fn[m]
+           (let [phase0-args (-> :phase-args m :phase0)]
+             (assoc m :noexpbc
+                    (when phase0-args (phase0-args "noexpbc"))))))
         ((fn[m]
            (assoc m :replicate-names
                   (->> (m :exp-sample-info)
@@ -813,7 +801,7 @@
   [eid sqxform-fn & {:keys [baseqc% sqc% no-barcodes?]
                      :or {baseqc% 0.96 sqc% 0.97 no-barcodes? false}}]
 
-  (let [no-barcodes? (get-exp-info eid :single-index)
+  (let [no-barcodes? (get-exp-info eid :noexpbc)
         base (get-exp-info eid :base)
         exp-illumina-xref (get-exp-info eid :exp-illumina-xref)
         illumina-sample-xref (get-exp-info eid :illumina-sample-xref)
