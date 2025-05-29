@@ -18,22 +18,23 @@
 (print-str *ns*)
 
 (defn get-gDNA
-  ([sq]
-   (get-gDNA sq "CCGGGGACTTATCAGCCAACCTGT" 4 24))
-  ([sq pattern within-cnt extract-cnt]
-    (let [patlen (count pattern)]
-      (loop [i 0
-             patterns (astr/sliding-take 1 patlen sq)]
-        (let [curpat (first patterns)
-              found (= curpat pattern)
-              start (+ i patlen)
-              end (+ start extract-cnt)]
-          (if (or found (> i within-cnt))
-            [found curpat i (subs sq start end)]
-            (recur (inc i) (rest patterns))))))))
+  [sq & {:keys [pattern within-cnt extract-cnt]
+         :or {pattern "CCGGGGACTTATCAGCCAACCTGT" within-cnt 4 extract-cnt 24}}]
+  (let [patlen (count pattern)]
+    (loop [i 0
+           patterns (astr/sliding-take 1 patlen sq)]
+      (let [curpat (first patterns)
+            found (= curpat pattern)
+            start (+ i patlen)
+            end (+ start extract-cnt)]
+        (if (or found (> i within-cnt))
+          [found curpat i (subs sq start end)]
+          (recur (inc i) (rest patterns)))))))
 
-[(let [sq "AAACCGGGGACTTATCAGCCAACCTGTTATGCTGCGGTGTATTGAAGTCAGGCTCGCCTGCTCCTAAG"]
+(let [sq "AAACCGGGGACTTATCAGCCAACCTGTTATGCTGCGGTGTATTGAAGTCAGGCTCGCCTGCTCCTAAG"]
   (get-gDNA sq))
- (let [ns (ns-name *ns*)]
-   [ns :as "tradis"])]
+
+
+(let [ns (ns-name *ns*)]
+  [ns "tradis"])
 
