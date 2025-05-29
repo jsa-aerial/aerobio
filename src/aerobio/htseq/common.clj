@@ -291,6 +291,18 @@
         (recur (rest phv)
                (assoc phmap (keyword ph) args))))))
 
+(defn noexpbc?- [eid]
+  (if (get-exp eid)
+    (get-exp-info eid :noexpbc)
+    (let [phase-args (-> (pams/get-params :exp-base)
+                         (fs/join eid "Exp-SampleSheet.csv")
+                         get-exp-sample-info
+                         get-phase-args)
+          phase0-args (phase-args :phase0)]
+      (when phase0-args (phase0-args "noexpbc")))))
+
+(def noexpbc? (memoize noexpbc?-))
+
 
 
 
@@ -410,7 +422,7 @@
 (defn collect-barcode-stats [eid]
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
-  (when (not (singleindex? eid))
+  (when (not (noexpbc? eid))
     (let [exp-base (pams/get-params :exp-base)
           expdir (fs/join exp-base eid)
           sample-map (->> eid  get-sample-info (into {}))
@@ -432,7 +444,7 @@
 (defn write-bcmaps [eid bcmaps]
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
-  (when (not (singleindex? eid))
+  (when (not (noexpbc? eid))
     (let [sample-info (get-sample-info eid)
           base (fs/join (pams/get-params :scratch-base) eid "Stats")
           files (->> sample-info
