@@ -583,7 +583,24 @@ Format
 
 4. The experiment description should be a short description of what the experiment is about.
 
-5. The optional `exp params` field provides further information for analysis
+5. The optional `exp params` field provides further information for the phases of analysis.
+
+   Format
+
+   | phase0-param-section | phase1-param-section | phase2-param-section |
+   | -------------------- | -------------------- | -------------------- |
+
+   Each section is optional.  The format of each section is:
+
+   | phasei | p<sub>1</sub>=v<sub>1</sub> | p<sub>2</sub>=v<sub>2</sub> | ... | p<sub>k</sub>=v<sub>k</sub> |
+   | ------ | ---------------- | ----- | --- | ----- |
+
+   where each p<sub>j</sub>=v<sub>j</sub> pair defines a parameter *p* and its corresponding value *v*. In general these parameter sets will be specific to the experiment type involved.  However, one in particular for `phase-0` that can span different experiment types is the case where there are no experiment barcodes identifying sub-reads in sequencer output samples (see below).  This type of case requires at least the following:
+
+   | phase0 | noexpbc=true |
+   | ------ | ------------ |
+
+
 
 
 ##### Genome official name, lab id cross reference
@@ -680,9 +697,9 @@ There are two formats, depending on whether there is only an I7 index or an I7-I
 | ...   | ...              | ...       | ...    |
 
 
-* dualRNA-Seq, single index => artificial ExpBC
+* dualRNA-Seq, no actual experimental barcodes => artificial ExpBC
 
-| dual-rnaseq | karenzhu          | invivoRNASeqmastersheet | single-index |    |
+| dual-rnaseq | karenzhu          | invivoRNASeqmastersheet | phase0 | noexpbc=true |
 | ----------- | ----------------- | ----------------------- | ------------ | --- |
 |             |                   |                         |              |
 | 1           | TVO_1901932       | PG13                    |              |
