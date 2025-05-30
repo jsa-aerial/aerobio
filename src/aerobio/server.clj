@@ -122,12 +122,16 @@
 (defn load-ns-src [f]
   (infof "NS update: %s" f)
   (try
-    (let [[ns as] (load-file f)]
-      (require [ns :as (symbol as)]))
+    (let [[ns as] (load-file f)
+          aliassym (symbol as)]
+      (require [ns :as aliassym])
+      [ns aliassym])
     (catch Error e
-      (errorf "Load ns: ERROR %f: %s"  (or (.getMessage e) e)))
+      (errorf "Load ns: ERROR %f: %s"  (or (.getMessage e) e))
+      (or (.getMessage e) e))
     (catch Exception e
-      (errorf "Load ns: EXCEPTION %s: %s" f (or (.getMessage e) e)))))
+      (errorf "Load ns: EXCEPTION %s: %s" f (or (.getMessage e) e))
+      (or (.getMessage e) e))))
 
 (defn load-ns-srcs
   []
