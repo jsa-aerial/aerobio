@@ -55,6 +55,7 @@ Table of Contents
       * [Manual steps](#manual-steps)
       * [Analysis phases available](#analysis-phases-available-1)
    * [Tn-Seq](#tn-seq)
+   * [TRADis](#tradis)
    * [WG-Seq](#wg-seq)
    * [Term-Seq](#term-seq)
    * [scRNA-Seq](#scrna-seq)
@@ -366,6 +367,27 @@ aerobio <cmd> <action | compfile | aggrfile> {replicates | combined} <eid>
 
    * `aggregate` : Invokes Tn-Seq global aggregation job.  Typically used for post aggregation of standard Tn-Seq output for in-vivo analysis using bottleneck numbers.  Takes a global (aka 'super') [aggregation CSV file](#aggregationsheetcsv) and the (EID)](#experiment-id)
 
+   * `JobName` : Run a general registered job with name *JobName*
+
+The split-output command goes like this:
+
+aerobio -u "user name" -e mixed-run-eid input-dir data-dir
+Where
+
+* "user name" is one of the account names in the msg configuration. So, for example, "Hye-Rim Hong". For you, I think "hrh" would work as well.
+
+* mixed-run-eid is the EID of the mixed run. Here, that is 250403_AV242502_multiSeq_HRH_Spn-Salmonella
+
+* input-dir This is the input directory. 99+% of the time this is just going to be /ExpIn/mixed-run-eid. This looks a bit redundant, but it makes for some more flexibility and how bases2fastq works
+
+* data-dir This is the top level data directory for bases2fastq. So, again, 99+% of the time this will be /ExpIn/mixed-run-eid/Data. Similar 'redundant/flexibility' tradeoff.
+
+
+So, for example:
+
+aerobio split-output -u "Hye-Rim Hong" -e 250403_AV242502_multiSeq_HRH_Spn-Salmonella /ExpIn/250403_AV242502_multiSeq_HRH_Spn-Salmonella /ExpIn/250403_AV242502_multiSeq_HRH_Spn-Salmonella/Data
+
+
 
 ## Parameters
 
@@ -553,7 +575,7 @@ In the following, `{abcxyz}` indicates that `abcxyz` is *optional*
 
 #### Exp-SampleSheet.csv
 
-This sheet is specific to Aerobio.  It provides the information that describes the type of experiment the run is, what reference genomes are involved, and how the reads in the sequencer output samples are linked with the experiment sequence reads within them.  The former are the output from a converter (`bcl2fastq` or `bcl-convert`) and are typically determined by the _I7_ and/or _I5_ indices.  The latter are differentiated within a sequencer sample by experiment specific barcodes and are typically sample replicates but may be other sequence types such as those differentiating between species in dual RNA-Seq experiments.
+This sheet is specific to Aerobio.  It provides the information that describes the type of experiment the run is, what reference genomes are involved, and how the reads in the sequencer output samples are linked with the experiment sequence reads within them.  The former are the output from a converter (`bases2fastq`, `bcl2fastq` or `bcl-convert`) and are typically determined by the _I7_ and/or _I5_ indices.  The latter are differentiated within a sequencer sample by experiment specific barcodes and are typically sample replicates but may be other sequence types such as those differentiating between species in dual RNA-Seq experiments.
 
 There are three sections to this sheet. The experiment type section, the lab id/name official genome name cross reference section, and the sequence sample index experiment barcode linkage section.
 
@@ -871,7 +893,7 @@ The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-
 ### Manual steps
 
 * **No experiment barcodes:** Typically dualRNA-Seq reads do not have [experiment barcodes](#sequencer-samples-experiment-multiplexed-read-linkage) for separating a sample's [sub-reads](#sequencer-samples-experiment-multiplexed-read-linkage).  This is because dualRNA-Seq samples are separated by the host and bacteria organisms involved. To accommodate this, two things need to be done.
-  1. First the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information) line needs to be set to the value `single-index` to indicate there are no actual barcodes on the reads.
+  1. First the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information) line needs to be set to indicate there are no actual barcodes on the reads.  This is done by supplying the parameter/value pair `noexpbc=true` in the `phase0` section.
   2. Second, a unique *artificial* barcode for each unique combination of i7 and i5 indices in the [sample linkage section](#experiment-type-information) of the Exp-SampleSheet.csv.
 Both of these are shown in the dualRNA-Seq [example](#experiment-sheet-examples) for Exp-SampleSheets.
 
@@ -1019,6 +1041,11 @@ Phase-2 : `phase-2`
 ## Tn-Seq
 
 The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tnseq`.
+
+
+## TRADis
+
+This is a variation of [Tn-Seq](#tn-seq) that requires a modified phase-0 to generate the experiment sample fastqs.  The primary difference for the user is to add the `phase1` parameters necessary for this to the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information)
 
 
 ## WG-Seq
