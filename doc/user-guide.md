@@ -55,7 +55,7 @@ Table of Contents
       * [Manual steps](#manual-steps)
       * [Analysis phases available](#analysis-phases-available-1)
    * [Tn-Seq](#tn-seq)
-   * [TRADis](#tradis)
+   * [TRADis-Seq](#tradis-seq)
    * [WG-Seq](#wg-seq)
    * [Term-Seq](#term-seq)
    * [scRNA-Seq](#scrna-seq)
@@ -1043,9 +1043,23 @@ Phase-2 : `phase-2`
 The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tnseq`.
 
 
-## TRADis
+## TRADis-Seq
 
-This is a variation of [Tn-Seq](#tn-seq) that requires a modified phase-0 to generate the experiment sample fastqs.  The primary difference for the user is to add the `phase1` parameters necessary for this to the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information)
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tradisseq`.
+
+This is a variation of [Tn-Seq](#tn-seq) that uses a modified [phase-0](#analysis-phases) to generate the experiment sample fastqs.  The primary difference for the user is to add the `phase0` parameters necessary for this to the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information).  The parameters are the
+
+ * `noexpbc`, this should be true as TRADis does not utilize further demuxing of sequencer samples via [exp barcodes](#sequencer-samples-experiment-multiplexed-read-linkage)
+ * `pattern`, this should be set to the pattern nucleotide sequence that precedes the gDNA for the sample
+ * `within-cnt`, this should be set to the maximum offset (in nucleotide count) from the start of a read that the pattern should be found
+ * `extract-cnt`, this should be set to the count of bases of gDNA to extract from the read starting just after the pattern
+
+As an example, here are the original expected defaults for these
+
+   | phase0 | noexpbc=true | pattern=CCGGGGACTTATCAGCCAACCTGT | within-cnt=4 | extract-cnt=24 |
+   | ------ | ------------ | -------------------------------- | ------------ | -------------- |
+
+
 
 
 ## WG-Seq
