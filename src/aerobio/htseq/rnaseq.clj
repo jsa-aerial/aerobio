@@ -141,10 +141,18 @@
 
 
 
+(defmethod cmn/gen-sampfqs :rnaseq
+  [_ eid]
+  (cmn/split-filter-fastqs eid identity))
 
-(defn split-filter-fastqs
+(defmethod cmn/gen-sampfqs :dual-rnaseq
+  [_ eid]
+  (cmn/split-filter-fastqs eid identity))
+
+#_(defn split-filter-fastqs
   [eid]
   (cmn/split-filter-fastqs eid identity))
+
 
 (defn run-rnaseq-phase-0
   [eid recipient get-toolinfo template]

@@ -157,7 +157,14 @@
     (when (pos? i)
       [id sq aux qc])))
 
-(defn split-filter-fastqs
+
+
+(defmethod cmn/gen-sampfqs :tnseq
+  [_ eid]
+  (cmn/split-filter-fastqs eid pre-pass :baseqc% 0.90))
+
+#_(defn split-filter-fastqs
+  "Deprecated - get rid of this and use gen-sampfqs"
   [eid]
   (cmn/split-filter-fastqs eid pre-pass :baseqc% 0.90))
 

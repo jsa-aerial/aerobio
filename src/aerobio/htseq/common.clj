@@ -1087,6 +1087,23 @@ ComparisonSheet.csv
   (fn[exptype & args] exptype))
 
 
+
+
+;;;(ns-unmap 'aerobio.htseq.common 'gen-sampfqs)
+(defmulti ^{:doc "Each experiment type may have its own requirements
+  in generating the input sample fastqs for phase-1 (typically
+  aligners). Some may not have further demuxing (no tech reps) of the sequencer sample output reads, others, like TRADis-Seq may need to 'scoop' out the relevant gDNA to use.  This multi-method supports such per type processing"
+    :arglists '([exptype & args])}
+  gen-sampfqs
+  (fn[exptype & args] exptype))
+
+(defmethod gen-sampfqs :default
+  [exp eid]
+  (info "gen-sampfqs for exptype `%s` for EID `%s` not available" exp eid))
+
+
+
+
 ;;;(ns-unmap 'aerobio.htseq.common 'run-phase-2)
 (defmulti
   ^{:doc "Each experiment type has its own phase 2 driver, and this
@@ -1112,6 +1129,8 @@ ComparisonSheet.csv
     :arglists '([exptype & args])}
   run-aggregation
   (fn[exptype & args] exptype))
+
+
 
 
 (defn launch-action

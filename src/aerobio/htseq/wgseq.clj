@@ -97,7 +97,21 @@
           (recur (bufiles/read-fqrecs inf rec-chunk-size)))))))
 
 
-(defn split-filter-fastqs
+
+(defmethod cmn/gen-sampfqs :wgseq
+  [_ eid]
+  (let [fqbase (cmn/get-exp-info eid :fastq)
+        fqs (fs/directory-files fqbase "fastq.gz")
+        sample-dir (cmn/get-exp-info eid :samples)]
+    (cmn/ensure-sample-dirs
+     (cmn/get-exp-info eid :base)
+     (cmn/get-exp-info eid :illumina-sample-xref))
+    (doseq [fq fqs]
+      (filter-fastq
+       fq :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
+       :outdir sample-dir))))
+
+#_(defn split-filter-fastqs
   [eid]
   (let [fqbase (cmn/get-exp-info eid :fastq)
         fqs (fs/directory-files fqbase "fastq.gz")
@@ -109,6 +123,7 @@
       (filter-fastq
        fq :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
        :outdir sample-dir))))
+
 
 
 (defn get-comparison-files-

@@ -84,9 +84,15 @@
   (apply get-comparison-files- args))
 
 
-(defn split-filter-fastqs
+
+(defmethod cmn/gen-sampfqs :termseq
+  [_ eid]
+  (cmn/split-filter-fastqs eid identity))
+
+#_(defn split-filter-fastqs
   [eid]
   (cmn/split-filter-fastqs eid identity))
+
 
 
 (defmethod cmn/get-phase-1-args :termseq
