@@ -195,16 +195,20 @@
       ;; be configured so that a given sample will be contained in
       ;; only one lane.  In this case, the combined i7&i5 are not
       ;; enough to give a unique "BC" and an extra 'fake base' needs
-      ;; to be appended.  Also for ElemBio, the PhiX 'samples' are
-      ;; explicitly listed in Sample data section.  These need to be
-      ;; removed. NOTE this is *downstream* of bases2fastq
+      ;; to be appended.  Also for ElemBio, the PhiX/Adept 'samples'
+      ;; are explicitly listed in Sample data section.  These need to
+      ;; be removed. NOTE this is *downstream* of bases2fastq
       (map (fn[[nm i7bc i5bc lane]]
              (let [fakebase (case lane
                               "1" "A"
                               "2" "G"
                               nil)]
                [nm (str i7bc i5bc fakebase)])))
-      (remove (fn[x] (->> x first (re-find #"PhiX"))))))
+      (remove (fn[x]
+                (let [nm (first x)]
+                  (or (-> nm string? not)
+                      (re-find #"PhiX" nm)
+                      (re-find #"Adept" nm)))))))
 
 
 (defn get-sample-info-colkws [eid]
