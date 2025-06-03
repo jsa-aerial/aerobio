@@ -38,6 +38,9 @@
    [tech.v3.dataset :as ds]
    [tablecloth.api :as tc]
 
+   [taoensso.timbre :as timbre
+    :refer (infof warnf errorf)]
+
    [aerial.fs :as fs]
 
    [aerial.utils.coll :refer [vfold] :as coll]
@@ -1099,7 +1102,7 @@ ComparisonSheet.csv
 
 (defmethod gen-sampfqs :default
   [exp eid]
-  (info "gen-sampfqs for exptype `%s` for EID `%s` not available" exp eid))
+  (infof "gen-sampfqs for exptype `%s` for EID `%s` not available" exp eid))
 
 
 
