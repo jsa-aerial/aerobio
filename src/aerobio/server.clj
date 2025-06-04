@@ -367,8 +367,8 @@
 
 (defn get-job-name [exp cmd work-item]
   (if (= cmd :run)
-    (str (name exp) "-" work-item "-job-template")
-    (str (name exp) "-" (name cmd)"-job-template")))
+    (str (name exp) "-" work-item)
+    (str (name exp) "-" (name cmd))))
 
 (defn validate-job [exp cmd work-item]
   (let [jobname (get-job-name exp cmd work-item)]
