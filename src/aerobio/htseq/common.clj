@@ -339,7 +339,8 @@
         expdir (fs/join exp-base eid)
         exp-fqdir (fs/join expdir (pams/get-params :elembio-fqdir))]
     (filter #(not (or (str/substring? "Unassigned" %)
-                      (str/substring? "PhiX" %)))
+                      (str/substring? "PhiX" %)
+                      (str/substring? "Adept" %)))
             (fs/re-directory-files exp-fqdir "fastq.gz"))))
 
 
@@ -787,6 +788,9 @@
 
                           (if no-barcodes?
                             ;; typical in vivo no replicates branch
+                            ;; NOTE: this is currently a no-op as
+                            ;; split-barcodes is bypassed when
+                            ;; no-barcodes?
                             (if (pass-qcscore qc qc-ctpt sqc%)
                               (reduce (fn[V bc]
                                         (conj V [bc [id sq aux qc]]))
