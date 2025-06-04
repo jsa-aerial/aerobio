@@ -2,6 +2,7 @@
 (ns aerobio.htseq.tradis
   [:require
    [clojure.string :as str]
+   [clojure.set :as set]
 
    [aerial.fs :as fs]
    [aerial.utils.string :as astr]
@@ -15,24 +16,125 @@
    [aerobio.htseq.common :as cmn]
    [aerobio.pgmgraph :as pg]])
 
-(print-str *ns*)
+
+;;; Probably not worth doing here, but bypass it/hamming to support
+;;; futher optimization via a cutoff.  This looks to give about 15%
+;;; improved runtime.  Might make sense to incorporate something like
+;;; this into it/hamming
+;;;
+(defn hamming
+  "Optimized string hamming with cutoff optimization"
+  [^String s1 ^String s2 ^long cutoff]
+  (let [sz1 (long (count s1))
+        len (long (min sz1 (long (count s2))))]
+    (loop [i (long 0)
+           cnt (long (Math/abs (- len sz1)))]
+      (if (or (> cnt cutoff) (= i len))
+        cnt
+        (if (= (astr/get s1 i) (astr/get s2 i))
+          (recur (inc i) cnt)
+          (recur (inc i) (inc cnt)))))))
 
 (defn get-gDNA
-  [sq & {:keys [pattern within-cnt extract-cnt]
-         :or {pattern "CCGGGGACTTATCAGCCAACCTGT" within-cnt 4 extract-cnt 24}}]
-  (let [patlen (count pattern)]
-    (loop [i 0
-           patterns (astr/sliding-take 1 patlen sq)]
-      (let [curpat (first patterns)
-            found (= curpat pattern)
-            start (+ i patlen)
-            end (+ start extract-cnt)]
-        (if (or found (> i within-cnt))
-          [found curpat i (subs sq start end)]
-          (recur (inc i) (rest patterns)))))))
+  ([sq]
+   (get-gDNA sq "CCGGGGACTTATCAGCCAACCTGT" 4 24))
+  ([sq pattern within-cnt extract-cnt]
+   (let [patlen (count pattern)]
+     (loop [i 0
+            patterns (astr/sliding-take 1 patlen sq)]
+       (let [curpat (first patterns)
+             found (<= (hamming curpat pattern 2) 2)
+             start (+ i patlen)
+             end (+ start extract-cnt)]
+         (if (or found (> i within-cnt))
+           [found i (subs sq start end) start end]
+           (recur (inc i) (rest patterns))))))))
 
-(let [sq "AAACCGGGGACTTATCAGCCAACCTGTTATGCTGCGGTGTATTGAAGTCAGGCTCGCCTGCTCCTAAG"]
-  (get-gDNA sq))
+
+(defn gen-sampfqs-
+  [infq-otfq-pairs gDNA-args]
+  (let [[p wc ec] gDNA-args
+        gdnafn (fn[sq] (get-gDNA sq p wc ec))]
+    (pmap (fn[[infq otfq]]
+            (letio [rec-chunk-size 10000
+                    in (io/open-file infq :in)
+                    ot (io/open-file otfq :out)]
+              (try
+                (loop [inrecs (bufiles/read-fqrecs in rec-chunk-size)]
+                  (if (not (seq inrecs))
+                    :done
+                    (let [otrecs (coll/vfold
+                                  (fn[[hd sq aux qc]]
+                                    (let [[found i sq start end] (gdnafn sq)
+                                          qc (subs qc start end)]
+                                      [hd sq aux qc]))
+                                  inrecs)]
+                      (bufiles/write-fqrecs ot otrecs)
+                      (recur (bufiles/read-fqrecs in rec-chunk-size)))))
+                (finally
+                  (. in close)
+                  (. ot close)))))
+          infq-otfq-pairs)))
+
+
+(defmethod cmn/gen-sampfqs :tradis
+  [_ eid]
+  (let [base (cmn/get-exp-info eid :base)
+        exp-illumina-xref (cmn/get-exp-info eid :exp-illumina-xref)
+        illumina-sample-xref (cmn/get-exp-info eid :illumina-sample-xref)
+        bc-file-specs (cmn/get-bc-file-specs
+                       base exp-illumina-xref illumina-sample-xref)
+        ifastqs (->> (fs/directory-files
+                      (cmn/get-exp-info eid :fastq) "fastq.gz")
+                     (group-by #(->> % fs/basename
+                                     (re-find #"_R[1-2]")
+                                     (astr/drop 1)
+                                     keyword)))
+        sample-illumina-xref (clojure.set/map-invert illumina-sample-xref)
+        sample-ifq-xref (reduce (fn[M fq]
+                                  (let [samp (->> fq fs/basename
+                                                  (astr/split #"\.") first
+                                                  (astr/split #"_") first)]
+                                    (assoc M samp fq)))
+                                {} (ifastqs :R1))
+        infq-otfq-pairs (->> sample-ifq-xref keys sort
+                             (mapv (fn[samp]
+                                     (let [ibc (sample-illumina-xref samp)]
+                                       [(sample-ifq-xref samp)
+                                        ;; Here, (no barcode land) there
+                                        ;; is only one possible output fq
+                                        (-> ibc bc-file-specs vals first)]))))
+        ph1args (->> :phase-args (cmn/get-exp-info eid) :phase1)
+        args (mapv (fn[k]
+                     (let [v (ph1args k)]
+                       (if (= k "pattern") v (parse-long v))))
+                   ["pattern" "within-cnt" "extract-cnt"])]
+    (cmn/ensure-sample-dirs base illumina-sample-xref)
+    (gen-sampfqs- infq-otfq-pairs args)))
+
+
+
+
+(defmethod cmn/get-phase-1-args :tradis
+  [_ & args]
+  (apply cmn/get-phase-1-args :tnseq args))
+
+(defmethod cmn/get-comparison-files :tradis
+  [_ & args]
+  (apply cmn/get-comparison-files :tnseq args))
+
+(defmethod cmn/run-comparison :tradis
+  [_ & args]
+  (apply cmn/run-comparison :tnseq args))
+
+(defmethod cmn/run-phase-2 :tradis
+  [_ & args]
+  (apply cmn/run-phase-2 :tnseq args))
+
+(defmethod cmn/run-aggregation :tradis
+  [_ & args]
+  (apply cmn/run-aggregation :tnseq args))
+
 
 
 (let [ns (ns-name *ns*)]
