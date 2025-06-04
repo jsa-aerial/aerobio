@@ -1045,7 +1045,7 @@ The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-
 
 ## TRADis-Seq
 
-The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tradisseq`.
+The [dispatch code](#experiment-type-information) in the [Exp-SampleSheet](#exp-samplesheetcsv) must be `tradis`.
 
 This is a variation of [Tn-Seq](#tn-seq) that uses a modified [phase-0](#analysis-phases) to generate the experiment sample fastqs.  The primary difference for the user is to add the `phase0` parameters necessary for this to the [exp params](#experiment-type-information) field in the [Exp-SampleSheet header](#experiment-type-information).  The parameters are the
 
