@@ -1056,8 +1056,8 @@ This is a variation of [Tn-Seq](#tn-seq) that uses a modified [phase-0](#analysi
 
 As an example, here are the original expected defaults for these
 
-   | phase0 | noexpbc=true | pattern=CCGGGGACTTATCAGCCAACCTGT | within-cnt=4 | extract-cnt=24 |
-   | ------ | ------------ | -------------------------------- | ------------ | -------------- |
+   | phase0 | noexpbc=true | phase1 | pattern=CCGGGGACTTATCAGCCAACCTGT | within-cnt=4 | extract-cnt=24 |
+   | ------ | ------------ | ------ | -------------------------------- | ------------ | -------------- |
 
 
 
