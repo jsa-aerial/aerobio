@@ -18,8 +18,7 @@
                        "Aerobio job status: tradis phase-0"
                        "Finished"]} ; subject, body intro
 
-         :edges {:bc2fq [:strtscratch]
-                 :strtscratch [:setexp]
+         :edges {:strtscratch [:setexp]
                  :setexp [:gen-sampfqs]
                  :gen-sampfqs [:coll]
                  :coll [:mail]}}
