@@ -3,6 +3,7 @@
  :name "collapser",
  :path "",
  :func (fn [eid & _]
+         (infof "Collapser starting for %s" eid)
          (if (pg/eoi? eid)
            (pg/done)
            (let [pairgrps (htts/get-collapse-groups eid)]
