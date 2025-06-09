@@ -55,26 +55,29 @@
   [infq-otfq-pairs gDNA-args]
   (let [[p wc ec] gDNA-args
         gdnafn (fn[sq] (get-gDNA sq p wc ec))]
-    (pmap (fn[[infq otfq]]
-            (letio [rec-chunk-size 10000
-                    in (io/open-file infq :in)
-                    ot (io/open-file otfq :out)]
-              (try
-                (loop [inrecs (bufiles/read-fqrecs in rec-chunk-size)]
-                  (if (not (seq inrecs))
-                    :done
-                    (let [otrecs (coll/vfold
-                                  (fn[[hd sq aux qc]]
-                                    (let [[found i sq start end] (gdnafn sq)
-                                          qc (subs qc start end)]
-                                      [hd sq aux qc]))
-                                  inrecs)]
-                      (bufiles/write-fqrecs ot otrecs)
-                      (recur (bufiles/read-fqrecs in rec-chunk-size)))))
-                (finally
-                  (. in close)
-                  (. ot close)))))
-          infq-otfq-pairs)))
+    (doall
+     (pmap (fn[[infq otfq]]
+             (letio [rec-chunk-size 10000
+                     in (io/open-file infq :in)
+                     ot (io/open-file otfq :out)]
+               (try
+                 (loop [inrecs (bufiles/read-fqrecs in rec-chunk-size)]
+                   (if (not (seq inrecs))
+                     [(fs/basename infq) :success]
+                     (let [otrecs (coll/vfold
+                                   (fn[[hd sq aux qc]]
+                                     (let [[found i sq start end] (gdnafn sq)
+                                           qc (subs qc start end)]
+                                       [hd sq aux qc]))
+                                   inrecs)]
+                       (bufiles/write-fqrecs ot otrecs)
+                       (recur (bufiles/read-fqrecs in rec-chunk-size)))))
+                 (catch Exception e
+                   [(fs/basename infq) :fail (or (.getMessage e) e)])
+                 (finally
+                   (. in close)
+                   (. ot close)))))
+           infq-otfq-pairs))))
 
 
 (defmethod cmn/gen-sampfqs :tradis
