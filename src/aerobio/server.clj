@@ -795,6 +795,7 @@
 
 (defn start! [port]
   (timbre/set-level! :info) ; :debug
+  (start-ns-watcher)
   (start-tool-watcher)
   (start-job-watcher)
   (start-server
