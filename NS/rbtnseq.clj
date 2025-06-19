@@ -187,7 +187,7 @@
                                         (-> ds (tc/order-by :pos)))))
                                    (apply tc/concat-copying))]
                           (-> ds (tc/set-dataset-name nm)
-                            (tc/write-dataset tbldir))
+                            (tcu/write-dataset tbldir))
                           (conj R [nm (->> ds :count (reduce +))])))
                       [] alndatasets)]
           (infof ">>> gen-rbtnseq-xreftbls curchunk %s" chnk)
