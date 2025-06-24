@@ -124,7 +124,8 @@
   (try
     (let [[ns as] (load-file f)
           aliassym (symbol as)]
-      (require [ns :as aliassym])
+      (binding [*ns* (find-ns 'aerobio.server)]
+        (require [ns :as aliassym]))
       [ns aliassym])
     (catch Error e
       (errorf "Load ns: ERROR %f: %s"  (or (.getMessage e) e))
