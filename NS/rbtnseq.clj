@@ -197,3 +197,9 @@
           (infof ">>> gen-rbtnseq-xreftbls curchunk %s" chnk)
           (recur (drop chksz bams)
                  (conj chunks chnk)))))))
+
+
+
+
+(let [ns (ns-name *ns*)]
+  [ns "rbtnseq"])
