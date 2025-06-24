@@ -28,13 +28,18 @@
 
 (ns aerobio.tcutils
   [:require
+
+   [clojure.string :as str]
+
+   [aerial.fs :as fs]
+
    [tech.v3.dataset :as ds]
    [tech.v3.datatype :as dtype]
    [tech.v3.datatype.functional :as df]
    [tech.v3.dataset.reductions :as dsr]
    [tech.v3.dataset.rolling :as drl]
    [tech.v3.dataset.column :as dsc]
-   
+
    [tablecloth.api.utils :as tcu]
    [tablecloth.api :as tc]
    [tablecloth.column.api :as tcc]
@@ -57,7 +62,7 @@
     (-> ds
       (tc/add-or-replace-columns
        (let [sd (ds :standard-deviation)
-             vr (dtype/make-reader 
+             vr (dtype/make-reader
                  :float64 (tc/row-count ds)
                  (let [x (sd idx)]
                    (if (number? x) (* x x) -1)))]
