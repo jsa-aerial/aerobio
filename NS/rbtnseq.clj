@@ -28,8 +28,12 @@
 
 (ns aerobio.htseq.rbtnseq
   [:require
+   [clojure.core.reducers :as r]
    [clojure.string :as str]
    [clojure.set :as set]
+
+   [taoensso.timbre :as timbre
+    :refer (infof warnf errorf)]
 
    [tech.v3.dataset :as ds]
    [tech.v3.datatype :as dtype]
