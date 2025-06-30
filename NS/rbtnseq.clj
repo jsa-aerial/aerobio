@@ -134,7 +134,7 @@
                             [0 [0 0]] col)]
     idx))
 
-(defn coalesce [basegrping]
+(defn coalesce [basegrping delta]
   (->> basegrping :data
     (coll/vfold
      (fn[ds]
@@ -143,7 +143,7 @@
          (let [idx (rowidx ds)
                r (tc/select-rows ds idx)
                p (-> r :pos first)
-               [s e] [(max 0 (- p 3)) (+ p 3)]
+               [s e] [(max 0 (- p delta)) (+ p delta)]
                rds (tc/select-rows ds #(<= s (% :pos) e))]
            (if (not= (tc/row-count rds) (tc/row-count ds))
              (tc/dataset)
@@ -157,13 +157,10 @@
     (apply tc/concat-copying)))
 
 
-(defn gen-rbtnseq-xreftbls [eid]
-  (let [expout "/ExpOut"
-        expdir (fs/join expout eid)
-        bamdir (fs/join expdir "Out/Rep/Bams")
+(defn gen-rbtnseq-xreftbls [eid chksz maxn delta minrds]
+  (let [bamdir (cmn/get-exp-info eid :rep :bams)
         bams (-> bamdir (fs/join "*.bam") fs/glob sort)
-        tbldir (fs/join expdir "Out/Rep/RBtbls")
-        chksz 5]
+        tbldir (fs/join (fs/dirname bamdir) "RBtbls")]
     ;; To keep parallelization from thrashing, we need to chunk this
     ;; stuff.  At the point of last experimenting, a chksz of 5 seems
     ;; to work well on a typical 64 core AMD machine.
@@ -182,9 +179,10 @@
                                    (mapv
                                     (fn[grpds]
                                       (-> grpds
-                                        (get-basegrping [0 5])
-                                        coalesce
-                                        (tc/select-rows #(> (% :count) 20)))))
+                                        (get-basegrping [0 maxn])
+                                        (coalesce delta)
+                                        (tc/select-rows
+                                         #(> (% :count) minrds)))))
                                    (keep
                                     (fn[ds]
                                       (when (> (tc/row-count ds) 0)
