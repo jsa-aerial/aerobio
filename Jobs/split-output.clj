@@ -9,6 +9,7 @@
  :root :split
  :edges {:split [:prn1]}
  :cli {:usage "split-output <options> expdir datadir"
+       :args ["expdir" "datadir"]
        :options
        [["-u" "--user USERACCNT" "User account (zulip/email) for result msg"
          :missing "The user account is required"]
