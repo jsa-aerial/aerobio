@@ -198,6 +198,9 @@
 ;;;                    Tool Config and  Watcher                             ;;;
 ;;; ------------------------------------------------------------------------;;;
 
+(defn cons? [x]
+  (= clojure.lang.Cons (type x)))
+
 (def tool-configs (atom nil))
 
 (defn bind-env [f env]
@@ -214,7 +217,7 @@
     (if (= "clj" (fs/ftype f))
       (let [cfg (-> f slurp clojure.core/read-string)
             func (cfg :func)]
-        (if (and func (or (symbol? func) (list? func)))
+        (if (and func (or (symbol? func) (list? func) (cons? func)))
           (assoc cfg :func (eval func) :src func)
           cfg))
       (-> f slurp (json/read-str :key-fn keyword)))))
@@ -299,9 +302,9 @@
 (defn read-job-config [f]
   (infof "Job update: %s" f)
   (if (= "clj" (fs/ftype f))
-    (let [cfg (-> f slurp edn/read-string)
+    (let [cfg (-> f slurp clojure.core/read-string)
           func (cfg :func)]
-      (if (and func (or (symbol? func) (list? func)))
+      (if (and func (or (symbol? func) (list? func) (cons? func)))
         (assoc cfg :func (eval func) :src func)
         cfg))
     (-> f slurp (json/read-str :key-fn keyword))))
