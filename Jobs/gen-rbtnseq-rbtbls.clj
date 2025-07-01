@@ -9,6 +9,7 @@
  :root :rbtbls
  :edges {:rbtbls [:prn1]}
  :cli {:usage "gen-rbtnseq-rbtbls <options> eid"
+       :args ["eid"]
        :options
        [["-u" "--user USERACCNT" "User account (zulip/email) for result msg"
          :missing "The user account is required"]
