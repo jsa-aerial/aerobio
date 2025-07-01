@@ -40,7 +40,6 @@
    [clojure.data.csv :as csv]
    [clojure.data.json :as json]
    [clojure.java.io :as io]
-   [clojure.tools.reader.edn :as edn]
    [clojure.core.async :as async
     :refer (<! >! <!! >!! put! chan go go-loop)]
 
@@ -422,7 +421,7 @@
 (defn read-job-db []
   (let [dir (fs/fullpath (pams/get-params [:jobs :dir]))
         f (fs/join dir (pams/get-params [:jobs :file]))]
-    (->> f slurp edn/read-string (reset! job-db))))
+    (->> f slurp clojure.core/read-string (reset! job-db))))
 
 (defn valuefy [db]
   (sp/transform
@@ -679,7 +678,7 @@
         (job-exists? (name op))
         (user-msg {:op :job
                    :params {:ws ws :jobname (name op) :args (data :args)}})
-        
+
 
         :else
         (send-end-msg
