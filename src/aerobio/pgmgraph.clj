@@ -467,14 +467,19 @@
 
 
 (def pgm-graph-schema
-     {:nodes {sch/Keyword
-              {:name sch/Str
-               :type sch/Str
-               (sch/optional-key :inputs) [sch/Str]
-               (sch/optional-key :args)   [sch/Any]
-               sch/Keyword sch/Any}}
-      (sch/optional-key :root) sch/Keyword
-      (sch/optional-key :edges) {sch/Keyword [sch/Keyword]}})
+  {:nodes {sch/Keyword
+           {:name sch/Str
+            :type sch/Str
+            (sch/optional-key :inputs) [sch/Str]
+            (sch/optional-key :args)   [sch/Any]
+            sch/Keyword sch/Any}}
+   (sch/optional-key :root) sch/Keyword
+   (sch/optional-key :cli) {(sch/optional-key :usage) sch/Str
+                            (sch/optional-key :args) [sch/Str]
+                            :options [[sch/Any]]
+                            :order [sch/Keyword]}
+   (sch/optional-key :edges) {sch/Keyword [sch/Keyword]}})
+
 
 (defn xform-node-graph [G get-toolinfo inputs]
   #_(prn :>>> :GRAPH graph :INPUTS inputs)
