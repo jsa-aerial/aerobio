@@ -83,7 +83,7 @@
             errors (argmap :errors)
             options (argmap :options)
             arguments (argmap :arguments)
-            errors (if (not= (count args) arguments)
+            errors (if (not= (count args) (count arguments))
                      (cons missing errors)
                      errors)
             params (mapv (fn[a] (options a)) order)
