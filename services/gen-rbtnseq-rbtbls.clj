@@ -17,7 +17,6 @@
                          "Gen-RBTnseq-RBTbls " ; subject/job
                          "Finished:"    ; Intro
                          ]}
-         :edges {:bc2fq [:mkprojs]
-                 :mkprojs [:endmsg]}}
+         :edges {:genrbtbls [:endmsg]}}
 
  :description "Job for generating the RB position tables for RB"}
