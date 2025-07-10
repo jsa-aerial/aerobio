@@ -157,6 +157,34 @@
     (apply tc/concat-copying)))
 
 
+(defn coalesce-by-bcs [ds]
+  (let [grpds (-> ds (tc/order-by [:pos :count] [:asc :desc])
+                (tc/group-by [:rname :pos])
+                (tc/without-grouping->
+                 (tc/group-by #(-> % :data (tc/row-count)))))
+        onebcds (-> grpds :data first :data (->> (apply tc/concat-copying)))
+        othersds (->> grpds :data rest
+                   (coll/vfold
+                    (fn[gds]
+                      (let [ds (-> gds :data first)
+                            bcs (-> ds :barcode vec)
+                            pbc (first bcs)
+                            bcidx-pairs (->> bcs
+                                          (interleave (range))
+                                          (partition-all 2))
+                            pass (keep (fn[[idx bc]]
+                                         (when (<= (it/hamming pbc bc) 2)
+                                           idx))
+                                       bcidx-pairs)
+                            good-ds (tc/select-rows ds pass)
+                            sumcnt (reduce + (good-ds :count))]
+                        (-> good-ds
+                          (tc/select-rows 0)
+                          (tc/add-column :count sumcnt))))))]
+     (-> (apply tc/concat-copying onebcds othersds)
+       (tc/order-by [:rname :pos]))))
+
+
 (defn gen-rbtnseq-xreftbls [eid chksz maxn delta minrds]
   (let [bamdir (cmn/get-exp-info eid :rep :bams)
         bams (-> bamdir (fs/join "*.bam") fs/glob sort)
@@ -185,9 +213,9 @@
                                          #(> (% :count) minrds)))))
                                    (keep
                                     (fn[ds]
-                                      (when (> (tc/row-count ds) 0)
-                                        (-> ds (tc/order-by :pos)))))
-                                   (apply tc/concat-copying))]
+                                      (when (> (tc/row-count ds) 0) ds)))
+                                   (apply tc/concat-copying)
+                                   coalesce-by-bcs)]
                           (-> ds (tc/set-dataset-name nm)
                             (tcu/write-dataset tbldir))
                           (conj R [nm (->> ds :count (reduce +))])))
