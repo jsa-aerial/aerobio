@@ -186,6 +186,7 @@
 
 
 (defn gen-rbtnseq-xreftbls [eid chksz maxn delta minrds]
+  (when (not (cmn/get-exp eid)) (cmn/set-exp eid))
   (let [bamdir (cmn/get-exp-info eid :rep :bams)
         bams (-> bamdir (fs/join "*.bam") fs/glob sort)
         tbldir (fs/join (fs/dirname bamdir) "RBtbls")]
