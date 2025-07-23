@@ -428,13 +428,27 @@
     (mapv (fn[fut] (deref fut)) futvec)))
 
 
+(defmulti make-sample-map
+  "Make sample mapping name -> unique bc"
+  {:arglists '([eid])}
+  (fn[eid] (get-instrument-make eid)))
+
+(defmethod make-sample-map :illum
+  [eid]
+  (->> eid  get-sample-info (mapv (fn[[id nm ubc]] [nm ubc])) (into {})))
+
+(defmethod make-sample-map :elembio
+  [eid]
+  (->> eid  get-sample-info (into {})))
+
+
 (defn collect-barcode-stats [eid]
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
   (when (not (noexpbc? eid))
     (let [exp-base (pams/get-params :exp-base)
           expdir (fs/join exp-base eid)
-          sample-map (->> eid  get-sample-info (into {}))
+          sample-map (make-sample-map eid)
           expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
                        get-exp-sample-info)
           bcsz (->> expinfo :bc-xref first last count)
