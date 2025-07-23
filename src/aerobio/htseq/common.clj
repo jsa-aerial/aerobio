@@ -116,7 +116,7 @@
                    (let [k (m :tag)
                          v (-> :content m first)]
                      (if (cycle-tags k)
-                       (assoc-in M [:cycles (cycle-xref k)] v)
+                       (assoc-in M [:cycles (cycle-xref k)] (parse-long v))
                        (assoc M (tag-xref k) v))))
                  {})))))
 
