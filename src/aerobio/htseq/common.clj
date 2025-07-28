@@ -428,16 +428,16 @@
     (mapv (fn[fut] (deref fut)) futvec)))
 
 
-(defmulti make-sample-map
+(defmulti get-sample-map
   "Make sample mapping name -> unique bc"
   {:arglists '([eid])}
   (fn[eid] (get-instrument-make eid)))
 
-(defmethod make-sample-map :illum
+(defmethod get-sample-map :illum
   [eid]
   (->> eid  get-sample-info (mapv (fn[[id nm ubc]] [nm ubc])) (into {})))
 
-(defmethod make-sample-map :elembio
+(defmethod get-sample-map :elembio
   [eid]
   (->> eid  get-sample-info (into {})))
 
@@ -448,7 +448,7 @@
   (when (not (noexpbc? eid))
     (let [exp-base (pams/get-params :exp-base)
           expdir (fs/join exp-base eid)
-          sample-map (make-sample-map eid)
+          sample-map (get-sample-map eid)
           expinfo (->> "Exp-SampleSheet.csv" (fs/join expdir)
                        get-exp-sample-info)
           bcsz (->> expinfo :bc-xref first last count)
@@ -468,9 +468,9 @@
   ;; Single index experiment reads are not multiplexed across illumina
   ;; samples!
   (when (not (noexpbc? eid))
-    (let [sample-info (get-sample-info eid)
+    (let [sample-map (get-sample-map eid)
           base (fs/join (pams/get-params :scratch-base) eid "Stats")
-          files (->> sample-info
+          files (->> sample-map
                      (mapv (fn[[snm bckey]]
                              [bckey (fs/join base (str snm ".clj"))]))
                      (into {}))]
@@ -528,7 +528,7 @@
         exp-ssheet (fs/join expdir "Exp-SampleSheet.csv")
         cfgfile (fs/join expdir "cmd.config")]
     (-> {}
-        (assoc :sample-sheet (get-sample-info eid))
+        (assoc :sample-sheet (get-sample-map eid))
         (assoc :run-params (get-seqrun-params eid))
         ((fn[m]
            (assoc m :base base
