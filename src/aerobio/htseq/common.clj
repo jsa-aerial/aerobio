@@ -1066,7 +1066,7 @@
      (pg/send-msg
       eid
       [recipient]
-      (str "Aerobio job: " exp " phase-1  " eid)
+      (format "Aerobio job: %s-phase-1" (name exp))
       (str "\nFinished\n "
            (with-out-str (clojure.pprint/pprint (@status-atom :DONE []))))))
 
@@ -1154,6 +1154,18 @@ ComparisonSheet.csv
     :arglists '([exptype & args])}
   run-aggregation
   (fn[exptype & args] exptype))
+
+
+;;;(ns-unmap 'aerobio.htseq.common 'resultset->msgset)
+(defmulti
+  ^{:doc "Dispatch job result to final message set based on
+          result job name as in job final result map"
+    :arglists '([result-maps])}
+  resultset->msgset
+  (fn[result-maps] (-> result-maps first :name)))
+
+
+
 
 
 
