@@ -7,28 +7,15 @@
            (pg/eoi? result-maps) nil ; (pg/done) is sent on ch close!
 
            (every? map? result-maps)
-           (let [base (->> result-maps first :value second fs/dirname)
-                 msgs (for [retmap result-maps]
-                        (let [name (retmap :name)
-                              [bams csv] (retmap :value)
-                              bams (if (coll? bams)
-                                     (map fs/basename bams)
-                                     (fs/basename bams))
-                              csv (if (coll? csv)
-                                    (map fs/basename csv)
-                                    (fs/basename csv))
-                              exit (retmap :exit)
-                              err (retmap :err)]
-                          (if (= exit :success)
-                            [exit csv]
-                            [exit err [bams csv]])))
+           (let [[ibase obase msgs] (cmn/resultset->msgset result-maps)
                  overall (reduce (fn[R x]
                                    (cond (= x R :success) R
                                          (= x R :fail) R
                                          :else :mixed))
                                  (map first msgs))
                  msg (->> msgs
-                          (cons (str "Base '" base "'"))
+                          (cons (str "Output Base '" obase "'"))
+                          (cons (str "Input Base '" ibase "'"))
                           (cons (str "Overall " overall))
                           (cons intro)
                           (map str) (str/join "\n"))]
