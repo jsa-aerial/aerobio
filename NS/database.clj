@@ -30,12 +30,25 @@
   [:require
    [clojure.string :as str]
    [clojure.set :as set]
+   [clojure.data.json :as json]
 
+   [tech.v3.dataset :as ds]
+   [tech.v3.datatype :as dtype]
+   [tech.v3.datatype.functional :as df]
+   [tech.v3.dataset.reductions :as dsr]
+   [tablecloth.api :as tc]
+
+   [next.jdbc :as jdbc]
+   [next.jdbc.result-set :as rs]
+   [tech.v3.dataset.sql :as dsql]
+   
    [aerial.fs :as fs]
+   [aerial.hanasu.common :as hc]
    [aerial.utils.coll :as coll]
    [aerial.utils.io :refer [letio] :as io]
    [aerial.bio.utils.files :as bufiles]
 
+   [aerobio.tcutils]
    [aerobio.htseq.common :as cmn]])
 
 
@@ -53,3 +66,48 @@
                    [exit err err-dir gbk])))]
     [gbk-dir done-dir msgs]))
 
+
+
+
+;;; ------------------------------------------------------------------------;;;
+;;;                        Connection Database                              ;;;
+;;; ------------------------------------------------------------------------;;;
+
+
+;;; Con DB storage
+(defonce condb (atom {}))
+
+(defn update-condb
+  ([] (hc/update-db condb {}))
+  ([keypath vorf]
+   (hc/update-db condb keypath vorf))
+  ([kp1 vof1 kp2 vof2 & kps-vs]
+   (apply hc/update-db condb kp1 vof1 kp2 vof2 kps-vs)))
+
+(defn get-condb
+  ([] (hc/get-db condb []))
+  ([key-path] (hc/get-db condb key-path)))
+
+
+(defn connect-dbs []
+  :mouse-db
+  {:dbtype "mysql" :user "root" :password ""
+   :dbname "GRCm38_mm10"}
+
+  :refseq77-db
+  {:dbtype "mysql" :user "root" :password ""
+   :dbname "refseq77"}
+
+  :tvoseq02-db
+  {:dbtype "mysql" :user "root" :password ""
+   :dbname "tvoseq02"}
+
+  :exp-db
+  {:dbtype "mysql" :user "root" :password ""
+   :dbname "exp"}
+
+  :r77con ;(-> refseq77-db jdbc/get-datasource jdbc/get-connection)
+  :tvocon ;(-> tvoseq02-db jdbc/get-datasource jdbc/get-connection)
+  :mmcon  ;(-> mouse-db jdbc/get-datasource jdbc/get-connection)
+  :expcon ;(-> exp-db jdbc/get-datasource jdbc/get-connection)
+  )
