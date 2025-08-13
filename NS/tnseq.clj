@@ -36,3 +36,14 @@
                    [exit (first fulloiv)]
                    [exit err (-> fulloiv rest vec)])))]
     [fbase abase msgs]))
+
+
+
+
+
+
+
+
+;;; for auto ns require to server
+(let [ns (ns-name *ns*)]
+  [ns "htts"])

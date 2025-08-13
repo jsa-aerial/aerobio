@@ -15,3 +15,14 @@
                    [exit dge-csv]
                    [exit err [fcnt-csv]])))]
     [fcnt-dir dge-dir msgs]))
+
+
+
+
+
+
+
+
+;;; for auto ns require to server
+(let [ns (ns-name *ns*)]
+  [ns "htrs"])

@@ -111,3 +111,14 @@
   :mmcon  ;(-> mouse-db jdbc/get-datasource jdbc/get-connection)
   :expcon ;(-> exp-db jdbc/get-datasource jdbc/get-connection)
   )
+
+
+
+
+
+
+
+
+;;; for auto ns require to server
+(let [ns (ns-name *ns*)]
+  [ns "db"])
