@@ -63,7 +63,7 @@
                      err (resmap :err)
                      failed? (seq (filterv #(re-find #"failed" %) err))]
                  (if failed?
-                   [exit err err-dir gbk]
+                   [:failed err err-dir gbk]
                    [exit gbk])))]
     [gbk-dir done-dir msgs]))
 

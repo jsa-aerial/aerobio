@@ -10,7 +10,7 @@
            (let [[ibase obase msgs] (cmn/resultset->msgset result-maps)
                  overall (reduce (fn[R x]
                                    (cond (= x R :success) R
-                                         (= x R :fail) R
+                                         (= x R :failed) R
                                          :else :mixed))
                                  (map first msgs))
                  msg (->> msgs
