@@ -60,10 +60,11 @@
                (let [name (resmap :name)
                      [gbk-dir gbk done-dir err-dir] (resmap :value)
                      exit (resmap :exit)
-                     err (resmap :err)]
-                 (if (= exit :success)
-                   [exit gbk]
-                   [exit err err-dir gbk])))]
+                     err (resmap :err)
+                     failed? (seq (filterv #(re-find #"failed" %) err))]
+                 (if failed?
+                   [exit err err-dir gbk]
+                   [exit gbk])))]
     [gbk-dir done-dir msgs]))
 
 
