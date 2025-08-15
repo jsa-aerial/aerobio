@@ -14,11 +14,12 @@
                          :value [(fs/dirname file) basename
                                  done-dir err-dir]
                          :exit exit
-                         :err err}]
-             (if (seq (filterv #(re-find #"WARN" %) err))
+                         :err err}
+                 failed? (seq (filterv #(re-find #"failed" %) err))]
+             (if failed?
                (warnf "%s: [%s] %s, %s" name exit basename err)
                (infof "%s: [%s] %s" name exit basename))
-             (if (= exit :success)
+             (if failed?
                (fs/move [file] done-dir)
                (fs/move [file] err-dir))
              resmap)))
