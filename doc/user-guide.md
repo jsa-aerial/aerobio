@@ -356,7 +356,7 @@ aerobio <cmd> <action | compfile | aggrfile> {replicates | combined} <eid>
      ```
 
 
-   * `compare` : This command is for subsequent comparisons beyond those specified in the default ComparisonSheet.  It takes a comparison sheet name and the [experiment id (EID)](#experiment-id).  The comparison sheet name will be for a comparison sheet in the [experiment directory](#experiment-input-structure).  It will typically contain new comparisons and will run just the comparisons.
+   * `compare` : This command is for subsequent comparisons beyond those specified in the default ComparisonSheet.  It takes a comparison sheet name and the [experiment id [EID](#experiment-id).  The comparison sheet name will be for a comparison sheet in the [experiment directory](#experiment-input-structure).  It will typically contain new comparisons and will run just the comparisons.
 
      ```shell
      aerobio compare ComparisonSheet_pg13_only.csv 230627_01_dualRNASeq_KZ
@@ -365,7 +365,7 @@ aerobio <cmd> <action | compfile | aggrfile> {replicates | combined} <eid>
 
    * `xcompare` : This command invokes the job for processing comparisons involving [data from more than one experiment](#comparisons-across-different-experiments).
 
-   * `aggregate` : Invokes Tn-Seq global aggregation job.  Typically used for post aggregation of standard Tn-Seq output for in-vivo analysis using bottleneck numbers.  Takes a global (aka 'super') [aggregation CSV file](#aggregationsheetcsv) and the (EID)](#experiment-id)
+   * `aggregate` : Invokes Tn-Seq global aggregation job.  Typically used for post aggregation of standard Tn-Seq output for in-vivo analysis using bottleneck numbers.  Takes a global (aka 'super') [aggregation CSV file](#aggregationsheetcsv) and the [EID](#experiment-id)
 
    * `JobName` : Run a general registered job with name *JobName*
 
