@@ -26,7 +26,7 @@
                       exit (if (= 0 exit-code) :success exit-code)
                       err (-> (ret :stderr) (str/split #"\n") last)]
                   {:name "tnseq-aggregate"
-                   :value tuple
+                   :value (flatten [ot ins])
                    :exit exit
                    :err err}))
               aggr-tuples))))
