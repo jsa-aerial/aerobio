@@ -18,8 +18,8 @@ options.add_option("-i","--infile",dest="inputfile",
 
 
 options.add_option("--old",dest="old_tags",
-					action="store_true", default=False,
-					help="specify if old locus tags should be retrieved.")  
+                   action="store_true", default=False,
+                   help="specify if old locus tags should be retrieved.")  
 					
                    
 # Read gbk file and return a dictionary of locus tag, product entries                   
