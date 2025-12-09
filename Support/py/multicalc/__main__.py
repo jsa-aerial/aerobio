@@ -28,31 +28,31 @@ from normalize import normalize
 ##### ARGUMENTS #####
 
 def print_usage():
-    print "\n" + "You are missing one or more required flags. A complete list of flags accepted by calc_fitness is as follows:" + "\n\n"
-    print "\033[1m" + "Required" + "\033[0m" + "\n"
-    print "-ref" + "\t\t" + "The name of the reference genome file, in GTF/GFF format." + "\n"
-    print "-features" + "\t" + "The feature types to use, defaults to 'CDS', can be comma separted string: 'gene,CDS' etc."
-    print "-t1" + "\t\t" + "The name of the bowtie mapfile from time 1." + "\n"
-    print "-t2" + "\t\t" + "The name of the bowtie mapfile from time 2." + "\n"
-    print "-out" + "\t\t" + "Name of a file to enter the .csv output." + "\n"
-    print "\n"
-    print "\033[1m" + "Optional" + "\033[0m" + "\n"
-    print "-expansion" + "\t" + "Expansion factor (default: 250)" + "\n"
-    print "-d" + "\t\t" + "All reads being analyzed are downstream of the transposon" + "\n"
-    print "-reads1" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 0." + "\n\t\t" + "(default counted from bowtie output)" + "\n"
-    print "-reads2" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 6." + "\n\t\t" + "(default counted from bowtie output)" + "\n"
-    print "-cutoff" + "\t\t" + "Discard any positions where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n"
-    print "-cutoff2" + "\t" + "Discard any positions within the normalization genes where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n"
-    print "-strand" + "\t\t" + "Use only the specified strand (+ or -) when counting transcripts (default: both)" + "\n"
-    print "-reversed" + "\t" + "Experiment protocol used reversed i5 and i7 indices"
-    print "-normalize" + "\t" + "A file that contains a list of genes that should have a fitness of 1" + "\n"
-    print "-maxweight" + "\t" + "The maximum weight a transposon gene can have in normalization calculations" + "\n"
-    print "-multiply" + "\t" + "Multiply all fitness scores by a certain value (e.g., the fitness of a knockout). You should normalize the data." + "\n"
-    print "-ef" + "\t\t" + "Exclude insertions that occur in the first N amount (%) of gene--becuase may not affect gene function." + "\n"
-    print "-el" + "\t\t" + "Exclude insertions in the last N amount (%) of the gene--considering truncation may not affect gene function." + "\n"
-    print "-wig" + "\t\t" + "Create a wiggle file for viewing in a genome browser. Provide a filename." + "\n"
-    print "-uncol" + "\t\t" + "Use if reads were uncollapsed when mapped." + "\n"
-    print "\n"
+    print ("\n" + "You are missing one or more required flags. A complete list of flags accepted by calc_fitness is as follows:" + "\n\n")
+    print ("\033[1m" + "Required" + "\033[0m" + "\n")
+    print ("-ref" + "\t\t" + "The name of the reference genome file, in GTF/GFF format." + "\n")
+    print ("-features" + "\t" + "The feature types to use, defaults to 'CDS', can be comma separted string: 'gene,CDS' etc.")
+    print ("-t1" + "\t\t" + "The name of the bowtie mapfile from time 1." + "\n")
+    print ("-t2" + "\t\t" + "The name of the bowtie mapfile from time 2." + "\n")
+    print ("-out" + "\t\t" + "Name of a file to enter the .csv output." + "\n")
+    print ("\n")
+    print ("\033[1m" + "Optional" + "\033[0m" + "\n")
+    print ("-expansion" + "\t" + "Expansion factor (default: 250)" + "\n")
+    print ("-d" + "\t\t" + "All reads being analyzed are downstream of the transposon" + "\n")
+    print ("-reads1" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 0." + "\n\t\t" + "(default counted from bowtie output)" + "\n")
+    print ("-reads2" + "\t\t" + "The number of reads to be used to calculate the correction factor for time 6." + "\n\t\t" + "(default counted from bowtie output)" + "\n")
+    print ("-cutoff" + "\t\t" + "Discard any positions where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n")
+    print ("-cutoff2" + "\t" + "Discard any positions within the normalization genes where the average of counted transcripts at time 0 and time 1 is below this number (default 0)" + "\n")
+    print ("-strand" + "\t\t" + "Use only the specified strand (+ or -) when counting transcripts (default: both)" + "\n")
+    print ("-reversed" + "\t" + "Experiment protocol used reversed i5 and i7 indices")
+    print ("-normalize" + "\t" + "A file that contains a list of genes that should have a fitness of 1" + "\n")
+    print ("-maxweight" + "\t" + "The maximum weight a transposon gene can have in normalization calculations" + "\n")
+    print ("-multiply" + "\t" + "Multiply all fitness scores by a certain value (e.g., the fitness of a knockout). You should normalize the data." + "\n")
+    print ("-ef" + "\t\t" + "Exclude insertions that occur in the first N amount (%) of gene--becuase may not affect gene function." + "\n")
+    print ("-el" + "\t\t" + "Exclude insertions in the last N amount (%) of the gene--considering truncation may not affect gene function." + "\n")
+    print ("-wig" + "\t\t" + "Create a wiggle file for viewing in a genome browser. Provide a filename." + "\n")
+    print ("-uncol" + "\t\t" + "Use if reads were uncollapsed when mapped." + "\n")
+    print ("\n")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-ref", action="store", dest="ref_genome")
@@ -140,7 +140,7 @@ def appendDictVal (d, k, v):
         d[k] = {'feats': [v]}
 
 
-print "\n" + "Starting: " + str(get_time()) + "\n"
+print ("\n" + "Starting: " + str(get_time()) + "\n")
 
 # Makes a dictionary out of each feature that's a gene - with its gene
 # name, start location, end location, and strand as keys to their
@@ -219,7 +219,7 @@ for k in gtf_dict:
         gtf_dict[k]['wigfile'] = os.path.join(dnm, k + '-' + wfnm)
 
 
-print "Done generating feature lookup: " + str(get_time()) + "\n"
+print ("Done generating feature lookup: " + str(get_time()) + "\n")
 
 
 
@@ -287,14 +287,14 @@ def read_mapfile(reads, refname):
                     minus_counts[position] += count
                 else:
                     minus_counts[position] = count
-    print "Map Counts: " + str(len(plus_counts)) + " " + str(len(minus_counts))
+    print ("Map Counts: " + str(len(plus_counts)) + " " + str(len(minus_counts)))
     #print "Map elts: " + str(plus_counts.items()[1:10])
     #print "Map 147: "  + str(plus_counts.get(147, -1)) + " " + str(minus_counts.get(147, -1))
     return (plus_counts, minus_counts)
 
 
 
-print "args.downstream : " + str(arguments.downstream)
+print ("args.downstream : " + str(arguments.downstream))
 
 
 with open(arguments.mapfile1) as file:
@@ -306,13 +306,13 @@ with open(arguments.mapfile2) as file:
 # arguments.reads2 (your reads from t1 and t2).
 
 for refname, dict in gtf_dict.items():
-    print "    >>>> ", refname
+    print ("    >>>> ", refname)
 
     (plus_ref_1, minus_ref_1) = read_mapfile(r1, refname)
-    print "Read first file: " + str(get_time()) + "\n"
+    print ("Read first file: " + str(get_time()) + "\n")
 
     (plus_ref_2, minus_ref_2) = read_mapfile(r2, refname)
-    print "Read second file: " + str(get_time()) + "\n"
+    print ("Read second file: " + str(get_time()) + "\n")
 
     dict['pmrefs'] = {'pr1': plus_ref_1, 'mr1': minus_ref_1,
                       'pr2': plus_ref_2, 'mr2': minus_ref_2}
@@ -335,12 +335,12 @@ for refname, dict in gtf_dict.items():
 # is the length of a given dictionary of sites - 1 because its last
 # key, "total", isn't actually a site.
 
-print "Reads:" + "\n"
-print "1: + " + str(plus_ref_1["total"]) + " - " + str(minus_ref_1["total"]) + "\n"
-print "2: + " + str(plus_ref_2["total"]) + " - " + str(minus_ref_2["total"]) + "\n"
-print "Sites:" + "\n"
-print "1: + " + str(plus_ref_1["sites"]) + " - " + str(minus_ref_1["sites"]) + "\n"
-print "2: + " + str(plus_ref_2["sites"]) + " - " + str(minus_ref_2["sites"]) + "\n"
+print ("Reads:" + "\n")
+print ("1: + " + str(plus_ref_1["total"]) + " - " + str(minus_ref_1["total"]) + "\n")
+print ("2: + " + str(plus_ref_2["total"]) + " - " + str(minus_ref_2["total"]) + "\n")
+print ("Sites:" + "\n")
+print ("1: + " + str(plus_ref_1["sites"]) + " - " + str(minus_ref_1["sites"]) + "\n")
+print ("2: + " + str(plus_ref_2["sites"]) + " - " + str(minus_ref_2["sites"]) + "\n")
 
 
 
@@ -366,13 +366,13 @@ for refname, dict in gtf_dict.items():
 
     wigstring = "track type=wiggle_0 name=" + dict['wigfile'] + "\n" + "variableStep chrom=" + refname + "\n"
 
-    print '********** Reference: ', refname
+    print ('********** Reference: ', refname)
     results,genic,total_inserts = fitness(dict['size'], dict['feats'],
                                           reads1, reads2,
                                           dict['pmrefs'], arguments)
 
-    print "Genic: " + str(genic) + "\n"
-    print "Total: " + str(total_inserts) + "\n"
+    print ("Genic: " + str(genic) + "\n")
+    print ("Total: " + str(total_inserts) + "\n")
 
     if (arguments.normalize):
         results, wigstring = normalize(wigp, wigstring, results,

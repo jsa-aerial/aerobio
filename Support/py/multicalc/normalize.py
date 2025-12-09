@@ -8,7 +8,7 @@ def normalize (wigp, wigstring, results, normgene_file, outfile2, total, refname
     # and uses them to normalize the fitnesses of all insertion locations
     with open(normgene_file) as file:
         transposon_genes = file.read().splitlines()
-    print "Normalize genes loaded" + "\n"
+    print ("Normalize genes loaded" + "\n")
 
     blank_ws = 0
     sum = 0
@@ -68,7 +68,7 @@ def normalize (wigp, wigstring, results, normgene_file, outfile2, total, refname
     original_count = len(scores)
     curr_count = original_count
     i = 0
-    print 'original_count:', original_count, 'scores[]:', scores
+    print ('original_count:', original_count, 'scores[]:', scores)
     while i < curr_count:
         w_value = scores[i]
         if w_value == 0:
@@ -83,9 +83,9 @@ def normalize (wigp, wigstring, results, normgene_file, outfile2, total, refname
     # If no normalization genes can pass the cutoff, normalization
     # cannot occur, so just return the original results
     if len(scores) == 0:
-        print 'WARNING: The normalization genes do not have enough reads to pass cutoff and/or cutoff2'
-        print 'try lowering one or both of those arguments.'
-        print 'Returning unnormalized results...'
+        print ('WARNING: The normalization genes do not have enough reads to pass cutoff and/or cutoff2')
+        print ('try lowering one or both of those arguments.')
+        print ('Returning unnormalized results...')
         return (results, wigstring)
 
     

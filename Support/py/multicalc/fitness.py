@@ -15,8 +15,8 @@ def fitness (genomelength, feature_list, reads1, reads2, pmrefs, arguments):
     total = float((reads1 + reads2)/2.0)
     cfactor1 = reads1/total
     cfactor2 = reads2/total
-    print "Cfactor 1: " + str(cfactor1) + "\n"
-    print "Cfactor 2: " + str(cfactor2) + "\n"
+    print ("Cfactor 1: " + str(cfactor1) + "\n")
+    print ("Cfactor 2: " + str(cfactor2) + "\n")
 
     plus_ref_1 = pmrefs['pr1']
     minus_ref_1 = pmrefs['mr1']
@@ -111,8 +111,8 @@ def fitness (genomelength, feature_list, reads1, reads2, pmrefs, arguments):
                 bot_w = math.log(pop_freq_t2*(float(arguments.expansion_factor)/pop_freq_t1))
                 w = top_w/bot_w
             except:
-                print "!!!!", "mt_freq_t2:", mt_freq_t2, "mt_freq_t1:", mt_freq_t1
-                print "    ", "pop_freq_t2", pop_freq_t2, "pop_freq_t1", pop_freq_t1
+                print ("!!!!", "mt_freq_t2:", mt_freq_t2, "mt_freq_t1:", mt_freq_t1)
+                print ("    ", "pop_freq_t2", pop_freq_t2, "pop_freq_t1", pop_freq_t1)
 
         # Checks which gene locus the insertion falls within, and
         # records that.
