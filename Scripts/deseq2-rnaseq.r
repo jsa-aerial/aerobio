@@ -6,7 +6,7 @@ library(RColorBrewer)
 library(gplots)
 
 
-## args[1] == full path to Charts directory for this analysis
+## args[1] == full path to DGE directory for this analysis
 ## args[2] == full path to featureCounts csv for this analysis
 ## args[3] == comma separated string of conditions to compare and rep counts:
 ##            "c1,c2,c1reps,c2reps"
