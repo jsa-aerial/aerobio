@@ -2,7 +2,7 @@
 Table of Contents
 =================
 
-* [RNA-Seq &amp; Tn-Seq By Hand](#rna-seq--tn-seq-by-hand)
+* [RNA-Seq, Tn-Seq and WG-Seq By Hand](#rna-seq-tn-seq-and-wg-seq-by-hand)
 * [Tools](#tools)
 * [Scripts](#scripts)
 * [Flows](#flows)
@@ -13,12 +13,13 @@ Table of Contents
       * [Alignment](#alignment)
    * [RNA-Seq DGE](#rna-seq-dge)
    * [Tn-Seq Fitness](#tn-seq-fitness)
+   * [WG-Seq breseq](#wg-seq-breseq)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
-# RNA-Seq & Tn-Seq By Hand
+# RNA-Seq, Tn-Seq and WG-Seq By Hand
 
-This provides a guide for the tools and scripts that are needed to run basic RNA-Seq and Tn-Seq by hand (manual runs). The tools and scripts need to be installed before being able to run analyses.  The **tool** section gives the tools and download links for installing them.  The **scripts** section gives the links to the scripts for running DGE analysis on RNA-Seq data and fitness + aggregation on Tn-Seq data.  Then the **flows** section gives step by step procedures for generating the input data to the main scripts and then running the scripts to obtain the final output.
+This provides a guide for the tools and scripts that are needed to run basic RNA-Seq and Tn-Seq by hand (manual runs). Additionally, it includes a short review of how the TVO Lab uses [breseq](https://gensoft.pasteur.fr/docs/breseq/0.35.0/) for whole genome seq analysis.  The tools and scripts need to be installed before being able to run analyses.  The **tool** section gives the tools and download links for installing them.  The **scripts** section gives the links to the scripts for running DGE analysis on RNA-Seq data and fitness + aggregation on Tn-Seq data.  Then the **flows** section gives step by step procedures for generating the input data to the main scripts and then running the scripts to obtain the final output.
 
 
 # Tools
@@ -84,6 +85,10 @@ Many of these tools now provide statically linked executables and thus do not re
 
   - UMI tools
   https://umi-tools.readthedocs.io/en/latest/INSTALL.html
+
+* breseq
+  - download: https://github.com/barricklab/breseq/releases
+  - manual : https://gensoft.pasteur.fr/docs/breseq/0.35.0/
 
 
 
@@ -616,3 +621,65 @@ SP_0007,0.10,0.10,X,X,,,,
 SP_0008,0.10,0.10,X,X,,,,
 SP_0009,0.10,0.10,X,X,,,,
 ```
+
+
+## WG-Seq breseq 
+
+The **breseq** [manual](https://gensoft.pasteur.fr/docs/breseq/0.35.0/) is very complete and detailed and should be the primary reference for its use.  Here we simply provide information on the switches and values used in the TVO Lab's use of breseq.
+
+Here is an example run on non-clonal samples.
+
+```sh
+$ breseq -p -j 16
+>        -r /Refs/NC_003028.gbk \
+>        -o Out/T4t30NDCd20pop2 \
+>        Samples/T4t30NDCd20pop2_S31_R1_001-qc14.fastq.gz \
+>        Samples/T4t30NDCd20pop2_S31_R2_001-qc14.fastq.gz
+#
+# Lots of progress output
+# this actually takes quite a while to run
+# long run times are very typical
+#
+$ ls -l Out/T4t30NDCd20pop2/
+total 40
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:30 01_sequence_conversion
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:30 02_reference_alignment
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:38 03_candidate_junctions
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:29 04_candidate_junction_alignment
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:38 05_alignment_correction
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:38 06_bam
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:32 07_error_calibration
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:38 08_mutation_identification
+drwxrwsr-x 2 anthonyj aerobio 4096 Dec 11 22:38 data
+drwxrwsr-x 4 anthonyj aerobio 4096 Dec 11 22:38 output
+```
+
+Most of the switches are self explanatory, and detailed explanations are given in the breseq manual. They are recapped here:
+
+* -p The sample is not clonal. Predict polymorphic (mixed) mutations.
+* -j Use the given value for number of CPU threads in parallelization
+* -r Reference genome, typically in GBFF (GBK) format
+* -o Output directory for the analysis data
+
+If the samples *are* clonal, then there is another switch you should consider using:
+
+* -l The value given (an integer) limits the number of sample reads per base within the reference sequences (for example CDSs). Hence, this effectively subsets the total reads analyzed by the computation.  The breseq authors indicate a value between 60 and 120 markedly speed up the run while maintaining sensitivity for clonal samples. Also, clearly, if your samples are clonal the `-p` switch should *not* be used.
+
+The important output is in the subdirectory `output`:
+
+```sh
+$ ls -l Out/T4t30NDCd20pop2/output
+total 120
+drwxrwsr-x 2 anthonyj aerobio  4096 Dec 11 22:32 calibration
+drwxrwsr-x 2 anthonyj aerobio  4096 Dec 11 22:38 evidence
+-rw-rw-rw- 1 anthonyj aerobio 33698 Dec 11 22:38 index.html ## <-- Main starting point
+-rw-rw-rw- 1 anthonyj aerobio   187 Dec 11 22:26 log.txt
+-rw-rw-rw- 1 anthonyj aerobio  5775 Dec 11 22:38 marginal.html
+-rw-rw-rw- 1 anthonyj aerobio  3938 Dec 11 22:38 output.done
+-rw-rw-rw- 1 anthonyj aerobio 33338 Dec 11 22:38 output.gd
+-rw-rw-rw- 1 anthonyj aerobio  3023 Dec 11 22:38 output.vcf
+-rw-rw-rw- 1 anthonyj aerobio 11152 Dec 11 22:38 summary.html
+-rw-rw-rw- 1 anthonyj aerobio  7537 Dec 11 22:38 summary.json
+```
+
+The `index.html` start page describes the predicted mutations and also evidence for mutations that breseq could not resolve into mutational events. For the details, see [breseq output](https://gensoft.pasteur.fr/docs/breseq/0.35.0/output.html#output-format)
