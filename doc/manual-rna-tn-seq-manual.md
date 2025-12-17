@@ -14,12 +14,14 @@ Table of Contents
    * [RNA-Seq DGE](#rna-seq-dge)
    * [Tn-Seq Fitness](#tn-seq-fitness)
    * [WG-Seq breseq](#wg-seq-breseq)
+   * [dualRNA-Seq](#dualrna-seq)
+   * [TRADis-Seq](#tradis-seq)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
 # RNA-Seq, Tn-Seq and WG-Seq By Hand
 
-This provides a guide for the tools and scripts that are needed to run basic RNA-Seq and Tn-Seq by hand (manual runs). Additionally, it includes a short review of how the TVO Lab uses [breseq](https://gensoft.pasteur.fr/docs/breseq/0.35.0/) for whole genome seq analysis.  The tools and scripts need to be installed before being able to run analyses.  The **tool** section gives the tools and download links for installing them.  The **scripts** section gives the links to the scripts for running DGE analysis on RNA-Seq data and fitness + aggregation on Tn-Seq data.  Then the **flows** section gives step by step procedures for generating the input data to the main scripts and then running the scripts to obtain the final output.
+This provides a guide for the tools and scripts that are needed to run basic RNA-Seq and Tn-Seq by hand (manual runs). Included are some notes on slight variations of these.  Additionally, it includes a short review of how the TVO Lab uses [breseq](https://gensoft.pasteur.fr/docs/breseq/0.35.0/) for whole genome seq analysis.  The tools and scripts need to be installed before being able to run analyses.  The **tool** section gives the tools and download links for installing them.  The **scripts** section gives the links to the scripts for running DGE analysis on RNA-Seq data and fitness + aggregation on Tn-Seq data.  Then the **flows** section gives step by step procedures for generating the input data to the main scripts and then running the scripts to obtain the final output.
 
 
 # Tools
@@ -683,3 +685,94 @@ drwxrwsr-x 2 anthonyj aerobio  4096 Dec 11 22:38 evidence
 ```
 
 The `index.html` start page describes the predicted mutations and also evidence for mutations that breseq could not resolve into mutational events. For the details, see [breseq output](https://gensoft.pasteur.fr/docs/breseq/0.35.0/output.html#output-format)
+
+
+
+## dualRNA-Seq
+
+dualRNA-Seq involves the simultaneous RNA-Seq analysis of a bacterial pathogen and its infected host. It incorporates both eukaryote and bacterial reads per sequencer output sample involving the same conditions. It is basically the same as RNA-Seq with a few simple differences:
+
+1. There are no reads with internal barcodes and thus no demultiplexing needs to be done to the sequencer output fastqs.
+2. You will want to use STAR for the eukaryote alignments.
+3. Generally you have paired end reads, so you need to inform featureCounts of this.
+
+Everything else is the same as for RNA-Seq.
+
+There are a truly large number of switches for STAR and the [official manual](https://github.com/alexdobin/STAR/blob/master/doc/STARmanual.pdf) should be the primary reference. However, generally, the following should do well for most needs:
+
+* --genomeDir : The STAR index built from the genome fasta (see Index generation above).
+* --runThreadN : Number of cores to use in parallelization.
+* --readFilesCommand : Run the given command on input before processing. This is very useful for cases where your input files are gzipped.
+* --readFilesIn : Space separated list of input fastq files
+* --outSAMtype : Used to specify format of main output (alignments)
+* --outFileNamePrefix : Used to provide a prefix for the output file names.  If you do not use streaming, these will include the alignment output.
+* ----outStd : Alignment output is written to standard out. The value given indicates the output format.
+
+Example using STAR:
+
+```sh
+$ STAR --genomeDir /Refs/STARindex/GRCm38_mm10 \
+>      --runThreadN 24 \
+>      --readFilesCommand zcat \
+>      --readFilesIn Samples/E014M21/mouse-1E7-a-AATTGA-R1.fastq.gz \
+>                    Samples/E014M21/mouse-1E7-a-AATTGA-R2.fastq.gz \
+>      --outSAMtype BAM SortedByCoordinate \
+>      --outFileNamePrefix STAR/mouse-1E7-a-
+#
+# May take some time, but generally, STAR is quite fast
+#
+$ ls -l Star/mouse-1E7-a*
+-rw-rw-r-- 1 anthonyj aerobio 2497817409 Aug 14  2023 STAR/mouse-1E7-a-Aligned.sortedByCoordinate.out.bam
+-rw-rw-r-- 1 anthonyj aerobio       2028 Aug 14  2023 STAR/mouse-1E7-a-Log.final.out
+-rw-rw-r-- 1 anthonyj aerobio       9301 Aug 14  2023 STAR/mouse-1E7-a-Log.out
+-rw-rw-r-- 1 anthonyj aerobio       1072 Aug 14  2023 STAR/mouse-1E7-a-Log.progress.out
+-rw-rw-r-- 1 anthonyj aerobio        754 Aug 14  2023 STAR/mouse-1E7-a-Log.std.out
+-rw-rw-r-- 1 anthonyj aerobio    5769073 Aug 14  2023 STAR/mouse-1E7-a-SJ.out.tab
+
+```
+
+The output BAMs generated can now be processed just like for RNA-Seq.  The only difference (as in this case) is if you have paired end reads.  In that case you will need to give `featureCounts` the `-p` switch so that it can properly account for this.
+
+```sh
+$ featureCounts -a /Refs/GRCm38_mm10.gtf \
+>               -o Fcnts/mouse-1E7-mouse-UN.csv \
+>               -p \ # indicates to featureCounts there are PE reads
+>               -t CDS \
+>               <list of bams to process>
+```
+
+
+
+## TRADis-Seq
+
+TRADis-Seq is a slight variation of Tn-Seq, where the sequencer sample fastqs are not multiplexed but still need a piece of pre-processing.  The gDNA in the reads to be analyzed first needs to be extracted into corresponding fastqs. This is done by first finding a pattern marker sequence in the reads and then a length of gDNA downstream of it is retrieved. The pattern and length *may* vary among experiments.
+
+Here (TVO Lab), the pattern sequence is `CCGGGGACTTATCAGCCAACCTGT` and the length is 24. One way to find the pattern and extract the gDNA is to use the `seqkit` tool suite. There are three basic steps:
+
+1. Find all reads that have the pattern
+2. Locate the pattern within those reads
+3. Extract the sequence downstream of the pattern
+
+These three basic steps correspond to the `grep`, `locate`, and `subseq` subcommands of `seqkit`.
+
+```sh
+# Get the reads with the pattern and pipe to locator
+# Write the location results in BED file format to p.bed
+#
+$ seqkit grep -p CCGGGGACTTATCAGCCAACCTGT \
+>             -r -s ../Data/Samples/WTAT0_S8_R1_001.fastq.gz \
+>  | seqkit locate -p CCGGGGACTTATCAGCCAACCTGT --bed > p.bed
+#
+# The BED file can be used as input to the subseq command
+#
+$ zcat ../Data/Samples/WTAT0_S8_R1_001.fastq.gz \
+>  | seqkit subseq --bed p.bed -d 24 -f \
+>  | gzip --stdout > s.fastq.gz
+#
+# The -d 24 says  pull 24 bases downstream of locations in p.bed
+# The -f says to only write that sequence to output
+# Not necessarily needed, but here gzip these. Lastly, write to s.fastq.gz
+```
+
+The set of fastq(.gz) files generated can now be used as normal Tn-Seq input.
+
