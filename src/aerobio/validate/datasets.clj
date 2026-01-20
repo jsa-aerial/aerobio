@@ -35,7 +35,7 @@
 
 (defn expexists? [EID]
   (fs/directory?
-   (fs/join (pams/get-params :nextseq-base) EID)))
+   (fs/join (pams/get-params :exp-base) EID)))
 
 (defn bclfiles? [EID]
   (fs/directory?

@@ -329,7 +329,7 @@
   [eid]
   (let [exp-base (pams/get-params :exp-base)
         expdir (fs/join exp-base eid)
-        exp-fqdir (fs/join expdir (pams/get-params :nextseq-fqdir))]
+        exp-fqdir (fs/join expdir (pams/get-params :illum-fqdir))]
     (filter #(not (str/substring? "Undetermined" %))
             (fs/re-directory-files exp-fqdir "fastq.gz"))))
 
@@ -462,7 +462,6 @@
              (mapv (partial bcfreqs-fold sample-map bcsz))
              (into {}))))))
 
-;;; base "/data1/NextSeq/TVOLab/AHL7L3BGXX/Stats/"
 ;;; (write-bcmaps "160307_NS500751_0013_AHL7L3BGXX/")
 (defn write-bcmaps [eid bcmaps]
   ;; Single index experiment reads are not multiplexed across illumina
@@ -649,7 +648,7 @@
                 [:charts (fs/join base "Out/DGE")]
                 [:cmdsargs (get-cmds-args cfgfile)]]
         a (->> comp-filename
-                   (fs/join (pams/get-params :nextseq-base) eid)
+                   (fs/join (pams/get-params :exp-base) eid)
                    slurp csv/read-csv rest ffirst)
         aeid (-> a (cljstr/split #"-") first)
         aexp (get-exp aeid)

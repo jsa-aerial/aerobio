@@ -58,7 +58,7 @@
 ;;; Check proper line EOL for sheets
 ;;;
 (defn make-sheet-fspec [EID sheetname]
-  (fs/join (pams/get-params :nextseq-base) EID sheetname))
+  (fs/join (pams/get-params :exp-base) EID sheetname))
 
 (defn eolOK? [csv]
   (->> csv slurp (re-find #"\n")))
@@ -175,7 +175,7 @@
 
 
   (let [recs (ac/get-exp-sample-info
-              (fs/join "/NextSeq2/" EID "Exp-SampleSheet.csv"))
+              (fs/join "/ExpIn/" EID "Exp-SampleSheet.csv"))
         ncbi-xref-rows (recs :ncbi-xref)
         ncbi-cols [:num :ncid :expnm]
         ncbi-recs (mapv #(dissoc % :num) (cols->maps ncbi-cols ncbi-xref-rows))

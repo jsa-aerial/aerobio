@@ -135,7 +135,7 @@
          refbase (cmn/get-exp-info eid :refs)
          refxref (cmn/get-exp-info eid :ncbi-sample-xref)
          compvec (->> comp-filename
-                      (fs/join (pams/get-params :nextseq-base) eid)
+                      (fs/join (pams/get-params :exp-base) eid)
                       slurp csv/read-csv rest)
          quads (->> compvec
                     (map (fn[[samp ref]]
@@ -197,27 +197,4 @@
 
 
 
-  (fs/dodir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Raw/"
-            #(fs/re-directory-files % "Day4N2*.fastq.gz")
-            #(filter-fastq
-              % :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
-              :outdir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Filtered"))
-
-  (fs/dodir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Raw/"
-            #(fs/re-directory-files % "Day10*.gz")
-            #(filter-fastq
-              % :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
-              :outdir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Filtered"))
-
-  (fs/dodir "/data1/NextSeq/TVOLab/KarenWGS012816/Refs"
-            #(fs/re-directory-files % "wt*.fastq.gz")
-            #(filter-fastq
-              % :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
-              :outdir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Filtered"))
-
-  (fs/dodir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Raw/"
-            #(fs/re-directory-files % "wt*.fastq.gz")
-            #(filter-fastq
-              % :baseqc% 0.96 :sqc% 0.97 :marker "CTGTCTC"
-              :outdir "/data1/NextSeq/TVOLab/KarenWGS012816/Fastq/Filtered"))
 )

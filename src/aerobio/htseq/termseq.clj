@@ -65,7 +65,7 @@
          runxref (cmn/get-exp-info eid :run-xref)
          pre (some (fn[[_ [t pre]]] (when (= t runtype) pre)) runxref)
          compvec (->> comp-filename
-                      (fs/join (pams/get-params :nextseq-base) eid)
+                      (fs/join (pams/get-params :exp-base) eid)
                       slurp csv/read-csv rest
                       (mapv #(mapv (fn[c] (let [[s cond] (str/split #"-" c)]
                                            (str s "-" pre cond))) %)))

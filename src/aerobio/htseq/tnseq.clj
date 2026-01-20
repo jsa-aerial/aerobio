@@ -255,7 +255,7 @@
          fit  (cmn/get-exp-info eid :rep :fit)
          aggr (cmn/get-exp-info eid :rep :aggrs)
          compvec (->> comp-filename
-                      (fs/join (pams/get-params :nextseq-base) eid)
+                      (fs/join (pams/get-params :exp-base) eid)
                       slurp csv/read-csv rest)
          mapsvec (mapv (fn[v]
                          (mapcat #(-> (fs/join maps (str % "-*.map"))
@@ -363,7 +363,7 @@
   ([eid]
    (get-aggregate-files eid "AggregateSheet.csv"))
   ([eid aggr-filename]
-   (let [aggr-file (fs/join (pams/get-params :nextseq-base)
+   (let [aggr-file (fs/join (pams/get-params :exp-base)
                             eid aggr-filename)
          fit (cmn/get-exp-info eid :rep :fit)
          aggr (cmn/get-exp-info eid :rep :aggrs)

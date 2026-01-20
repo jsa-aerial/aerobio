@@ -48,9 +48,6 @@
   )
 
 
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX"
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/SampleSheet.csv"
-;;; "/data1/NextSeq/TVOLab/AHL7L3BGXX/Docs/Exp-AntibioticsRTS_KZ_SD_index.csv"
 
 (defn get-comparison-files-
   "Compute the set of comparison bams and the corresponding output csv
@@ -67,7 +64,7 @@
          fcnts (apply cmn/get-exp-info eid fpath)
          bam-regex (if rep? "-*.bam" "*.bam")
          compvec (->> comp-filename
-                      (fs/join (pams/get-params :nextseq-base) eid)
+                      (fs/join (pams/get-params :exp-base) eid)
                       slurp csv/read-csv rest)
          bamsvec (mapv (fn[v]
                          (mapcat #(-> (fs/join bams (str % bam-regex))
@@ -107,7 +104,7 @@
          fpath (if rep? [:rep :fcnts] [:fcnts])
          fcnts (apply cmn/get-exp-info eid fpath)
          compvec (->> comp-filename
-                      (fs/join (pams/get-params :nextseq-base) eid)
+                      (fs/join (pams/get-params :exp-base) eid)
                       slurp csv/read-csv rest
                       (map (fn[[c1 c2]]
                              (let [[eid1 strain cond1] (str/split #"-" c1)
