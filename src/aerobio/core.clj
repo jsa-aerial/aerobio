@@ -124,7 +124,7 @@
     (println "Installing resources...")
     (fs/mkdir (fs/join aerobiodir "pipes"))
     (fs/mkdir (fs/join aerobiodir "cache"))
-    (doseq [res ["bin" "Jobs" "Scripts" "services" "Support" "DBs"]]
+    (doseq [res ["Jobs" "Scripts" "services" "NS" "Support"]]
       (doseq [[path uris] (cp/resources (io/resource res))
               :let [uri (first uris)
                     relative-path (subs path 1)
