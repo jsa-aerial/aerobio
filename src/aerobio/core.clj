@@ -62,6 +62,7 @@
 
             [taoensso.timbre    :as timbre
              :refer (tracef debugf infof warnf errorf)]
+            [taoensso.timbre.appenders.core :as appenders]
 
             [aerobio.params :as pams]
             [aerobio.server :as svr]
@@ -101,23 +102,23 @@
    directory
   "
   []
-  (print "Enter installation directory [~/.aerobio]: ")
-  (flush)
-  (let [input (read-line)
-        input (fs/fullpath (if (= input "") "~.aerobio" input))]
-    (println "Selected installation location:" input)
-    input))
+  ;; (print "Enter installation directory [~/.aerobio]: ")
+  ;; (flush)
+  ;;input (read-line)
+  (let [user-home (System/getProperty "user.home")
+        install-dir (fs/fullpath (fs/join user-home ".aerobio"))]
+    (println (format "Installation and home location: '%s'" install-dir))
+    install-dir))
 
 (defn install-aerobio
-  "Create installation directory, mark it as the home directory and
-   install required resources and set the host machine dns lookup name
-   in websocket address. AEROBIODIR is the directory user gave on query
-   for location to install.
+  "Set up the install directory as the home directory and install
+  required resources and set the host machine dns lookup name in
+  websocket address. AEROBIODIR is the installation location
+  directory (see `get-install-directory`).
   "
   [aerobiodir]
-  (let [resmap #{"bam.aerobio.io" "vcf.aerobio.io"}
-        resdir "resources/"]
-    (println "Creating installation(aerobio home) directory")
+  (let [resdir "resources/"]
+    (println "Creating installation (aerobio home) directory")
     (fs/mkdirs (fs/fullpath aerobiodir))
     (println "Marking installation directory as aerobio home")
     (spit (fs/join aerobiodir ".aerobio-home-dir") "Home directory of aerobio")
@@ -128,27 +129,19 @@
       (doseq [[path uris] (cp/resources (io/resource res))
               :let [uri (first uris)
                     relative-path (subs path 1)
-                    output-dir (->> relative-path
-                                    fs/dirname
-                                    (fs/join
-                                     aerobiodir
-                                     (if (resmap res) (str resdir res) res))
+                    output-dir (->> res
+                                    (fs/join aerobiodir)
                                     fs/fullpath)
                     output-file (->> relative-path
-                                     (fs/join
-                                      aerobiodir
-                                      (if (resmap res) (str resdir res) res))
-                                     fs/fullpath io/file)]]
+                                     (fs/join output-dir)
+                                     fs/fullpath
+                                     io/file)]]
         (when (not (re-find #"^pack/" path)) ; bug in cp/resources regexer
-          (println :PATH path)
-          (println :RELATIVE-PATH relative-path)
+          (println (format "%s -> %s" relative-path output-file))
           (when (not (fs/exists? output-dir))
             (fs/mkdirs output-dir))
-          (println uri :->> output-file)
           (with-open [in (io/input-stream uri)]
-            (io/copy in output-file))
-          (when (= res "bin")
-            (.setExecutable output-file true false)))))
+            (io/copy in output-file)))))
     (fs/copy (fs/join aerobiodir "Support/config.clj")
              (fs/join aerobiodir "config.clj"))
     (println "\n\n*** Installation complete")))
@@ -156,23 +149,27 @@
 
 (defn- find-set-home-dir
   "Tries to find the aerobio home directory and, if not current working
-   directory sets working directory to home directory.
+   directory, sets working directory to home directory.
   "
   []
   (let [aerobioev "AEROBIO_HOME"
         evdir (->  aerobioev getenv fs/fullpath)
         curdir (fs/pwd)
-        stdhm (fs/fullpath "~/.aerobio")]
+        install-dir (fs/fullpath "~/.aerobio")]
     (cond
-     (and (getenv aerobioev) (not= evdir curdir)
+     (and (getenv aerobioev)
+          (not= evdir curdir)
           (->> ".aerobio-home-dir" (fs/join evdir) fs/exists?))
      (do (fs/cd evdir) evdir)
 
-     (->> ".aerobio-home-dir" (fs/join curdir) fs/exists?) curdir
+     (and (= install-dir curdir)
+          (->> ".aerobio-home-dir" (fs/join curdir) fs/exists?))
+     curdir
 
-     (and (fs/exists? stdhm) (not= stdhm curdir)
-          (->> ".aerobio-home-dir" (fs/join stdhm) fs/exists?))
-     (do (fs/cd stdhm) stdhm)
+     (and (fs/exists? install-dir)
+          (not= install-dir curdir)
+          (->> ".aerobio-home-dir" (fs/join install-dir) fs/exists?))
+     (do (fs/cd install-dir) install-dir)
 
      :else nil)))
 
@@ -193,17 +190,18 @@
 
 (defn setup-timbre []
   "timbre-pre-v2 settings"
-  (timbre/set-config! [:shared-appender-config :spit-filename]
-                      (fs/fullpath
-                       (fs/join (pams/get-params [:logging :dir])
-                                (pams/get-params [:logging :file]))))
-  (timbre/set-config! [:appenders :standard-out   :enabled?] false)
-  (timbre/set-config! [:appenders :spit           :enabled?] true))
+  (timbre/set-level! :info)
+  (timbre/merge-config! {:appenders {:println {:enabled? false}}})
+  (timbre/merge-config!
+   {:appenders
+    {:spit (appenders/spit-appender
+            {:fname (fs/fullpath
+                     (fs/join (pams/get-params [:logging :dir])
+                              (pams/get-params [:logging :file])))})}}))
 
 (defn run-server
-  "Run the aerobio server on port PORT. Change clj-aerobio-port in
-   bam.aerobio.io if it is not the same as port. This ensures user can
-   start server on different ports w/o needing to edit JS files.
+  "Set our async threads, set the overall configuration from the config.clj,
+  file, set up logging and then run the aerobio server on port PORT.
   "
   [port]
   (set-async-threads)
@@ -262,7 +260,7 @@
              (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port
                                :handler nrepl-handler))
             (run-server http-port))
-          (do (println "aerobio server must run in home directory")
+          (do (println "Can't find aerobio install/home directory")
               (System/exit 1)))
 
         (options :help)
