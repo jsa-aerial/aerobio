@@ -17,14 +17,14 @@
  {:dir "~/.aerobio/DBs"
   :file "job-db.clj"}
 
- :comcfg {:mode :zulip ; or :email or [:zulip :email]
+ :comcfg {:mode :zulip ; or :email or [:zulip :email] or :none
           :email {:accnts {:default "the-default-acct@yourorg.orgtype"
                            ;; All your other users
                            ;; keyword version of user acct name as key,
                            ;; string of full email address as value
                            }
 
-                  :mailcfg {:smtphost "smtp.gmail.com"
+                  :mailcfg {:smtphost "smtp.yourorg.com" ; eg "smtp.gmail.com"
                             :sender   "donotreply.aerobio@yourorg.orgtype"
                             :user     "aerobio@yourorg.orgtype"
                             :pass     "the-pw-for-acct"}}

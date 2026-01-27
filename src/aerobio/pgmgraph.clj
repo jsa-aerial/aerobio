@@ -179,8 +179,10 @@
 (defn send-msg [eid recipients subject body]
   (let [modes (pams/get-params [:comcfg :mode])
         modes (if (seq? modes) modes [modes])]
-    (for [mode modes]
-      (send-msg* mode eid recipients subject body))))
+    (if (-> modes first (= :none))
+      :nop
+      (for [mode modes]
+        (send-msg* mode eid recipients subject body)))))
 
 
 
