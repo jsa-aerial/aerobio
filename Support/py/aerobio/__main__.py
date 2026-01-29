@@ -1,8 +1,14 @@
 import os
 import sys
 import pwd
+import getpass
 import getopt, sys
-import pkg_resources
+
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=DeprecationWarning)
+    import pkg_resources
+
 import time
 import trio
 import client as cli
@@ -154,22 +160,25 @@ def args2map ():
 
 
 def get_port ():
-    #os.path.isfile("/home/jsa/Clojure/Projects/aerobio/.ports")
-    #os.getcwd()
-    #os.path.dirname(os.path.realpath(__file__))
-    #os.chdir("/home/varun/temp")
     users = map(lambda x: x[0], pwd.getpwall())
     if "aerobio" in users:
         hmdir = os.path.expanduser("~aerobio")
-        portfile = os.path.join(hmdir, ".aerobio/.ports")
-        ## print("Port file:", portfile)
-        if os.path.isfile(portfile):
-            a = None
-            with open(portfile) as ports:
-                a = eval(ports.read())
-            return a['http']
     else:
-        return "7070"
+        hmdir = os.path.expanduser("~{0}".format(getpass.getuser()))
+    portfile = os.path.join(hmdir, ".aerobio/.ports")
+    ## print("Port file:", portfile)
+    a = None
+    if os.path.isfile(portfile):
+        with open(portfile) as ports:
+            a = eval(ports.read())
+        if a != None:
+            return a['http']
+        else:
+            print("Bad port file {0}".format(portfile))
+            sys.exit()
+    else:
+        print("Cannot find port file {0}".format(portfile))
+        sys.exit()
 
 
 
@@ -192,9 +201,6 @@ async def command (info):
 
 def main():
     ## print("Hello from Aerobio Python")
-    ## print(pkg_resources.resource_string(
-    ##__name__, "resources/usage.txt").decode("utf-8").strip())
-    ## print("connecting to 7070")
     argmap = args2map()
     #print("ArgMap:", argmap)
     url = 'ws://localhost:' + get_port() + '/ws'
@@ -218,4 +224,4 @@ if __name__ == "__main__":
 ## cd aerobio/
 ## zip -r ../aerobio.zip *
 ## cd ..
-## echo "#\!/usr/bin/env python37" | cat - aerobio.zip > aerobiov2
+## echo "#\!/usr/bin/env python3" | cat - aerobio.zip > aerobiov2
