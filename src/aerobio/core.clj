@@ -112,8 +112,8 @@
 
 (defn set-executable [file]
   (if (fs/exists? file)
-    (.setExecutable file true)
-    (println "[ERROR] Not found: %s" file)))
+    (.setExecutable (File. file) true)
+    (println "[ERROR] Not found: " file)))
 
 (defn install-aerobio
   "Set up the install directory as the home directory and install
