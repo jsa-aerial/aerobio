@@ -110,6 +110,11 @@
     (println (format "Installation and home location: '%s'" install-dir))
     install-dir))
 
+(defn set-executable [file]
+  (if (fs/exists? file)
+    (.setExecutable file true)
+    (println "[ERROR] Not found: %s" file)))
+
 (defn install-aerobio
   "Set up the install directory as the home directory and install
   required resources and set the host machine dns lookup name in
@@ -142,6 +147,8 @@
             (fs/mkdirs output-dir))
           (with-open [in (io/input-stream uri)]
             (io/copy in output-file)))))
+    (set-executable (fs/join aerobiodir "Support/aerobio"))
+    (set-executable (fs/join aerobiodir "Scripts/calc_fitness"))
     (fs/copy (fs/join aerobiodir "Support/config.clj")
              (fs/join aerobiodir "config.clj"))
     (println "\n\n*** Installation complete")))
@@ -191,6 +198,7 @@
 (defn setup-timbre []
   "timbre-pre-v2 settings"
   (timbre/set-level! :info)
+  (timbre/merge-config! {:timestamp-opts {:timezone :jvm-default}})
   (timbre/merge-config! {:appenders {:println {:enabled? false}}})
   (timbre/merge-config!
    {:appenders
