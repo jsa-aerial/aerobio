@@ -17,7 +17,7 @@
  {:dir "~/.aerobio/DBs"
   :file "job-db.clj"}
 
- :comcfg {:mode :zulip ; or :email or [:zulip :email] or :none
+ :comcfg {:mode :none ; or :zulip or :email or [:zulip :email]
           :email {:accnts {:default "the-default-acct@yourorg.orgtype"
                            ;; All your other users
                            ;; keyword version of user acct name as key,
