@@ -192,7 +192,8 @@
   (let [m (->> "config.clj" (fs/join (fs/pwd))
                slurp edn/read-string)]
     (swap! pams/params (fn[_] m))
-    (bpams/set-configuration (pams/get-params :biodb-info))
+    (if (pams/get-params :have-biodbs)
+      (bpams/set-configuration (pams/get-params :biodb-info)))
     m))
 
 (defn setup-timbre []
@@ -215,7 +216,9 @@
   (set-async-threads)
   (set-configuration)
   (pg/init-pgms)
+  (clojure.pprint/pprint pams/params)
   (setup-timbre)
+  (clojure.pprint/pprint timbre/*config*)
   (svr/start! port))
 
 
