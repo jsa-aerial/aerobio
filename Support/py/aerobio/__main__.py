@@ -161,11 +161,18 @@ def args2map ():
 
 def get_port ():
     users = map(lambda x: x[0], pwd.getpwall())
-    if "aerobio" in users:
+    curuser = getpass.getuser()
+    hmdir = os.path.expanduser("~{0}".format(curuser))
+
+    if os.path.isdir(os.path.join(hmdir, ".aerobio")):
+        portfile = os.path.join(hmdir, ".aerobio/.ports")
+    elif "aerobio" in users:
         hmdir = os.path.expanduser("~aerobio")
+        portfile = os.path.join(hmdir, ".aerobio/.ports")
     else:
-        hmdir = os.path.expanduser("~{0}".format(getpass.getuser()))
-    portfile = os.path.join(hmdir, ".aerobio/.ports")
+        print("Cannot find an Aerbio home/install directory")
+        sys.exit()
+
     ## print("Port file:", portfile)
     a = None
     if os.path.isfile(portfile):
