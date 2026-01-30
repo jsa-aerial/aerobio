@@ -798,6 +798,7 @@
 
 (defn start! [port]
   (timbre/set-level! :info) ; :debug
+  (println "Setting up modules, tools, and jobs...")
   (start-ns-watcher)
   (start-tool-watcher)
   (start-job-watcher)
