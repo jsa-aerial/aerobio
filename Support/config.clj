@@ -17,6 +17,23 @@
  {:dir "~/.aerobio/DBs"
   :file "job-db.clj"}
 
+
+ ;; Bio DBs configs
+ ;; Default to not having these
+ ;; only used in special modules
+ :have-biodbs false
+ :biodb-info
+ {:genomes
+  {:base "/basedir-for-genomes"
+  ;; version directory pairs
+   :default :default-version-from-pairs}
+
+  :blast
+  {:base "/basedir-for-blastdbs"
+  ;; version directory pairs
+   :default :default-version-from-pairs}}
+
+
  :comcfg {:mode :none ; or :zulip or :email or [:zulip :email]
           :email {:accnts {:default "the-default-acct@yourorg.orgtype"
                            ;; All your other users
