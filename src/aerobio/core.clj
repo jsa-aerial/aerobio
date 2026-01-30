@@ -112,7 +112,7 @@
 
 (defn set-executable [file]
   (if (fs/exists? file)
-    (.setExecutable (File. file) true)
+    (.setExecutable (File. file) true false) ; all executable
     (println "[ERROR] Not found: " file)))
 
 (defn install-aerobio
