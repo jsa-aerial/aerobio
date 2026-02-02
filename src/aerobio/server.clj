@@ -127,7 +127,7 @@
         (require [ns :as aliassym]))
       [ns aliassym])
     (catch Error e
-      (errorf "Load ns: ERROR %f: %s"  (or (.getMessage e) e))
+      (errorf "Load ns: ERROR %s: %s" f (or (.getMessage e) e))
       (or (.getMessage e) e))
     (catch Exception e
       (errorf "Load ns: EXCEPTION %s: %s" f (or (.getMessage e) e))
