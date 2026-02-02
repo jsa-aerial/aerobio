@@ -262,17 +262,24 @@
           (System/exit 0))
 
         (and http-port rpl-port)
-        (if (find-set-home-dir)
-          (do
-            (println :http-port http-port :rpl-port rpl-port)
-            (write-port-file http-port rpl-port)
-            ;;(nrs/start-server :port rpl-port :handler nrepl-handler)
-            (clojure.pprint/pprint
-             (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port
-                               :handler nrepl-handler))
-            (run-server http-port))
-          (do (println "Can't find aerobio install/home directory")
-              (System/exit 1)))
+        (try
+          (if (find-set-home-dir)
+            (do
+              (println :http-port http-port :rpl-port rpl-port)
+              (write-port-file http-port rpl-port)
+              ;;(nrs/start-server :port rpl-port :handler nrepl-handler)
+              (clojure.pprint/pprint
+               (nrs/start-server :bind "0:0:0:0:0:0:0:0" :port rpl-port
+                                 :handler nrepl-handler))
+              (run-server http-port))
+            (do (println "Can't find aerobio install/home directory")
+                (System/exit 1)))
+          (catch Error e
+            (errorf "Startup failed: %s"  (or (.getMessage e) e))
+            (or (.getMessage e) e))
+          (catch Exception e
+            (errorf "Startup failed: %s" (or (.getMessage e) e))
+            (or (.getMessage e) e)))
 
         (options :help)
         (do
