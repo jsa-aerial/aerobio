@@ -162,7 +162,8 @@
   (let [aerobioev "AEROBIO_HOME"
         evdir (->  aerobioev getenv fs/fullpath)
         curdir (fs/pwd)
-        install-dir (fs/fullpath "~/.aerobio")]
+        user-home (System/getProperty "user.home")
+        install-dir (fs/fullpath (fs/join user-home ".aerobio"))]
     (cond
      (and (getenv aerobioev)
           (not= evdir curdir)
@@ -216,9 +217,9 @@
   (set-async-threads)
   (set-configuration)
   (pg/init-pgms)
-  (clojure.pprint/pprint pams/params)
+  #_(clojure.pprint/pprint pams/params)
   (setup-timbre)
-  (clojure.pprint/pprint timbre/*config*)
+  #_(clojure.pprint/pprint timbre/*config*)
   (svr/start! port))
 
 
@@ -263,6 +264,7 @@
 
         (and http-port rpl-port)
         (try
+          (println "Starting server...")
           (if (find-set-home-dir)
             (do
               (println :http-port http-port :rpl-port rpl-port)
