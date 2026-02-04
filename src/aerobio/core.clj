@@ -198,16 +198,22 @@
     m))
 
 (defn setup-timbre []
-  "timbre-pre-v2 settings"
-  (timbre/set-level! :info)
-  (timbre/merge-config! {:timestamp-opts {:timezone :jvm-default}})
-  (timbre/merge-config! {:appenders {:println {:enabled? false}}})
-  (timbre/merge-config!
-   {:appenders
-    {:spit (appenders/spit-appender
-            {:fname (fs/fullpath
-                     (fs/join (pams/get-params [:logging :dir])
-                              (pams/get-params [:logging :file])))})}}))
+  ;; We have to go through this logdir nonsense because Windows is too
+  ;; dumb to understand the `~` shortcut.
+  (let [logdir (pams/get-params [:logging :dir])
+        home-dir (System/getProperty "user.home")
+        logdir (if (cstr/starts-with? logdir "~")
+                 (cstr/replace logdir "~" home-dir)
+                 logdir)]
+    (timbre/set-level! :info)
+    (timbre/merge-config! {:timestamp-opts {:timezone :jvm-default}})
+    (timbre/merge-config! {:appenders {:println {:enabled? false}}})
+    (timbre/merge-config!
+     {:appenders
+      {:spit (appenders/spit-appender
+              {:fname (fs/fullpath
+                       (fs/join logdir
+                                (pams/get-params [:logging :file])))})}})))
 
 (defn run-server
   "Set our async threads, set the overall configuration from the config.clj,
