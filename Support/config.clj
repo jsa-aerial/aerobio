@@ -10,11 +10,13 @@
   :repl 4003}
 
  :logging
- {:dir "~/.aerobio"
+ {:console? false
+  :level :info
+  :timezone :jvm-default
   :file "main-log.txt"}
 
  :jobs
- {:dir "~/.aerobio/DBs"
+ {:dir "DBs"
   :file "job-db.clj"}
 
 
@@ -24,12 +26,12 @@
  :have-biodbs false
  :biodb-info
  {:genomes
-  {:base "/basedir-for-genomes"
+  {:base "basedir-for-genomes"
   ;; version directory pairs
    :default :default-version-from-pairs}
 
   :blast
-  {:base "/basedir-for-blastdbs"
+  {:base "basedir-for-blastdbs"
   ;; version directory pairs
    :default :default-version-from-pairs}}
 
