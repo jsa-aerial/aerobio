@@ -198,22 +198,19 @@
     m))
 
 (defn setup-timbre []
-  ;; We have to go through this logdir nonsense because Windows is too
-  ;; dumb to understand the `~` shortcut.
-  (let [logdir (pams/get-params [:logging :dir])
-        home-dir (System/getProperty "user.home")
-        logdir (if (cstr/starts-with? logdir "~")
-                 (cstr/replace logdir "~" home-dir)
-                 logdir)]
-    (timbre/set-level! :info)
-    (timbre/merge-config! {:timestamp-opts {:timezone :jvm-default}})
-    (timbre/merge-config! {:appenders {:println {:enabled? false}}})
+  (let [logdir (fs/pwd) ; home dir is logging dir
+        console? (pams/get-params [:logging :console?])
+        level (pams/get-params [:logging :level])
+        timezone (pams/get-params [:logging :timezone])]
+    (timbre/set-level! level)
+    (timbre/merge-config! {:timestamp-opts {:timezone timezone}})
+    (timbre/merge-config! {:appenders {:println {:enabled? console?}}})
     (timbre/merge-config!
      {:appenders
       {:spit (appenders/spit-appender
-              {:fname (fs/fullpath
-                       (fs/join logdir
-                                (pams/get-params [:logging :file])))})}})))
+              {:fname (fs/join
+                       logdir
+                       (pams/get-params [:logging :file]))})}})))
 
 (defn run-server
   "Set our async threads, set the overall configuration from the config.clj,
@@ -283,10 +280,10 @@
             (do (println "Can't find aerobio install/home directory")
                 (System/exit 1)))
           (catch Error e
-            (errorf "Startup failed: %s"  (or (.getMessage e) e))
+            (println (format "Startup failed: %s" (or (.getMessage e) e)))
             (or (.getMessage e) e))
           (catch Exception e
-            (errorf "Startup failed: %s" (or (.getMessage e) e))
+            (println (format "Startup failed: %s" (or (.getMessage e) e)))
             (or (.getMessage e) e)))
 
         (options :help)
