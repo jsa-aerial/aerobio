@@ -420,7 +420,7 @@
 
 (defn read-job-db []
   (let [dir (fs/fullpath (pams/get-params [:jobs :dir]))
-        f (fs/join dir (pams/get-params [:jobs :file]))]
+        f (fs/join (fs/pwd) dir (pams/get-params [:jobs :file]))]
     (->> f slurp clojure.core/read-string (reset! job-db))))
 
 (defn valuefy [db]
@@ -438,7 +438,7 @@
 
 (defn write-job-db []
   (let [dir (fs/fullpath (pams/get-params [:jobs :dir]))
-        f (fs/join dir (pams/get-params [:jobs :file]))]
+        f (fs/join (fs/pwd) dir (pams/get-params [:jobs :file]))]
     (aio/with-out-writer f
       (prn (valuefy @job-db)))))
 
