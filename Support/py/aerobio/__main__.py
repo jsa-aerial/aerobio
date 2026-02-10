@@ -1,6 +1,11 @@
 import os
 import sys
-import pwd
+
+if os.name == 'posix':
+    import pwd as pwd
+else:
+    pwd = None
+
 import getpass
 import getopt, sys
 
@@ -109,7 +114,7 @@ def getarg (arglist):
     return (arg, arglist)
 
 def args2map ():
-    user = os.environ['USER']
+    user = getpass.getuser()
     argmap = {kwuser: user}
     fullArgs = sys.argv
     arglist = fullArgs[1:]
@@ -160,15 +165,20 @@ def args2map ():
 
 
 def get_port ():
-    users = map(lambda x: x[0], pwd.getpwall())
+    if pwd:
+        # Linux/Mac
+        users = map(lambda x: x[0], pwd.getpwall())
+    else:
+        # Windows, just give up
+        users = []
     curuser = getpass.getuser()
     hmdir = os.path.expanduser("~{0}".format(curuser))
 
     if os.path.isdir(os.path.join(hmdir, ".aerobio")):
-        portfile = os.path.join(hmdir, ".aerobio/.ports")
+        portfile = os.path.join(hmdir, ".aerobio", ".ports")
     elif "aerobio" in users:
         hmdir = os.path.expanduser("~aerobio")
-        portfile = os.path.join(hmdir, ".aerobio/.ports")
+        portfile = os.path.join(hmdir, ".aerobio", ".ports")
     else:
         print("Cannot find an Aerbio home/install directory")
         sys.exit()
