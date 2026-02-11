@@ -20,6 +20,15 @@
   :file "job-db.clj"}
 
 
+ :refdata
+ {;; These defaults would have these in the Aerobio home/install directory
+  :gbks "GBKs" ; root directory containing genbank files
+  :fastas "Fastas" ; root directory to contain genome fasta files
+  :refs "Refs" ; root directory for reference data
+  :bt1idx "BT1Index"
+  :bt2idx "BT2Index"
+  :staridx "STARIndex"}
+
  ;; Bio DBs configs
  ;; Default to not having these
  ;; only used in special modules
@@ -27,12 +36,12 @@
  :biodb-info
  {:genomes
   {:base "basedir-for-genomes"
-  ;; version directory pairs
+   ;; version directory pairs
    :default :default-version-from-pairs}
 
   :blast
   {:base "basedir-for-blastdbs"
-  ;; version directory pairs
+   ;; version directory pairs
    :default :default-version-from-pairs}}
 
 
@@ -51,7 +60,9 @@
           :zulip {:apiurl "https://myorganization.zulipchat.com/api/v1/messages"
                   ;; :content-type "application/x-www-form-urlencoded"
                   :accnts {:default "default scientist accnt name"
-                           ; 
+                           ;; All your other users
+                           ;; Keys are names and nicknames of users
+                           ;; Values are full Zulip account name
                            }
                   :options {:form-params {:type "stream"
                                           :to "Job Results"
