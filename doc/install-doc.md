@@ -876,7 +876,7 @@ drwxrwxr-x 2 jsa jsa   4096 Feb 11 14:23 Support/
 
 ## Aerobio command
 
-The `aerobio` command line command is found in the `~/.aerobio/Support` directory[^1]:
+The `aerobio` command line command is found in the `~/.aerobio/Support` directory.[^1]
 
 Requires Python 3 plus `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools))
 
