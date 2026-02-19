@@ -828,7 +828,7 @@ This section discusses the process of installing the [Aerobio](https://github.co
 
 * There are more analyses available out of the box than the by [hand analyses](#flows) alone (such as RBTn-Seq)
 
-* There auxilliary support processing jobs to help automate analyses (for example, automatic referene generation)
+* There are auxilliary support processing jobs to help automate analyses (for example, automatic reference generation)
 
 * The performance of any analysis will be much higher due to the use of streaming pipelines.
 
@@ -860,7 +860,7 @@ Click the `download anyway` button. It should then download the jar file.
 
 * Make sure you have [Java](#java) installed. You can easily check this by issuing `java -version` at your command prompt.
 
-* Install Aerobio by issuing `java -jar aerobio-x.y.z-standalone.jar --install`. This will install Aerobio in your home directory in the directory `.aerobio`. If you list that directory it will look like this:
+* Install Aerobio by issuing `java -jar aerobio-x.y.z-standalone.jar --install`. Where the `x`, `y`, and `z` are the actual numbers in the name of the jar downloaded. This will install Aerobio in your home directory in the directory `.aerobio`. If you list that directory it will look like this:
 
 ```sh
 drwxrwxr-x 2 jsa jsa   4096 Feb 11 14:23 cache/
@@ -890,14 +890,64 @@ pip install msgpack
 
 * You *should* now be able to run the command. Assuming you have not moved the command yet, you can try it by:
 
-* POSIX (Unix, Linux, OSX, etc): `~/.aerobio/Support/aerobio`
-* Windows: `python \Users\<your home directory name>\.aerobio\Support\aerobio`
+  - POSIX (Unix, Linux, OSX, etc): `~/.aerobio/Support/aerobio`
+  - Windows: `python \Users\<your home directory name>\.aerobio\Support\aerobio`
 
-This will dump a large help file to your screen. If you get errors about other missing packages, you will need to `pip install` those and try again. However, on most typical Python installations, the above noted packages should be the only extra ones you need to install.
+  This will dump a large help file to your screen. If you get errors about other missing packages, you will need to `pip install` those and try again. However, on most typical Python installations, the above noted packages should be the only extra ones you need to install.
+
+* To make the command more easily accessible, you can put it in a directory on your command path: [POSIX](https://phoenixnap.com/kb/linux-add-to-path) or [Win](https://learn.microsoft.com/en-us/windows-server/administration/windows-commands/path) or add the `~/.aerobio/Support` directory to your path. Once done, you can then invoke the command by simply using `aerobio`.
+
 
 ## Aerobio server
 
+The `aerobio` command communicates with the Aerobio server to perform all tasks including running jobs. The goal of this section is simply to test that the server will start and communicate with the `aerobio` command.  The assumptions are that Aerobio has already been [installed](#uberjar) and that the [aerobio](#aerobio-command) command has been test run.
 
+* Assuming the uberjar is in your current working directory, issue the following command:
+
+```sh
+$ java -jar aerobio-x.y.z-standalone.jar --port 7300 --repl-port 4300
+```
+
+Where the `x`, `y`, and `z` are the actual numbers in the name of the downloaded uberjar.  After a few seconds, this should result in the following being displayed:
+
+```sh
+Starting server...
+:http-port 7300 :rpl-port 4300
+{:server-socket
+ #object[java.net.ServerSocket 0x9fcca41 "ServerSocket[addr=/0:0:0:0:0:0:0:0,localport=4300]"],
+ :host "0:0:0:0:0:0:0:0",
+ :port 4300,
+ :socket nil,
+ :open-transports #<Atom@5877a9e7: #{}>,
+ :transport #function[nrepl.transport/bencode],
+ :greeting nil,
+ :handler #function[nrepl.server/default-handler/fn--31730]}
+Setting up modules, tools, and jobs...
+```
+
+* Open another separate command window in which you can run the [aerobio](#aerobio-command) command. Assuming you have it on your command path, issue the following commands and they should output similar to what is shown.
+
+```sh
+$ aerobio this-job-does-not-exist
+
+Error : No such cmd/job 'this-job-does-not-exist', args: '[]'
+$
+$ aerobio split-output
+
+Error(s):
+1. Missing primary arg(s): [expdir datadir]
+2. The user account is required
+3. The Experiment ID is required
+
+Usage:
+split-output <options> expdir datadir
+  -u, --user USERACCNT  User account (zulip/email) for result msg
+  -e, --eid EID         The Experiment ID of run
+```
+
+This shows that the server is up, running and communicating with the `aerobio` command and verifies that the installation is working.  At this point, you can break out of the server. In the window where you are running the server issue `ctrl-c` (control key + c key). This will break out of the server and place you back at the command prompt.
+
+**NOTE**: In order to **use** the server for analyses, you will need to first complete your installations of all the [tools](#tools) needed and then setup your Aerobio [configuration](config-file) file.
 
 
 ## Config file
