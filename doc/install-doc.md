@@ -947,7 +947,7 @@ split-output <options> expdir datadir
 
 This shows that the server is up, running and communicating with the `aerobio` command and verifies that the installation is working.  At this point, you can break out of the server. In the window where you are running the server issue `ctrl-c` (control key + c key). This will break out of the server and place you back at the command prompt.
 
-**NOTE**: In order to **use** the server for analyses, you will need to first complete your installations of all the [tools](#tools) needed and then setup your Aerobio [configuration](config-file) file.
+**NOTE**: In order to **use** the server for analyses, you will need to first complete your installations of all the [tools](#tools) needed and then setup your Aerobio [configuration](#config-file) file.
 
 
 ## Config file
