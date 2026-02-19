@@ -876,9 +876,19 @@ drwxrwxr-x 2 jsa jsa   4096 Feb 11 14:23 Support/
 
 ## Aerobio command
 
-The `aerobio` command line command is found in the `~/.aerobio/Support` directory.[^1]
+The `aerobio` command line command is found in the `~/.aerobio/Support` directory.[^1] The installation process marks it as an executable. On POSIX systems (Unix, Linux, OSX, etc), this makes it a directly executable script. On Windows, you will need to invoke it via your `python` installation.
 
-Requires Python 3 plus `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools))
+As a Python script, it requires Python 3 plus three additional packages: `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools)).
+
+* Install the three packages via the [pip](scripting-languages] command. At your command line prompt issue these three commands
+
+```sh
+pip install trio
+pip install trio-websocket
+pip install msgpack
+```
+
+* Try running the command.
 
 
 ## Config file
