@@ -4,7 +4,7 @@
 <a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/blob/master/resources/public/images/tvolabicon.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
 
 This is a guide to the requirments needed to run [Aerobio](https://github.com/jsa-aerial/aerobio/blob/master/doc/user-guide.md) automated HTS analyses. It covers the tools, packages, and scripts needed, their setup, and how to run them manually in order to verify they are properly available. The manual running sections can also be used on their own to analyze small data sets if desired. Lastly, there are instructions for obtaining and using the Aerobio self installing uberjar to install and run Aerobio plus an overview of how you can configure it.
-
+#
 Table of Contents
 =================
 
