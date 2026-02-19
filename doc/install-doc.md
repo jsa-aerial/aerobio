@@ -880,7 +880,7 @@ The `aerobio` command line command is found in the `~/.aerobio/Support` director
 
 As a Python script, it requires Python 3 plus three additional packages: `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools)).
 
-* Install the three packages via the [pip](scripting-languages] command. At your command line prompt issue these three commands
+* Install the three packages via the [pip](#scripting-languages] command. At your command line prompt issue these three commands
 
 ```sh
 pip install trio
