@@ -1,7 +1,7 @@
 
 # TVO Lab : Aerobio Install Guide and Manual analysis
 
-<a href="file:///home/jsa/Dropbox/Projects/aerobio/index.html"><img src="file:///home/jsa/Dropbox/Projects/aerobio/resources/public/images/tvolabicon.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
+<a href="https://jsa-aerial.github.io/aerobio/index.html"><img src="https://github.com/jsa-aerial/aerobio/blob/master/resources/public/images/tvolabicon.png" align="left" hspace="10" vspace="6" alt="aerobio logo" width="150px"></a>
 
 This is a guide to the requirments needed to run [Aerobio](https://github.com/jsa-aerial/aerobio/blob/master/doc/user-guide.md) automated HTS analyses. It covers the tools, packages, and scripts needed, their setup, and how to run them manually in order to verify they are properly available. The manual running sections can also be used on their own to analyze small data sets if desired. Lastly, there are instructions for obtaining and using the Aerobio self installing uberjar to install and run Aerobio plus an overview of how you can configure it.
 
@@ -37,8 +37,8 @@ Table of Contents
 * [Aerobio](#aerobio)
    * [Uberjar](#uberjar)
    * [Aerobio command](#aerobio-command)
-   * [Config file](#config-file)
    * [Aerobio server](#aerobio-server)
+   * [Config file](#config-file)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
@@ -878,11 +878,9 @@ drwxrwxr-x 2 jsa jsa   4096 Feb 11 14:23 Support/
 
 The `aerobio` command line command is found in the `~/.aerobio/Support` directory.[^1] The installation process marks it as an executable. On POSIX systems (Unix, Linux, OSX, etc), this makes it a directly executable script. On Windows, you will need to invoke it via your `python` installation.
 
-As a Python script, it requires Python 3 plus three additional packages: `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools)).
+As a Python script, it requires Python 3 plus three additional packages: `trio`, `trio-websocket` and `msgpack` (see [Miscellaneous Python packages](#miscellaneous-python-packages) under [tools](#tools)).
 
 * Install the three packages via the [pip](#scripting-languages) command. At your command line prompt issue these three commands
-
-
 
 ```sh
 pip install trio
@@ -890,12 +888,19 @@ pip install trio-websocket
 pip install msgpack
 ```
 
-* Try running the command.
+* You *should* now be able to run the command. Assuming you have not moved the command yet, you can try it by:
+
+* POSIX (Unix, Linux, OSX, etc): `~/.aerobio/Support/aerobio`
+* Windows: `python \Users\<your home directory name>\.aerobio\Support\aerobio`
+
+This will dump a large help file to your screen. If you get errors about other missing packages, you will need to `pip install` those and try again. However, on most typical Python installations, the above noted packages should be the only extra ones you need to install.
+
+## Aerobio server
+
+
 
 
 ## Config file
-
-## Aerobio server
 
 
 
