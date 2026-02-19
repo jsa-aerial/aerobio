@@ -372,13 +372,13 @@ $ featureCounts -a /Refs/NC_003028.gtf -o Fcnts/T4-L77SCEF1hr-T4-wtCEF1hr.csv -t
 >               Bams/T4-wtCEF1hr-b.bam \
 >               Bams/T4-wtCEF1hr-c.bam
 
-        ==========     _____ _    _ ____  _____  ______          _____  
-        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \ 
+        ==========     _____ _    _ ____  _____  ______          _____
+        =====         / ____| |  | |  _ \|  __ \|  ____|   /\   |  __ \
           =====      | (___ | |  | | |_) | |__) | |__     /  \  | |  | |
             ====      \___ \| |  | |  _ <|  _  /|  __|   / /\ \ | |  | |
               ====    ____) | |__| | |_) | | \ \| |____ / ____ \| |__| |
         ==========   |_____/ \____/|____/|_|  \_\______/_/    \_\_____/
-	  v2.0.6
+          v2.0.6
 
 //========================== featureCounts setting ===========================\\
 ||                                                                            ||
@@ -490,7 +490,7 @@ total 1176
 -rw-rw-r-- 1 anthonyj aerobio  34710 Dec 10 17:18 T4-L77SCEF1hr-T4-wtCEF1hr-qc-heatmap-samples.png
 -rw-rw-r-- 1 anthonyj aerobio  42241 Dec 10 17:18 T4-L77SCEF1hr-T4-wtCEF1hr-qc-pca.png
 $
-$ head ./DGE/T4-L77SCEF1hr-T4-wtCEF1hr-DGE-results.csv 
+$ head ./DGE/T4-L77SCEF1hr-T4-wtCEF1hr-DGE-results.csv
 "","Gene","baseMean","log2FoldChange","lfcSE","stat","pvalue","padj","Bams.T4.L77SCEF1hr.a","Bams.T4.L77SCEF1hr.b","Bams.T4.L77SCEF1hr.c","Bams.T4.wtCEF1hr.a","Bams.T4.wtCEF1hr.b","Bams.T4.wtCEF1hr.c"
 "1","SP_0742",1164.95997213729,-2.85204633276642,0.120096311580555,-23.7479927171069,1.15248186727801e-124,2.39716228393827e-121,258.438767049034,271.528901916389,314.164722802689,2002.26809612848,1942.05787226324,2201.30147266394
 "2","SP_0519",917.371358347127,-2.61842014412407,0.114607037748068,-22.8469402540528,1.56742002333354e-115,1.63011682426688e-112,264.13125090474,234.076639583094,266.674706565073,1615.86548108614,1561.32323598086,1562.15683596285
@@ -632,15 +632,15 @@ Usage: ./aggregate.pl -o outfile (options) file1 file2 file3...
 
 Option List:
 
- -o	Output file for aggregated data. (Required)
- -c	Check for missing genes in the data set - provide a reference genome in
- 	genbank format. Missing genes will be sent to stdout.
- -m	Place a mark in an extra column for this set of genes. Provide a file
- 	with a list of genes seperated by newlines.
- -x	Cutoff: Don't include fitness scores with average counts (c1+c2)/2 < x (default: 0)
- -b	Blanks: Exclude -b % of blank fitness scores (scores where c2 = 0) (default: 0 = 0%)
- -w	Use weighted algorithm to calculate averages, variance, sd, se
- -l	Weight ceiling: maximum value to use as a weight (default: 999,999)
+ -o     Output file for aggregated data. (Required)
+ -c     Check for missing genes in the data set - provide a reference genome in
+        genbank format. Missing genes will be sent to stdout.
+ -m     Place a mark in an extra column for this set of genes. Provide a file
+        with a list of genes seperated by newlines.
+ -x     Cutoff: Don't include fitness scores with average counts (c1+c2)/2 < x (default: 0)
+ -b     Blanks: Exclude -b % of blank fitness scores (scores where c2 = 0) (default: 0 = 0%)
+ -w     Use weighted algorithm to calculate averages, variance, sd, se
+ -l     Weight ceiling: maximum value to use as a weight (default: 999,999)
 ```
 
 To finish running example, we will perform an aggregation over the finess results we calculated above.
@@ -655,7 +655,7 @@ $ perl aggregate.pl -m /Refs/NormGenes/NC_003028.txt \
 # to the end of the above command and the output will be saved
 # in `aggr.log` (this assumes you are using bash command line)
 #
-$ head Aggrs/TIGR4-T1-TIGR4-bioT4-1.csv 
+$ head Aggrs/TIGR4-T1-TIGR4-bioT4-1.csv
 locus,mean,var,sd,se,gene,Total,Blank,Not Blank,Blank Removed,M
 SP_0001,0.10,0.10,X,X,,,,
 SP_0002,0.10,0.10,X,X,,,,
@@ -669,7 +669,7 @@ SP_0009,0.10,0.10,X,X,,,,
 ```
 
 
-## WG-Seq breseq 
+## WG-Seq breseq
 
 The **breseq** [manual](https://gensoft.pasteur.fr/docs/breseq/0.35.0/) is very complete and detailed and should be the primary reference for its use.  Here we simply provide information on the switches and values used in the TVO Lab's use of breseq.
 
@@ -878,8 +878,6 @@ drwxrwxr-x 2 jsa jsa   4096 Feb 11 14:23 Support/
 
 The `aerobio` command line command is found in the `~/.aerobio/Support` directory[^1]:
 
-[^1]: Here we are using the standard POSIX '~' syntax to indicate the home directory. For Windows users, the '~' is not legal, but you should read it here as your homedirectory.
-
 Requires Python 3 plus `trio`, `trio-websocket` and `msgpack` (see `Miscellaneous Python packages` under [tools](#tools))
 
 
@@ -887,5 +885,6 @@ Requires Python 3 plus `trio`, `trio-websocket` and `msgpack` (see `Miscellaneou
 
 ## Aerobio server
 
- 
 
+
+[^1]: Here we are using the standard POSIX tilde syntax to indicate the home directory. For Windows users, the '~' is not legal, but you should read it here as your homedirectory.
