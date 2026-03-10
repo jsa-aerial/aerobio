@@ -377,7 +377,11 @@
                           (->> x (mapv fs/basename)
                                (map #(->> % (str/split #"-") butlast))))
                         filegrps)
-         prenames (mapv #(->> % first (coll/takev 2) (cljstr/join "-"))
+         ncbi-xref (cmn/get-exp-info eid :ncbi-sample-xref)
+         org (first namebits)
+         refnm (ncbi-xref org)
+         precnt (if refnm 2 3)
+         prenames (mapv #(->> % first (coll/takev precnt) (cljstr/join "-"))
                         namebits)
          sufnames (->> namebits
                        (mapv #(->> % last last (str/butlast 1))))

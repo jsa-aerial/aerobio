@@ -517,6 +517,22 @@
     {}))
 
 
+(defn ncbi-loci [eid]
+  (let [refdir (get-exp-info eid :refs)
+        samp-xrefs (get-exp-info eid :ncbi-sample-xref)
+        ncbiXloci (->> samp-xrefs keys
+                       (mapv #(vector % (fs/join refdir (str % ".gtf"))))
+                       (keep (fn[[k f]] (when (fs/exists? f) [k f])))
+                       (mapv (fn[[k f]]
+                               [k (-> f (tc/dataset {:file-type :tsv
+                                                     :header-row? false})
+                                      (tc/select-columns "column-0")
+                                      (tc/unique-by "column-0")
+                                      (tc/column "column-0")
+                                      vec)]))
+                       (into {}))]
+    ncbiXloci))
+
 (def exp-info (atom {}))
 
 (defn init-exp-data [eid]
@@ -594,6 +610,8 @@
                        :ncbi-xref
                        (mapcat (fn[x] [(-> x rest vec) (-> x rest reverse vec)]))
                        (into {})))))
+        ((fn[m]
+           (assoc m :ncbi-loci (ncbi-loci eid))))
         ((fn[m]
            (assoc m :exp-illumina-xref
                   (->> (m :exp-sample-info)

@@ -8,13 +8,20 @@
            (infof "Tn-Seq aggregate starting... %s" data)
            (let [script (fs/join (fs/pwd) "Scripts" "aggregate.pl")
                  aggr-tuples (htts/get-aggregate-files eid aggrfile)
-                 refdir (cmn/get-exp-info eid :refs)]
+                 refdir (cmn/get-exp-info eid :refs)
+                 ncbi-xref (cmn/get-exp-info eid :ncbi-sample-xref)
+                 ncbi-loci (cmn/get-exp-info eid :ncbi-loci)]
              (coll/vfold
               (fn[tuple]
                 (let [[ins ot bnum] tuple
-                      refnm (-> ins first fs/basename
-                                (str/split #"-") first
-                                ((cmn/get-exp-info eid :ncbi-sample-xref)))
+                      org (-> ins first fs/basename
+                              (str/split #"-") first)
+                      refnm (ncbi-xref org)
+                      refnm (if refnm
+                              ;; single, org abbr maps to official locus
+                              refnm
+                              ;; multi loci ref, 'org' is refnm
+                              org)
                       refgbk (fs/join refdir (str refnm ".gbk"))
                       norm (fs/join refdir "NormGenes" (str refnm ".txt"))
                       ret (apply
