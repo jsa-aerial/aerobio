@@ -8,7 +8,9 @@
          :name "prn"}},
  :root :load
  :edges {:load [:prn1]}
- :cli {:usage "load-bioseql-db <options>\nExcept '-g', all options are required"
+ :cli {:usage ["load-bioseql-db <options>"
+               "\nExcept '-g', all options are required"
+               "\nOptions:"]
        :options
        [["-i" "--input-dir InputStaging" "Input Staging Directory"
          :missing "The Input Staging directory is required"]
