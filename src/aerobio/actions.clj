@@ -76,6 +76,10 @@
             options (cli :options)
             order (cli :order)
             usage (cli :usage (format "%s <options>" name))
+            usage (cond
+                    (string? usage) usage
+                    (coll? usage) (->> usage (mapv str) (cljstr/join "\n"))
+                    :else (format "Unknown USAGE %" usage))
             args (cli :args [])
             missing (format "Missing primary arg(s): %s" (print-str args))
             argmap (parse-opts cliargs options :in-order true)
