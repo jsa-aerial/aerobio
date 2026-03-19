@@ -148,8 +148,9 @@ print ("\n" + "Starting: " + str(get_time()) + "\n")
 # values. Then appends those dictionaries to the list associated with
 # the refname for accessing later on.
 
-def genome_length (refname):
-    with open(glob.glob("/Refs/" + refname + "*.gbk")[0]) as fp:
+def genome_length (refname,gtf):
+    refdir = os.path.dirname(os.path.abspath(gtf.name))
+    with open(glob.glob(os.path.join(refdir, refname) + "*.gbk")[0]) as fp:
         return float(fp.readline().split()[2])
 
 main_strand = "+"
@@ -197,7 +198,7 @@ with open(arguments.ref_genome, 'r') as gtf:
             d = dict(zip(keys, values))
             appendDictVal(gtf_dict, refname, d)
             if 'size' not in gtf_dict[refname]:
-                gtf_dict[refname]['size'] = genome_length(refname)
+                gtf_dict[refname]['size'] = genome_length(refname,gtf)
 
 
 outfile = arguments.outfile
