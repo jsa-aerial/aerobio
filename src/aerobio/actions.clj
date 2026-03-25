@@ -87,11 +87,15 @@
             errors (argmap :errors)
             options (argmap :options)
             arguments (argmap :arguments)
+            params (mapv (fn[a] (options a)) order)
+            arglist (-> params (concat arguments) vec)
+            prefn (cli :prefn)
+            errors (if-let [prerrs (and (fn? prefn) (prefn arglist))]
+                     (concat prerrs errors)
+                     errors)
             errors (if (not= (count args) (count arguments))
                      (cons missing errors)
-                     errors)
-            params (mapv (fn[a] (options a)) order)
-            arglist (-> params (concat arguments) vec)]
+                     errors)]
         [errors summary arglist]))))
 
 

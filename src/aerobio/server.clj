@@ -302,9 +302,11 @@
   (infof "Job update: %s" f)
   (if (= "clj" (fs/ftype f))
     (let [cfg (-> f slurp clojure.core/read-string)
-          func (cfg :func)]
-      (if (and func (or (symbol? func) (list? func) (cons? func)))
-        (assoc cfg :func (eval func) :src func)
+          prefn (get-in cfg [:cli :prefn])]
+      (if (and prefn (list? prefn) (= 'fn (first prefn)))
+        (-> cfg
+            (assoc-in [:cli :prefn] (eval prefn))
+            (assoc-in [:cli :src] prefn))
         cfg))
     (-> f slurp (json/read-str :key-fn keyword))))
 

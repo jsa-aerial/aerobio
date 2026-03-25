@@ -476,7 +476,10 @@
             (sch/optional-key :args)   [sch/Any]
             sch/Keyword sch/Any}}
    (sch/optional-key :root) sch/Keyword
-   (sch/optional-key :cli) {(sch/optional-key :usage) sch/Str
+   (sch/optional-key :cli) {(sch/optional-key :usage) (sch/cond-pre sch/Str
+                                                                    [sch/Str])
+                            (sch/optional-key :prefn) (sch/pred fn?)
+                            (sch/optional-key :src) [sch/Any]
                             (sch/optional-key :args) [sch/Str]
                             :options [[sch/Any]]
                             :order [sch/Keyword]}
