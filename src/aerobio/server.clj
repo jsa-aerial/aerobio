@@ -300,15 +300,16 @@
 
 (defn read-job-config [f]
   (infof "Job update: %s" f)
-  (if (= "clj" (fs/ftype f))
-    (let [cfg (-> f slurp clojure.core/read-string)
-          prefn (get-in cfg [:cli :prefn])]
-      (if (and prefn (list? prefn) (= 'fn (first prefn)))
-        (-> cfg
-            (assoc-in [:cli :prefn] (eval prefn))
-            (assoc-in [:cli :src] prefn))
-        cfg))
-    (-> f slurp (json/read-str :key-fn keyword))))
+  (binding [*ns* (find-ns 'aerobio.server)]
+    (if (= "clj" (fs/ftype f))
+      (let [cfg (-> f slurp clojure.core/read-string)
+            prefn (get-in cfg [:cli :prefn])]
+        (if (and prefn (list? prefn) (= 'fn (first prefn)))
+          (-> cfg
+              (assoc-in [:cli :prefn] (eval prefn))
+              (assoc-in [:cli :src] prefn))
+          cfg))
+      (-> f slurp (json/read-str :key-fn keyword)))))
 
 (defn read-job-configs
   []
