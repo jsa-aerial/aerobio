@@ -539,6 +539,7 @@
   (let [instrmake (instrument-make eid)
         base (fs/join (pams/get-params :scratch-base) eid)
         exp-base (pams/get-params :exp-base)
+        refdir (pams/get-params [:refdata :refdir])
         expdir (fs/join exp-base eid)
         exp-ssheet (fs/join expdir "Exp-SampleSheet.csv")
         cfgfile (fs/join expdir "cmd.config")]
@@ -546,26 +547,29 @@
         (assoc :sample-sheet (get-sample-map eid))
         (assoc :run-params (get-seqrun-params eid))
         ((fn[m]
-           (assoc m :base base
-                  :instrument-make instrmake
-                  :cmdsargs  (get-cmds-args cfgfile)
-                  :refs      (pams/get-params :refdir)
-                  :index     (fs/join (pams/get-params :refdir) "Index")
-                  :bt1index  (fs/join (pams/get-params :refdir) "BT1Index")
-                  :starindex (fs/join (pams/get-params :refdir) "STARindex")
-                  :samples   (fs/join base "Samples")
-                  :collapsed (fs/join base "Samples/Collapsed")
-                  :out       (fs/join base "Out")
-                  :bams      (fs/join base "Out/Bams")
-                  :star      (fs/join base "Out/STAR")
-                  :fcnts     (fs/join base "Out/Fcnts")
-                  :maps      (fs/join base "Out/Maps")
-                  :fit       (fs/join base "Out/Fitness")
-                  :aggrs     (fs/join base "Out/Aggrs")
-                  :charts    (fs/join base "Out/DGE")
-                  :stats     (fs/join base "Stats")
-                  :fastq     (fs/join base "Fastq")
-                  :docs      (fs/join base "Docs"))))
+           (assoc
+            m :base base
+            :instrument-make instrmake
+            :cmdsargs  (get-cmds-args cfgfile)
+            :refs      refdir
+            :index     (fs/join refdir (pams/get-params [:refdata :bt2idx]))
+            :bt2index  (fs/join refdir (pams/get-params [:refdata :bt2idx]))
+            :bt1index  (fs/join refdir (pams/get-params [:refdata :bt1idx]))
+            :starindex (fs/join refdir (pams/get-params [:refdata :staridx]))
+            :normgenes (fs/join refdir (pams/get-params [:refdata :normgenes]))
+            :samples   (fs/join base "Samples")
+            :collapsed (fs/join base "Samples/Collapsed")
+            :out       (fs/join base "Out")
+            :bams      (fs/join base "Out/Bams")
+            :star      (fs/join base "Out/STAR")
+            :fcnts     (fs/join base "Out/Fcnts")
+            :maps      (fs/join base "Out/Maps")
+            :fit       (fs/join base "Out/Fitness")
+            :aggrs     (fs/join base "Out/Aggrs")
+            :charts    (fs/join base "Out/DGE")
+            :stats     (fs/join base "Stats")
+            :fastq     (fs/join base "Fastq")
+            :docs      (fs/join base "Docs"))))
         ((fn[m]
            (assoc m :illumina-sample-xref
                   (into {} (mapv (fn[[nm ibc]] [ibc nm])
