@@ -21,12 +21,17 @@
                       multi (-> multi (str/split #",")
                                 (->> (mapv #(fs/replace-type % ""))))
                       regex (-> regex (str/split #","))
-                      names (-> namelist (str/split #",")
-                                (->> (mapv #(fs/replace-type % "")) (into #{})))
+                      names (if namelist
+                              (-> namelist (str/split #",")
+                                  (->> (mapv #(fs/replace-type % ""))
+                                       (into #{})))
+                              #{})
                       errs (if (not= (count multi) (count regex))
                              (cons "Count of -m and -r options must match" errs)
                              errs)
-                      errs (if (not (every? names multi))
+                      errs (if (and namelist
+                                    (not= multi [""])
+                                    (not (every? names multi)))
                              (cons "-m names must match namelist names!" errs)
                              errs)]
                   (when (seq errs) errs)))
