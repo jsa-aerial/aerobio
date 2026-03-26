@@ -18,6 +18,11 @@
        :prefn (fn[arglist]
                 (let [[multi regex user namelist gbkdir fastadir] arglist
                       errs (list)
+                      errs (cond (and (not= multi "") (= regex ""))
+                                 (cons "-m requires corresponding -r" errs)
+                                 (and (not= regex "") (= multi ""))
+                                 (cons "-r requires corresponding -m" errs)
+                                 :else errs)
                       multi (-> multi (str/split #",")
                                 (->> (mapv #(fs/replace-type % ""))))
                       regex (-> regex (str/split #","))
