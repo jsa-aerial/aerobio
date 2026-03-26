@@ -1,6 +1,5 @@
 {:scratch-base "/ExpOut"
  :fastq-dirname "Fastq"
- :refdir "/Refs"
  :exp-base "/ExpIn"
  :illum-fqdir "Data/Intensities/BaseCalls"
  :elembio-fqdir "Data/Samples"
@@ -21,13 +20,17 @@
 
 
  :refdata
- {;; These defaults would have these in the Aerobio home/install directory
+ {;; These defaults would have the root dirs in Aerobio home/install
+  ;; directory. Use full paths (starting with OS filesys separator '/'
+  ;; for POSIX, '\' for Win) to place directories elsewhere
   :gbks "GBKs" ; root directory containing genbank files
   :fastas "Fastas" ; root directory to contain genome fasta files
-  :refs "Refs" ; root directory for reference data
+  :refdir "Refs" ; root directory for reference data
+  ;; WILL BE SUB directories of :refdir!!
   :bt1idx "BT1Index"
   :bt2idx "BT2Index"
-  :staridx "STARIndex"}
+  :staridx "STARIndex"
+  :normgenes "NormGenes"}
 
  ;; Bio DBs configs
  ;; Default to not having these
