@@ -87,7 +87,7 @@
       (make-symlink gbk (->> gbk fs/basename (fs/join refdir)))
       :success)
     (catch Exception e
-      (errorf "make-ref-data '%s': EXCEPTION %s"
+      (errorf "make-ref-data '%s': EXCEPTION '%s'"
               nm (or (.getMessage e) e))
       :failed)))
 
@@ -144,6 +144,7 @@
 
 (defmethod resultset->msgset "make-refdata"
   [result-maps]
+  (infof "RefData results [%s]" result-maps)
   (let [[locs gbk gbkdir locregex] (->> result-maps first :value)
         refdir (pams/get-params [:refdata :refdir])
         msgs (for [resmap result-maps]
