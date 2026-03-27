@@ -137,7 +137,7 @@
           (make-symlink gbk fullgbk)
           :success)))
     (catch Exception e
-      (errorf "make-ref-data '%s/%s': EXCEPTION %s"
+      (errorf "make-ref-data '%s/%s': EXCEPTION '%s'"
               gbk loc-re (or (.getMessage e) e))
       :failed)))
 
