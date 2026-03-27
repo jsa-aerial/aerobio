@@ -11,7 +11,7 @@
                           "#6" ; fasta directory
                           ]}
          :endmsg {:type "func"
-                  :name "mailit"
+                  :name "mailp2"
                   :args ["make-refdata"
                          "#3"         ; user, default NONE
                          "Aerobio job status: make-refdata"
