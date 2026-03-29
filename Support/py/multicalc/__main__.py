@@ -381,18 +381,23 @@ for refname, dict in gtf_dict.items():
                                        normgene_file, dict['outfile2'],
                                        total, refname, arguments)
         if wigp:
-            with open(dict['wigfile'], "wb") as wigfile:
+            with open(dict['wigfile'], "w") as wigfile:
                 wigfile.write(wigstring)
 
     elif wigp:
         for list in results:
             wigstring += str(list[0]) + " " + str(list[11]) + "\n"
-        with open(dict['wigfile'], "wb") as wigfile:
+        with open(dict['wigfile'], "w") as wigfile:
             wigfile.write(wigstring)
 
-    with open(dict['outfile'], "wb") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerows(results)
+    csvfname = dict['outfile']
+    if sys.version_info[0] > 2:
+        csvfile = open(csvfname, 'w', newline='')
+    else:
+        csvfile = open(csvfname, 'wb')
+    writer = csv.writer(csvfile)
+    writer.writerows(results)
+    csvfile.close()
 
 
 
