@@ -109,7 +109,7 @@
           loc-re (re-pattern loc-re)
           gbkdir (fs/join gbkbase "LocOut")
           _ (fs/mkdirs gbkdir)
-          fnadir  (fs/join fastabase "LocOut")
+          fnadir  (fs/join fastabase (fs/basename gbkbase) "LocOut")
           _ (fs/mkdirs fnadir)
           loccnt (gbff->chr-gbks gbk gbkdir :regexp loc-re)
           locgbks (-> gbkdir (fs/join "*.gbk") fs/glob sort)]
