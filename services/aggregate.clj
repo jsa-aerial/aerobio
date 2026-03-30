@@ -1,10 +1,16 @@
 
 {:name "aggregate"
  :path ""
- :func (let [result (volatile! [])]
+ :func (let [result (volatile! [])
+             already-sent? (volatile! false)]
          (fn[data]
            (if (and (pg/eoi? data) (pg/done? data))
-             @result
+             (do (infof "AGGREGATE node sent EOI/DONE: %s" data)
+                 (if @already-sent?
+                   (do (infof "AGGREGATE node already returned result")
+                       (pg/done))
+                   (do (vswap! already-sent? (fn[v] true))
+                       @result)))
              (do
                (vswap! result (fn[resval] (conj resval data)))
                (pg/need)))))
