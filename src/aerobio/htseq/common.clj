@@ -292,8 +292,9 @@
       (dissoc phmap nil)
       (let [phv (coll/drop-until #(when % (re-find #"phase" %)) v)
             ph (first phv)
-            args (->> phv rest (coll/take-until #(re-find #"phase" %))
-                      (filter #(not= % ""))
+            args (->> phv rest
+                      (coll/take-until #(when % (re-find #"phase" %)))
+                      (filter #(when % (not= % "")))
                       (mapv #(-> % (cljstr/split #"=") vec))
                       (into {}))]
         (recur (rest phv)
