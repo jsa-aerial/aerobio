@@ -39,6 +39,7 @@ Table of Contents
    * [Aerobio command](#aerobio-command)
    * [Aerobio server](#aerobio-server)
    * [Config file](#config-file)
+* [Sample Data](#sample-data)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
 
@@ -156,10 +157,12 @@ Requres the MAP file output from bowtie1, the reference genome(s) GTF/GFF file a
 For multicalc fitness script, the best way to run this is to first build an executable zip file composed of the elements in the `multicalc` directory. The steps are:
 
     1. cd to the multicalc directory
-    2. issue: `zip -r ../calc_fitness.zip *`
-    3. issue `cd ..`
-    4. issue `echo "#\!/usr/bin/env python3" | cat - calc_fitness.zip > calc_fitness`
-    5. issue `chmod a+x calc_fitness`
+    2. issue: zip -r ../calc_fitness.zip *
+    3. issue: cd ..
+    4. issue: echo "#\!/usr/bin/env python3" | cat - calc_fitness.zip > calc_fitness
+    5. issue: chmod a+x calc_fitness
+
+**Note**, here, in step 4, we show `python3` as that is now the more common python interpreter to use.  *However*, your command for python may be `python` even if it is actually python3.  So, make sure you know what your python command is and use that to ensure proper functioning.
 
 
 ## Aggregation:
@@ -220,6 +223,13 @@ $ seqkit grep -p 'barcode bases pattern' -d ./Data/Sample/<fastq file with subre
 ## the search is done on the seq of the fastq records
 
 $ seqkit grep -p '^ACTGAC' -r -s ./Data/Samples/BC01_R1.fastq.gz -o ./Data/Demux/ACTGAC-output.fastq.gz
+
+# If you want the index trimmed (generally what you want) you can use this:
+$ seqkit grep -p '^ACTGAC' -r -s ./Data/Samples/BC01_R1.fastq.gz | seqkit subseq -r 7:-1 -o Trimmed-ACTGAC-output.fastq.gz
+
+#
+#
+$ seqkit grep -p '^ATACATT' -r -s Data/Samples/L77S-1_R1.fastq.gz -o ATACATT-output.fastq.gz
 ```
 
 
@@ -925,7 +935,7 @@ Starting server...
 Setting up modules, tools, and jobs...
 ```
 
-* Open another separate command window in which you can run the [aerobio](#aerobio-command) command. Assuming you have it on your command path, issue the following commands and they should output similar to what is shown.
+* Open another separate command window in which you can run the [aerobio](#aerobio-command) command. Assuming you have it on your command path, issue the following commands and they should output something similar to what is shown.
 
 ```sh
 $ aerobio this-job-does-not-exist
@@ -955,3 +965,22 @@ This shows that the server is up, running and communicating with the `aerobio` c
 
 
 [^1]: Here we are using the standard POSIX tilde syntax to indicate the home directory. For Windows users, the '~' is not legal, but you should read it here as your homedirectory.
+
+
+# Sample Data
+
+```sh
+Sandboxes
+├── Ref
+│   ├── NC_003028.fna
+│   ├── NC_003028.gbk
+│   └── NC_003028.gtf
+├── RNA-Seq
+│   └── Data
+│       └── Samples
+│           └── L77S-1_R1.fastq.gz
+└── Tn-Seq
+    └── Data
+        └── Samples
+            └── BC01_R1.fastq.gz
+```
