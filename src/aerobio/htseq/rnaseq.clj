@@ -165,10 +165,11 @@
 ;;; Get primary phase 1 arguments. These are the bowtie index, the
 ;;; fastq set, output bam and bai file names
 (defmethod cmn/get-phase-1-args :rnaseq
-  [_ eid repname & {:keys [repk star paired]}]
+  [_ eid repname & {:keys [repk aligner]}]
   (let [{:keys [R1 R2]} (cmn/get-paired-fqs eid repname repk)
         refnm (cmn/replicate-name->strain-name eid repname)
-        btindex (fs/join (cmn/get-exp-info eid :index) refnm)
+        star (= aligner :STAR)
+        bt2index (fs/join (cmn/get-exp-info eid :bt2index) refnm)
         starindex (when star
                     (fs/join (cmn/get-exp-info eid :starindex) refnm))
         starprefix (when star
@@ -180,12 +181,12 @@
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai]))
     (when star (cmn/ensure-dirs (fs/dirname starprefix)))
     (if star
-      (if (and #_paired R2)
+      (if R2
         [starindex  [R1 R2] otbam otbai starprefix]
         [starindex R1 otbam otbai starprefix])
-      (if (and #_paired R2)
-        [btindex ["-1" R1 "-2" R2] otbam otbai]
-        [btindex ["-U" R1] otbam otbai]))))
+      (if R2
+        [bt2index ["-1" R1 "-2" R2] otbam otbai]
+        [bt2index ["-U" R1] otbam otbai]))))
 
 (defmethod cmn/get-phase-1-args :dual-rnaseq
   [& args]

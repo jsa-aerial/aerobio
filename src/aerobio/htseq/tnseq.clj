@@ -170,11 +170,11 @@
 
 
 
-;;; Get primary phase 1 arguments. These are the bowtie index, the
+;;; Get primary phase 1 arguments. These are the aligner index, the
 ;;; fastq set, the collapsed fastas, output map file, output bam and
 ;;; bai file names
 (defmethod cmn/get-phase-1-args :tnseq
-  [_ eid repname & {:keys [repk bowtie paired] :or {bowtie :bt1}}]
+  [_ eid repname & {:keys [repk aligner] :or {aligner :bowtie}}]
   (let [{:keys [R1 R2]} (cmn/get-paired-fqs eid repname repk)
         fqs R1
         fnas (cljstr/join
@@ -186,7 +186,7 @@
                         (str/split #"," fqs))) ;;_ (prn :FQS fqs :FNAS fnas)
         refnm (cmn/replicate-name->strain-name eid repname)
         bt1index (fs/join (cmn/get-exp-info eid :bt1index) refnm)
-        bt2index (fs/join (cmn/get-exp-info eid :index) refnm)
+        bt2index (fs/join (cmn/get-exp-info eid :bt2index) refnm)
         otbam (fs/join (cmn/get-exp-info eid repk :bams) (str repname ".bam"))
         otmap (fs/join (cmn/get-exp-info eid repk :maps) (str repname ".map"))
         otbai (str otbam ".bai")
@@ -194,7 +194,7 @@
                         (str refnm ".gtf"))]
     (apply cmn/ensure-dirs (map fs/dirname [otbam otbai otmap]))
     [bt2index fqs
-     (if (= bowtie :bt1) bt1index bt2index) fnas
+     (if (= aligner :bowtie) bt1index bt2index) fnas
      otmap otbam otbai]))
 
 
