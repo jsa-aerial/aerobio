@@ -96,6 +96,7 @@
   []
   (programs bases2fastq bcl2fastq bcl-convert samtools
             bowtie bowtie2 bowtie-build bowtie2-build
+            STAR
             featureCounts breseq
             Rscript python ruby perl
             ln wc chmod
