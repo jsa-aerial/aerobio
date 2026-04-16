@@ -9,8 +9,8 @@
              outstream (volatile! nil)
              buf (byte-array (* 128 1040))]
          (fn [aligner & args]
-           (println (format "AlignSRV %s %s" aligner args))
            (when (= @proc :notyetrun)
+             (println (format "AlignSRV %s %s" aligner args))
              (vswap! proc (fn[_] (pg/align aligner args)))
              (vswap! outstream (fn[_] (@proc :out))))
            (try
@@ -29,10 +29,20 @@
                  bytearray))
              (catch Exception e
                (infof "ALIGN '%s'" (or (.getMessage e) e))
-               (pg/done))
-             (finally
-               (.close @outstream)))))
- 
+               (pg/done)))))
+
+ :default-arg-templates
+ {:STAR ["--genomeDir" "#1" ; STAR index dir
+         "--runThreadN" "24"
+         "--readFilesCommand" "zcat"
+         "--readFilesIn" "#2" ; input fastq.gz
+         "--outStd" "BAM_SortedByCoordinate"
+         "--outSAMtype" "BAM" "SortedByCoordinate"
+         "--outFileNamePrefix" "#5"]
+  
+  :bowtie2 ["-p" "16" "--very-sensitive"
+            "-x" "#1" "#2"]
+  }
  ;; instructional data used in /help
  :description  "Function wrapping aligners for aligning reads to genomes, via dispatch on aligner (bowtie, bowtie2, STAR, etc)",
 }
