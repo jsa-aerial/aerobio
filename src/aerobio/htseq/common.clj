@@ -1037,14 +1037,9 @@
 (defn run-phase-1
   [eid recipient get-toolinfo template status-atom & {:keys [repk]}]
   (let [exp (get-exp-info eid :exp)
+        phase1-args ((get-exp-info eid :phase-args) :phase1)
+        default-aligner (if (= exp :tnseq) :bowtie :bowtie2)
         phase1-job-template template
-        bt (if (-> template (get-in [:nodes :ph1 :name])
-                   (cljstr/includes? "bowtie1"))
-             :bt1 :bt2)
-        star (-> template (get-in [:nodes :ph1 :name])
-                 (cljstr/includes? "star"))
-        paired (-> template (get-in [:nodes :ph1 :name])
-                 (cljstr/includes? "paired"))
         sample-names (get-exp-info eid :sample-names)
         sample-names (if repk
                        (mapcat #((get-exp-info eid :replicate-names) %)
@@ -1059,10 +1054,13 @@
               futs-vecs
               (mapv
                (fn[snm]
-                 (let [job (assoc-in phase1-job-template [:nodes :ph1 :args]
+                 (let [org (->> snm (str/split #"-") first)
+                       aligner (keyword (phase1-args org default-aligner))
+                       job (assoc-in (phase1-job-template aligner)
+                                     [:nodes :ph1 :args]
                                      (get-phase-1-args
-                                      exp eid snm :repk repk
-                                      :bowtie bt :star star :paired paired))
+                                      exp eid snm
+                                      :repk repk :aligner aligner))
                        cfg (-> job
                                (pg/config-pgm-graph-nodes get-toolinfo nil nil)
                                pg/config-pgm-graph)]
