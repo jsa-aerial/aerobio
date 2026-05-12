@@ -1037,7 +1037,7 @@
 (defn run-phase-1
   [eid recipient get-toolinfo template status-atom & {:keys [repk]}]
   (let [exp (get-exp-info eid :exp)
-        phase1-args ((get-exp-info eid :phase-args) :phase1)
+        phase1-args ((get-exp-info eid :phase-args) :phase1 {})
         default-aligner (if (= exp :tnseq) :bowtie :bowtie2)
         phase1-job-template template
         sample-names (get-exp-info eid :sample-names)
