@@ -91,6 +91,7 @@
    [aerobio.pgmgraph :as pg]
    ;; REST actions
    [aerobio.actions :as actions]
+   [aerobio.uncomp :as au]
    ))
 
 
