@@ -74,8 +74,9 @@
                 (constantly (dnnlfact/dnnl-factory)))
 
 
-(with-release
-  [a (dge 2 3 [1 2 3 4 5 6])
-   b (dge 3 2 [1 3 5 7 9 11])]
-  (mm a b))
+(println
+ (with-release
+   [a (dge 2 3 [1 2 3 4 5 6])
+    b (dge 3 2 [1 3 5 7 9 11])]
+   (mm a b)))
 
