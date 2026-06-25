@@ -9,9 +9,9 @@
                 :name "aggregate"}
          :endmsg {:type "func"
                   :name "mailp2"
-                  :args ["featureCounts"
+                  :args ["bulk-featureCounts"
                          "#3"            ; user
-                         "Aerobio job status: featureCounts"
+                         "Aerobio job status: bulk-featureCounts"
                          "Finished"]} ; subject, body intro
          :edges {:fcnt [:aggr] :aggr [:endmsg]}}
 

@@ -9,7 +9,7 @@
                exit-code @(ret :exit-code)
                exit (if (= 0 exit-code) :success exit-code)
                err (-> (ret :stderr) (str/split #"\n") last)]
-           {:name "featureCounts"
+           {:name "run-featureCounts"
             :value (let [[_ csv & bams] (coll/drop-until #(= % "-o") args)]
                      [bams csv])
             :exit exit
