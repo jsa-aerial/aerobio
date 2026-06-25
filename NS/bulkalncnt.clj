@@ -138,6 +138,7 @@
         index ["-x" (entrymap :bt2idx)]
         baseargs (coll/concatv opts index)
         bamprefix (entrymap :bamprefix)]
+    (when (not (fs/directory? bamprefix)) (fs/mkdirs bamprefix))
     (->> entrymap :fqmap
          (mapv (fn[[prefix fqs]]
                  (let [bam (fs/join bamprefix (str prefix ".bam"))
@@ -166,6 +167,8 @@
         bamprefix (entrymap :bamprefix)
         starprefix (entrymap :starprefix)
         ]
+    (when (not (fs/directory? bamprefix)) (fs/mkdirs bamprefix))
+    (when (not (fs/directory? starprefix)) (fs/mkdirs starprefix))
     (->> entrymap :fqmap
          (mapv (fn[[prefix fqs]]
                  (let [bam (fs/join bamprefix (str prefix ".bam"))
@@ -190,6 +193,7 @@
         bams (entrymap :bams)
         fcntprefix (entrymap :fcntprefix)
         baseargs (coll/concatv opts gtf)]
+    (when (not (fs/directory? fcntprefix)) (fs/mkdirs fcntprefix))
     (->> bams
          (mapv (fn [bam]
                  (let [bamnm (fs/basename bam)
@@ -211,6 +215,15 @@
 
 
 
+
+(defmethod cmn/resultset->msgset "bulk-align"
+  [result-maps])
+
+(defmethod cmn/resultset->msgset "bulk-fcount"
+  [result-maps])
+
+(defmethod cmn/resultset->msgset "bulk-align-count"
+  [result-maps])
 
 
 
