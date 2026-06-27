@@ -67,6 +67,7 @@
        (let [wms @workmanifests]
          (if (seq wms)
            (let [wm (first wms)
+                 gti (wm :get-toolinfo)
                  ent (wm :ent)
                  aln (wm :aln)
                  fct (wm :fct)]
@@ -74,19 +75,24 @@
                      (fn[_] (rest wms)))
              (if (and (seq (drop n aln)) (seq (drop n fct)))
                (vswap! curworkargs
-                       (fn[_] {:ent ent :aln (drop n aln) :fct (drop n fct)}))
+                       (fn[_]
+                         {:ent ent :get-toolinfo gti
+                          :aln (drop n aln) :fct (drop n fct)}))
                (vswap! curworkargs (fn[_] :na)))
-             [ent (wm :get-toolinfo) (take n aln) (take n fct)])
+             [ent gti (take n aln) (take n fct)])
            (pg/done)))
        (let [curwm @curworkargs
+             gti (curwm :get-toolinfo)
              ent (curwm :ent)
              aln (curwm :aln)
              fct (curwm :fct)]
          (if (and (seq (drop n aln)) (seq (drop n fct)))
            (vswap! curworkargs
-                   (fn[_] {:ent ent :aln (drop n aln) :fct (drop n fct)}))
+                   (fn[_]
+                     {:ent ent :get-toolinfo gti
+                      :aln (drop n aln) :fct (drop n fct)}))
            (vswap! curworkargs (fn[_] :na)))
-         [ent (curwm :get-toolinfo) (take n aln) (take n fct)]))))
+         [ent gti (take n aln) (take n fct)]))))
 
  :description "Streaming bulk align and fcount args"
  }
