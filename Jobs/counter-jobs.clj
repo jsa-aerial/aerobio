@@ -2,7 +2,7 @@
 {:featureCounts
  {:nodes
   {:root
-   {:name "base-featureCounts",
+   {:name "run-featureCounts",
     :type "tool",
     :args []}
    :prn1 {:type "func",

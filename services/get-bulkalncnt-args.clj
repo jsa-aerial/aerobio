@@ -7,7 +7,7 @@
  :func
  (let [workmanifests (volatile! :nyi)
        curworkargs (volatile! :na)]
-   (fn[idrefmap user dirdir & _]
+   (fn[idrefmap n user dirdir & _]
      (when (= @workmanifests :nyi)
        (let [refdata (pams/get-params :refdata)
              refdir (refdata :refdir)
@@ -71,21 +71,21 @@
                  fct (wm :fct)]
              (vswap! workmanifests
                      (fn[_] (rest wms)))
-             (if (and (-> aln rest seq) (-> fct rest seq))
+             (if (and (seq (drop n aln)) (seq (drop n fct)))
                (vswap! curworkargs
-                       (fn[_] {:ent ent :aln (rest aln) :fct (rest fct)}))
+                       (fn[_] {:ent ent :aln (drop n aln) :fct (drop n fct)}))
                (vswap! curworkargs (fn[_] :na)))
-             [ent (wm :get-toolinfo) (first aln) (first fct)])
+             [ent (wm :get-toolinfo) (take n aln) (take n fct)])
            (pg/done)))
        (let [curwm @curworkargs
              ent (curwm :ent)
              aln (curwm :aln)
              fct (curwm :fct)]
-         (if (and (-> aln rest seq) (-> fct rest seq))
+         (if (and (seq (drop n aln)) (seq (drop n fct)))
            (vswap! curworkargs
-                   (fn[_] {:ent ent :aln (rest aln) :fct (rest fct)}))
+                   (fn[_] {:ent ent :aln (drop n aln) :fct (drop n fct)}))
            (vswap! curworkargs (fn[_] :na)))
-         [ent (curwm :get-toolinfo) (first aln) (first fct)]))))
+         [ent (curwm :get-toolinfo) (take n aln) (take n fct)]))))
 
  :description "Streaming bulk align and fcount args"
  }

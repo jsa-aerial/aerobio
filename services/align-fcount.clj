@@ -2,21 +2,32 @@
 {
  :name "align-fcount"
  :path ""
- 
- :graph {:align-and-count
+
+ :graph {:getargs
          {:type "func"
-          :name "align-and-count"
+          :name "get-bulkalnfct-args"
           :args ["#1" ; id ref map file name
-                 "#2" ; user
-                 "#3" ; Directory of subdirs of fastqs
+                 "#2" ; n fq set chunk size
+                 "#3" ; user
+                 "#4" ; Directory of subdirs of fastqs
                  ]}
+
+         :align-and-count
+         {:type "func"
+          :name "align-and-count"}
+
+         :aggr {:type "func"
+                :name "aggregate"}
+
          :endmsg {:type "func"
                   :name "mailp2"
                   :args ["align-fcount"
                          "#3"         ; user
                          "Aerobio job status: align-fcount"
                          "Finished"]} ; subject, body intro
-         :edges {:align-and-count [:endmsg]}}
+         :edges {:getargs [:align-and-count]
+                 :align-and-count [:aggr]
+                 :aggr [:endmsg]}}
 
  :description "Job to takae a dir of dirs of fastqs and align and fcount them"
 }

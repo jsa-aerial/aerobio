@@ -11,9 +11,15 @@
  :cli {:usage ["align-fcount <options> dirdir"
                "Bulk fastq alignment and feature counting"
                "\ndirdir is a directory of subdirectories."
-               "Each subdirectory should be named after an official reference,"
-               "or a lab id listed in the `idrefmap` option with an associated"
-               "official reference name."
+               "Each subdirectory contains fastqs to be processed as defined"
+               "in the `idrefmap` option manifest CSV file in dirdir."
+               "\nThe manifest file has columns:"
+               "| id | ref | aligner | alnopts | fcopts |"
+               "* id is the name of a subdirectory of dirdir"
+               "* ref is the official reference name (eg, NC_003028)"
+               "* aligner is the command line name of aligner to use"
+               "* alnopts are non I/O option flags to aligner"
+               "* fcopts are non I/O options flags to feature counts"
                "\nOptions:"]
        :prefn (fn[arglist]
                 (let [[idrefmap user dirdir] arglist
@@ -63,8 +69,10 @@
        :args ["dirdir"]
 
        :options
-       [["-m" "--idrefmap IdRefMap" "Common Id to official RefName map"
+       [["-m" "--idrefmap IdRefMap" "The file name of CSV manifest to use"
          :missing "The idrefmap file name in dirdir is required"]
+        ["-n" "--chunksize ChunkSize" "File chunk size to process in parallel"
+         :default "2"]
         ["-u" "--user UserAccnt" "User account (zulip/email) for result msg"
          :missing "The user account is required"]]
-       :order [:idrefmap :user]}}
+       :order [:idrefmap :chunksize :user]}}

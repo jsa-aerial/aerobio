@@ -198,7 +198,7 @@
          (mapv (fn [bam]
                  (let [bamnm (fs/basename bam)
                        csv (fs/join fcntprefix (fs/replace-type bamnm ".csv"))]
-                   [(coll/concatv baseargs ["-o" csv]) bam user]
+                   (coll/concatv baseargs ["-o" csv] [bam])
                    ))))))
 
 
@@ -213,14 +213,31 @@
 
 
 
+        bams   (mapv fs/basename bams)
+        fctcsv (fs/basename fctcsv)
 
 
 
 (defmethod cmn/resultset->msgset "bulk-align"
   [result-maps])
 
-(defmethod cmn/resultset->msgset "bulk-fcount"
-  [result-maps])
+(defmethod cmn/resultset->msgset "run-featureCounts"
+  [result-maps]
+  (let [result-maps (flatten result-maps)
+        [bams fctcsv] (->> result-maps first :value)
+        bamdir (-> bams first fs/dirname)
+        fctdir (fs/dirname fctcsv)
+        msgs (for [retmap result-maps]
+               (let [name (retmap :name)
+                     [bams fctcsv] (retmap :value)
+                     bams (mapv fs/basename bams)
+                     fctcsv (fs/basename fctcsv)
+                     exit (retmap :exit)
+                     err (retmap :err)]
+                 (if (= exit :success)
+                   [exit bams fctcsv]
+                   [exit err bams fctcsv])))]
+    [bamdir fctdir msgs]))
 
 (defmethod cmn/resultset->msgset "bulk-align-count"
   [result-maps])
