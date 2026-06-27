@@ -225,8 +225,10 @@
   [result-maps]
   (let [result-maps (flatten result-maps)
         [bams fctcsv] (->> result-maps first :value)
-        bamdir (-> bams first fs/dirname)
-        fctdir (fs/dirname fctcsv)
+        dirparts (-> bams first fs/dirname fs/split
+                     (->> (coll/takev-until #(= % "Bams"))))
+        inbase (->> dirparts butlast butlast (apply fs/join))
+        outbase (->> dirparts butlast (apply fs/join))
         msgs (for [retmap result-maps]
                (let [name (retmap :name)
                      [bams fctcsv] (retmap :value)
@@ -237,7 +239,7 @@
                  (if (= exit :success)
                    [exit bams fctcsv]
                    [exit err bams fctcsv])))]
-    [bamdir fctdir msgs]))
+    [inbase outbase msgs]))
 
 (defmethod cmn/resultset->msgset "bulk-align-count"
   [result-maps])
