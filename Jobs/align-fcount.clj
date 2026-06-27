@@ -23,8 +23,8 @@
                "\nOptions:"]
        :prefn (fn[arglist]
                 (let [[idrefmap chunksize user dirdir] arglist
-                      _ (infof "IRmap '%s', User '%s', DirDir '%s'"
-                               idrefmap user dirdir)
+                      _ (infof "IRmap '%s', CkSize '%s', User '%s', DirDir '%s'"
+                               idrefmap chunksize user dirdir)
                       errs (list)
                       errs (cond
                              (nil? dirdir)
@@ -72,7 +72,9 @@
        [["-m" "--idrefmap IdRefMap" "The file name of CSV manifest to use"
          :missing "The idrefmap file name in dirdir is required"]
         ["-n" "--chunksize ChunkSize" "File chunk size to process in parallel"
-         :default "2"]
+         :default 2
+         :parse-fn #(Integer/parseInt %)
+         :validate [#(and (number? %) (<= 1 % 5)) "Must be an int in [1,5]"]]
         ["-u" "--user UserAccnt" "User account (zulip/email) for result msg"
          :missing "The user account is required"]]
        :order [:idrefmap :chunksize :user]}}
