@@ -33,8 +33,9 @@
                                            :bt2idx (fs/join bt2IdxDir refnm)
                                            :staridx (fs/join starIdxDir refnm)
                                            :starprefix (fs/join
-                                                        dirdir
-                                                        "Out/STAR")
+                                                        dirdir "Out"
+                                                        (fs/basename fqdir)
+                                                        "STAR")
                                            :bamprefix (fs/join
                                                        dirdir "Out"
                                                        (fs/basename fqdir)
