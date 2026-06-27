@@ -5,7 +5,7 @@
 
  :graph {:getargs
          {:type "func"
-          :name "get-bulkalnfct-args"
+          :name "get-bulkalncnt-args"
           :args ["#1" ; id ref map file name
                  "#2" ; n fq set chunk size
                  "#3" ; user
