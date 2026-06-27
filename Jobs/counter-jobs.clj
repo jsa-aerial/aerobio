@@ -3,7 +3,7 @@
  {:nodes
   {:root
    {:name "run-featureCounts",
-    :type "tool",
+    :type "func",
     :args []}
    :prn1 {:type "func",
           :name "prn"}},
