@@ -22,7 +22,7 @@
                "* fcopts are non I/O options flags to feature counts"
                "\nOptions:"]
        :prefn (fn[arglist]
-                (let [[idrefmap user dirdir] arglist
+                (let [[idrefmap chunksize user dirdir] arglist
                       _ (infof "IRmap '%s', User '%s', DirDir '%s'"
                                idrefmap user dirdir)
                       errs (list)
