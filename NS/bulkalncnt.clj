@@ -204,22 +204,9 @@
 
 
 
-
-
-
-
-
-
-
-
-
-        bams   (mapv fs/basename bams)
-        fctcsv (fs/basename fctcsv)
-
-
-
 (defmethod cmn/resultset->msgset "bulk-align"
   [result-maps])
+
 
 (defmethod cmn/resultset->msgset "run-featureCounts"
   [result-maps]
@@ -240,6 +227,7 @@
                    [exit bams fctcsv]
                    [exit err bams fctcsv])))]
     [inbase outbase msgs]))
+
 
 (defmethod cmn/resultset->msgset "bulk-align-count"
   [result-maps])
