@@ -19,7 +19,7 @@
                "* ref is the official reference name (eg, NC_003028)"
                "* aligner is the command line name of aligner to use"
                "* alnopts are non I/O option flags to aligner"
-               "* fcopts are non I/O options flags to feature counts"
+               "* fcopts are non I/O option flags to feature counts"
                "\nOptions:"]
        :prefn (fn[arglist]
                 (let [[idrefmap chunksize user dirdir] arglist
@@ -69,9 +69,11 @@
        :args ["dirdir"]
 
        :options
-       [["-m" "--idrefmap IdRefMap" "The file name of CSV manifest to use"
+       [["-m" "--idrefmap IdRefMap"
+         "The file name of CSV manifest in dirdir to use"
          :missing "The idrefmap file name in dirdir is required"]
-        ["-n" "--chunksize ChunkSize" "File chunk size to process in parallel"
+        ["-n" "--chunksize ChunkSize"
+         "File chunk size to process in parallel: range [1-5], default 2"
          :default 2
          :parse-fn #(Integer/parseInt %)
          :validate [#(and (number? %) (<= 1 % 5)) "Must be an int in [1,5]"]]
