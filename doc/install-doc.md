@@ -180,7 +180,7 @@ All commands and filesystem actions shown in the following assume a Unix (typica
 
 ## Starting from sequencer output
 
-Whether you are working with RNA-Seq or Tn-Seq, ff you are starting with the direct sequencer output of either Illumina or Element Biosciences (ElemBio), you first need to convert that to sample fastq files. For Illumina, you will need bcl-convert and for ElemBio you will need bases2fastq (both listed under **Tools**). It is usually best to change directories to the sequencer's output directory, which we take here as SeqOutput
+Whether you are working with RNA-Seq or Tn-Seq, if you are starting with the direct sequencer output of either Illumina or Element Biosciences (ElemBio), you first need to convert that to sample fastq files. For Illumina, you will need bcl-convert and for ElemBio you will need bases2fastq (both listed under **Tools**). It is usually best to change directories to the sequencer's output directory, which we take here as SeqOutput
 
 * Illumina bcl-convert
 
@@ -205,7 +205,7 @@ No lane splitting is the default for `bases2fastq`.  The `--no-projects` togethe
 
 ## Demultiplexing the fastq files
 
-If you are starting with fastq files provided to you or have finished the conversion process to generate them yourself, the next step is to demultiplex the experiment reads. These are the subsets of reads within a sequencer output sample fastq which have their own internal barcode.  if there are no such reads, and thus the sequencer output samples need no demultiplexing, you would go directly do alignment.
+If you are starting with fastq files provided to you or have finished the conversion process to generate them yourself, the next step is to demultiplex the experiment reads. These are the subsets of reads within a sequencer output sample fastq which have their own internal barcode.  if there are no such reads, and thus the sequencer output samples need no demultiplexing, you would go directly to alignment.
 
 Here we use the `seqkit` suite of tools and specifically the `grep` subcommand.  There are many options. We give two basic forms: one for barcodes expected to have 'degenerate' bases such as `R`, `Y`, `N` et.al.  The second assumes the bases should be exact.
 
@@ -468,14 +468,14 @@ $ featureCounts -a /Refs/NC_003028.gtf -o Fcnts/T4-L77SCEF1hr-T4-wtCEF1hr.csv -t
 \\============================================================================//
 ```
 
-Once you have your featureCounts output, you can then run the R script `deseq2-rnaseq.r` to obtain the DGE results.  Here, we assume the R scripts noted above under **Scripts** are all placed in the directory `./Rscripts`.  The `deseq2-rnaseq.r` is the main (driver) script and it loads and uses the others.  This script takes four arguments:
+Once you have your featureCounts output, you can then run the R script `deseq2-rnaseq.r` to obtain the DGE results.  Here, we assume the R scripts noted above under [Scripts](#scripts) are all placed in the directory `./Rscripts`.  The `deseq2-rnaseq.r` is the main (driver) script and it loads and uses the others.  This script takes four arguments:
 
 1. The path to the DGE output directory
 2. The **full** path to the featureCounts output CSV file
 3. A comma separated string denoting the two conditions to compare and the count of replicates for each: "c1,c2,c1cnt,c2cnt". The contrast order for comparison is taken as c1 (first condition in string) is the "treated" and c2 is the "untreated".  Specifically, the fold change computed is `log2(c1/c2)`
 4. The **full** path to the `Rscripts` directory
 
-One other thing to note about this: per the DESeq2 author, we do not normalize the count matrix data before applying DESeq2 modeling as it uses its own normalization specifically tailored to the negative binomial used.  You shoulld not either!
+One other thing to note about this: per the DESeq2 author, we do not normalize the count matrix data before applying DESeq2 modeling as it uses its own normalization specifically tailored to the negative binomial used.  You should not either!
 
 You can streamline the full path arguments a bit by using the "$(realpath partial-path)" bash shortcut as shown in the following command call.
 
@@ -851,8 +851,7 @@ This section discusses the process of installing the [Aerobio](https://github.co
 
 ## Uberjar
 
-Aerobio comes as a self installing 'uberjar'. This uses [Java](#java) to run it in both the server and installation mode. You can download the jar from this [link](https://drive.google.com/file/d/1WG-00fGkdb6_RCIZv9eLBR3nl860HwKG/view?usp=sharing).
-
+Aerobio comes as a self installing 'uberjar'. This uses [Java](#java) to run it in both the server and installation mode. You can download the jar from this [link](https://drive.google.com/file/d/12LTCMC5Lh0inKHPAJHnTvBo2EJmI2KKy/view?usp=sharing)
 
 * Download the uberjar from the link.  When you go to this link it will pop up a window that will look something like this:
 
