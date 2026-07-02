@@ -3,10 +3,11 @@
  :name "mailp2",
  :path "",
  :func (fn [eid recipient subject intro result-maps]
+         (infof "MAILP2: '%s'" result-maps)
          (cond
            (pg/eoi? result-maps) nil ; (pg/done) is sent on ch close!
 
-           (every? map? result-maps)
+           (every? map? (flatten result-maps))
            (let [result-maps (flatten result-maps)
                  [ibase obase msgs] (cmn/resultset->msgset result-maps)
                  overall (reduce (fn[R x]
