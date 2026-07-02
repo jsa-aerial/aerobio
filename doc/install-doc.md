@@ -853,8 +853,6 @@ This section discusses the process of installing the [Aerobio](https://github.co
 
 Aerobio comes as a self installing 'uberjar'. This uses [Java](#java) to run it in both the server and installation mode. You can download the jar from this [link](https://drive.google.com/file/d/1Vh82wXv8qvAU6aXqv0UX4XqPrOPShyiL/view?usp=sharing)
 
-(https://drive.google.com/file/d/12LTCMC5Lh0inKHPAJHnTvBo2EJmI2KKy/view?usp=sharing)
-
 * Download the uberjar from the link.  When you go to this link it will pop up a window that will look something like this:
 
 ![no preview](../resources/public/images/small-aerobio-no-preview.png?raw=true)
