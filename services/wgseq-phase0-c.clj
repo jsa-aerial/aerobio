@@ -11,7 +11,7 @@
                 :name "mailit"
                 :args ["#1"         ; eid
                        "#2"         ; recipient
-                       "Aerobio job status: rnaseq phase-0"
+                       "Aerobio job status: wgseq phase-0c"
                        "Finished"]} ; subject, body intro
 
          :edges {:setexp [:split-filter]

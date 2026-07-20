@@ -15,7 +15,7 @@
                 :name "mailit"
                 :args ["#1"         ; eid
                        "#2"         ; recipient
-                       "Aerobio job status: rnaseq phase-0"
+                       "Aerobio job status: wgseq phase-0"
                        "Finished"]} ; subject, body intro
 
          :edges {:bc2fq [:strtscratch]
@@ -23,5 +23,5 @@
                  :setexp [:split-filter]
                  :split-filter [:mail]}}
 
- :description "WGseq bcl2fastq through filter of input fastq. Process sequencer bcl files to fastq for experiment data identifiied by EID (argument #1 to bc2fq). Then creates scratch space for fastq file processing, copies fastqs to canonical dir in scratch area, sets the experiments db value and lastly filters fastqs."
+ :description "WGseq bc2fq through filter of input fastq. Process sequencer bcl files to fastq for experiment data identifiied by EID (argument #1 to bc2fq). Then creates scratch space for fastq file processing, copies fastqs to canonical dir in scratch area, sets the experiments db value and lastly filters fastqs."
  }

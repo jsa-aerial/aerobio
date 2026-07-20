@@ -13,12 +13,12 @@
                 :name "mailit"
                 :args ["#1"         ; eid
                        "#2"         ; recipient
-                       "Aerobio job status: rnaseq phase-0"
+                       "Aerobio job status: wgseq phase-0b"
                        "Finished"]} ; subject, body intro
 
          :edges {:strtscratch [:setexp]
                  :setexp [:split-filter]
                  :split-filter [:mail]}}
 
- :description "WGseq w/o bcl2fastq.  #1 arg is EID and is passed through the pipe. Creates scratch space for fastq file processing, copies fastqs to canonical dir in scratch area, sets the experiments db value and lastly filters fastqs."
+ :description "WGseq w/o bc2fq BCL conversion.  #1 arg is EID and is passed through the pipe. Creates scratch space for fastq file processing, copies fastqs to canonical dir in scratch area, sets the experiments db value and lastly filters fastqs."
  }
