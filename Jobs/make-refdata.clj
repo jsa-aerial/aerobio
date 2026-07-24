@@ -38,6 +38,14 @@
                                     (not= multi [""])
                                     (not (every? names multi)))
                              (cons "-m names must match namelist names!" errs)
+                             errs)
+                      errs (if (and gbkdir (-> gbkdir fs/directory? not))
+                             (cons (format "'%s' is not a directory" gbkdir)
+                                   errs)
+                             errs)
+                      errs (if (and fastadir (-> fastadir fs/directory? not))
+                             (cons (format "'%s' is not a directory" fastadir)
+                                   errs)
                              errs)]
                   (when (seq errs) errs)))
        :args ["namelist" "gbkdir" "fastadir"]
