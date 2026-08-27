@@ -1,0 +1,18 @@
+
+[Unit]
+Description=Aerobio HTS analysis server
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=exec
+User=aerobio
+Group=aerobio
+Restart=always
+RestartSec=3
+LimitNOFILE=65536:1048576
+Environment="PATH=/opt/JDK/current/bin:/opt/JDK/current/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/usr/local/bowtie2:/usr/local/STAR/bin/Linux_x86_64_static:/usr/local/STAR/Linux_x86_64_static:/usr/local/bowtie:/usr/local/subread/bin:/usr/local/bowtie:/usr/local/bowtie2:/usr/local/STAR/bin/Linux_x86_64_static:/usr/local/STAR/Linux_x86_64_static:/usr/local/subread/bin:/usr/local/sratools/bin"
+WorkingDirectory=/home/aerobio/.aerobio
+ExecStart=/opt/JDK/jdk-21.0.11/bin/java -jar /home/aerobio/.aerobio/aerobio-standalone.jar --port 7373 --repl-port 4303
